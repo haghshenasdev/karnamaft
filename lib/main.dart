@@ -21,7 +21,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
 
-      title: "Notes",
+      title: "کارنما",
+
+      builder: (context, child) {
+        return Directionality(textDirection: TextDirection.rtl, child: child!);
+      },
 
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
 

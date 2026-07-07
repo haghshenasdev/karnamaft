@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/drawing_controller.dart';
+import 'package:karnamaft/widgets/category_picker/category_model.dart';
+import 'package:karnamaft/widgets/category_picker/category_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/drawing_canvas.dart';
@@ -38,18 +40,13 @@ class HomePage extends StatelessWidget {
 
                   SizedBox(
                     width: 180,
-                    child: DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: "1", child: Text("شخصی")),
-                        DropdownMenuItem(value: "2", child: Text("کاری")),
-                        DropdownMenuItem(value: "3", child: Text("درسی")),
-                      ],
-                      onChanged: (_) {},
+                    child: CategoryPicker(
+                      selectedItems: [],
+                      onChanged: (items) {
+                        // setState(() {
+                        //   selectedCategories = items;
+                        // });
+                      },
                     ),
                   ),
                 ],

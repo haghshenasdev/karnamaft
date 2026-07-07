@@ -71,46 +71,65 @@ class MainPage extends StatelessWidget {
             //---------------------------------------
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          hintText: "جستجو...",
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+
+                          prefixIcon: const Center(
+                            widthFactor: 1,
+                            child: Icon(Icons.search),
+                          ),
+
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 56,
+                            minHeight: 56,
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: "جستجو...",
-                    prefixIcon: const Icon(Icons.search),
-                    border: InputBorder.none,
                   ),
-                ),
+
+                  const SizedBox(width: 12),
+
+                  InkWell(
+                    borderRadius: BorderRadius.circular(28),
+                    onTap: () {
+                      // صفحه پروفایل
+                    },
+                    child: const CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Color(0xffe9eef6),
+                      child: Icon(
+                        Icons.person,
+                        color: Colors.blueGrey,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 22),
-
-            //---------------------------------------
-            // Title
-            //---------------------------------------
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  "دسترسی سریع",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 15),
 
             //---------------------------------------
             // Grid
@@ -121,7 +140,7 @@ class MainPage extends StatelessWidget {
                 itemCount: items.length,
                 physics: const BouncingScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
+                  crossAxisCount: 2,
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                   childAspectRatio: .95,
