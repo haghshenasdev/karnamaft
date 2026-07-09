@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/pages/search_page.dart';
 
 import 'home_page.dart';
 
@@ -74,34 +75,61 @@ class MainPage extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        textAlignVertical: TextAlignVertical.center,
-                        decoration: InputDecoration(
-                          hintText: "جستجو...",
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const SearchPage()),
+                        );
+                      },
+                      child: Hero(
+                        tag: "global_search",
 
-                          prefixIcon: const Center(
-                            widthFactor: 1,
-                            child: Icon(Icons.search),
-                          ),
+                        child: Material(
+                          color: Colors.transparent,
 
-                          prefixIconConstraints: const BoxConstraints(
-                            minWidth: 56,
-                            minHeight: 56,
+                          child: Container(
+                            height: 56,
+
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+
+                              borderRadius: BorderRadius.circular(18),
+
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+
+                            child: IgnorePointer(
+                              child: TextField(
+                                enabled: false,
+
+                                textAlignVertical: TextAlignVertical.center,
+
+                                decoration: InputDecoration(
+                                  hintText: "جستجو در همه اطلاعات...",
+
+                                  border: InputBorder.none,
+
+                                  contentPadding: EdgeInsets.zero,
+
+                                  prefixIcon: const Center(
+                                    widthFactor: 1,
+                                    child: Icon(Icons.search),
+                                  ),
+
+                                  prefixIconConstraints: const BoxConstraints(
+                                    minWidth: 56,
+                                    minHeight: 56,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
