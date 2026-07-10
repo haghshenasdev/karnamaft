@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
 
 import 'home_page.dart';
@@ -141,15 +142,21 @@ class MainPage extends StatelessWidget {
                   InkWell(
                     borderRadius: BorderRadius.circular(28),
                     onTap: () {
-                      // صفحه پروفایل
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfilePage()),
+                      );
                     },
-                    child: const CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Color(0xffe9eef6),
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.blueGrey,
-                        size: 30,
+                    child: Hero(
+                      tag: "profile_avatar",
+                      child: const CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Color(0xffe9eef6),
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.blueGrey,
+                          size: 30,
+                        ),
                       ),
                     ),
                   ),

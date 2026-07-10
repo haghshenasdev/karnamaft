@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/utils/persian_text.dart';
 
 class SearchBarWidget extends StatelessWidget {
   final TextEditingController controller;
@@ -39,7 +40,6 @@ class SearchBarWidget extends StatelessWidget {
             //-------------------------------------
             // Back
             //-------------------------------------
-
             IconButton(
               onPressed:
                   onBack ??
@@ -52,14 +52,26 @@ class SearchBarWidget extends StatelessWidget {
             //-------------------------------------
             // TextField
             //-------------------------------------
-
             Expanded(
               child: TextField(
                 controller: controller,
                 autofocus: true,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
-                onChanged: onChanged,
+                onChanged: (value) {
+                  final normalized = PersianText.normalize(value);
+
+                  if (normalized != value && !value.endsWith(' ')) {
+                    controller.value = TextEditingValue(
+                      text: normalized,
+                      selection: TextSelection.collapsed(
+                        offset: normalized.length,
+                      ),
+                    );
+                  }
+
+                  onChanged?.call(normalized);
+                },
                 onTap: onTap,
                 decoration: InputDecoration(
                   hintText: hint,
@@ -68,9 +80,7 @@ class SearchBarWidget extends StatelessWidget {
 
                   isDense: true,
 
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
@@ -78,7 +88,6 @@ class SearchBarWidget extends StatelessWidget {
             //-------------------------------------
             // Clear
             //-------------------------------------
-
             ValueListenableBuilder<TextEditingValue>(
               valueListenable: controller,
               builder: (_, value, __) {
@@ -105,7 +114,6 @@ class SearchBarWidget extends StatelessWidget {
             //-------------------------------------
             // Voice
             //-------------------------------------
-
             IconButton(
               tooltip: "جستجوی صوتی",
               onPressed: onVoice,
