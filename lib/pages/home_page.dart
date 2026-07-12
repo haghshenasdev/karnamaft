@@ -233,7 +233,7 @@ class HomePage extends StatelessWidget {
                     builder: (_, controller, __) {
                       return Row(
                         children: [
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
 
                           IconButton.filledTonal(
                             icon: const Icon(Icons.undo),
@@ -267,7 +267,7 @@ class HomePage extends StatelessWidget {
                             }, color: controller.penColor),
                           ),
 
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 6),
 
                           Container(
                             decoration: BoxDecoration(
@@ -314,7 +314,7 @@ class HomePage extends StatelessWidget {
                             ),
                           ),
 
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 6),
 
                           IconButton.filled(
                             onPressed: () {},
@@ -322,7 +322,7 @@ class HomePage extends StatelessWidget {
                             icon: const Icon(Icons.send),
                           ),
 
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                         ],
                       );
                     },
