@@ -46,6 +46,16 @@ class HomePage extends StatelessWidget {
             onPressed: () {},
             icon: const Icon(Icons.cloud_done_outlined),
           ),
+          IconButton(
+            tooltip: "جدید",
+            onPressed: () {},
+            icon: const Icon(Icons.difference_outlined),
+          ),
+          IconButton(
+            tooltip: "تاریخچه",
+            onPressed: () {},
+            icon: const Icon(Icons.history),
+          ),
 
           PopupMenuButton(
             itemBuilder: (_) => [
