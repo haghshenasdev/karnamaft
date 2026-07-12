@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/widgets/category_picker/category_dialog.dart';
 
 import 'category_model.dart';
-import 'category_repository.dart';
 
 class CategoryPicker extends StatefulWidget {
   final List<CategoryModel> selectedItems;

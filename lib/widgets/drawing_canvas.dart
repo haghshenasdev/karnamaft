@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:karnamaft/models/stroke.dart';
-import 'package:provider/provider.dart';
 
 import '../controllers/drawing_controller.dart';
 import '../painters/drawing_painter.dart';
