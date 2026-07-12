@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:karnamaft/widgets/note_editor.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/drawing_controller.dart';
@@ -11,7 +12,9 @@ class HomePage extends StatelessWidget {
   HomePage({super.key});
 
   final TextEditingController _titleController = TextEditingController();
-
+  //--------------------------------------------------
+  // Note Text
+  //--------------------------------------------------
   static const double _paperRatio = 210 / 297;
 
   @override
@@ -176,14 +179,25 @@ class HomePage extends StatelessWidget {
                         height: height,
 
                         child: Stack(
+                          fit: StackFit.expand,
                           children: [
-                            //--------------------------------------------------
-                            // Canvas
-                            //--------------------------------------------------
-                            Positioned.fill(
-                              child: DrawingCanvas(
-                                controller: context.read<DrawingController>(),
-                              ),
+                            //--------------------------------------------
+                            // Text Layer
+                            //--------------------------------------------
+                            Consumer<DrawingController>(
+                              builder: (_, controller, __) {
+                                return NoteEditor(
+                                  controller: controller.noteController,
+                                  enabled: controller.textMode,
+                                );
+                              },
+                            ),
+
+                            //--------------------------------------------
+                            // Drawing Layer
+                            //--------------------------------------------
+                            DrawingCanvas(
+                              controller: context.read<DrawingController>(),
                             ),
                           ],
                         ),
@@ -343,6 +357,52 @@ class HomePage extends StatelessWidget {
                   const Text(
                     "ابزار",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+
+                  const SizedBox(width: 8),
+                  ToggleButtons(
+                    borderRadius: BorderRadius.circular(14),
+
+                    isSelected: [!controller.textMode, controller.textMode],
+
+                    onPressed: (index) {
+                      if (index == 0) {
+                        controller.enableDrawingMode();
+                      } else {
+                        controller.enableTextMode();
+                      }
+                      setState(() {});
+                    },
+
+                    children: const [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.draw),
+
+                            SizedBox(width: 6),
+
+                            Text("قلم"),
+                          ],
+                        ),
+                      ),
+
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.keyboard),
+
+                            SizedBox(width: 6),
+
+                            Text("متن"),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 12),

@@ -31,12 +31,62 @@ class DrawingController extends ChangeNotifier {
 
   ToolType selectedTool = ToolType.pen;
 
+  //--------------------------------------------------
+  // Text Mode
+  //--------------------------------------------------
+
+  bool _textMode = false;
+
+  bool get textMode => _textMode;
+  final noteController = TextEditingController();
+
   void setTool(ToolType tool) {
     selectedTool = tool;
     notifyListeners();
   }
 
+  //--------------------------------------------------
+  // Text Mode
+  //--------------------------------------------------
+
+  @override
+  void dispose() {
+    noteController.dispose();
+    super.dispose();
+  }
+
+  void setTextMode(bool value) {
+    if (_textMode == value) {
+      return;
+    }
+
+    _textMode = value;
+
+    notifyListeners();
+  }
+
+  void enableDrawingMode() {
+    if (!_textMode) {
+      return;
+    }
+
+    _textMode = false;
+
+    notifyListeners();
+  }
+
+  void enableTextMode() {
+    if (_textMode) {
+      return;
+    }
+
+    _textMode = true;
+
+    notifyListeners();
+  }
+
   void start(Offset point) {
+    if (_textMode) return;
     currentStroke = StrokeModel(
       points: [point],
       color: penColor,
@@ -54,6 +104,7 @@ class DrawingController extends ChangeNotifier {
   }
 
   void update(Offset point) {
+    if (_textMode) return;
     if (currentStroke == null) return;
 
     final points = currentStroke!.points;
@@ -70,6 +121,7 @@ class DrawingController extends ChangeNotifier {
   }
 
   void end() {
+    if (_textMode) return;
     currentStroke = null;
 
     redoStack.clear();
