@@ -138,6 +138,25 @@ class DrawingController extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  void removeCurrentPage() {
+    // اگر فقط یک صفحه وجود دارد، فقط محتوایش پاک شود.
+    if (pages.length == 1) {
+      clear();
+      return;
+    }
+
+    pages.removeAt(currentPage);
+
+    // اگر صفحه آخر حذف شده بود
+    if (currentPage >= pages.length) {
+      currentPage = pages.length - 1;
+    }
+
+    redoStack.clear();
+
+    notifyListeners();
+  }
 }
 
 enum ToolType { pen, highlighter, eraser }

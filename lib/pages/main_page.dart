@@ -14,7 +14,7 @@ class MainPage extends StatelessWidget {
         title: "یادداشت",
         icon: Icons.edit_note_rounded,
         color: Colors.blue,
-        page: const HomePage(),
+        page: HomePage(),
       ),
       _MenuItem(
         title: "کارپوشه",

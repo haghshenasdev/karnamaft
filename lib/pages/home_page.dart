@@ -1,391 +1,570 @@
-import 'package:flutter/material.dart';
-import 'package:karnamaft/controllers/drawing_controller.dart';
-import 'package:karnamaft/widgets/category_picker/category_model.dart';
-import 'package:karnamaft/widgets/category_picker/category_picker.dart';
-import 'package:provider/provider.dart';
-
-import '../widgets/drawing_canvas.dart';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../controllers/drawing_controller.dart';
+import '../widgets/category_picker/category_picker.dart';
+import '../widgets/drawing_canvas.dart';
+
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
+
+  final TextEditingController _titleController = TextEditingController();
+
+  static const double _paperRatio = 210 / 297;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade300,
+      backgroundColor: const Color(0xfff5f6fa),
+
+      appBar: AppBar(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: colors.surface,
+
+        title: TextField(
+          controller: _titleController,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          decoration: const InputDecoration(
+            hintText: "عنوان یاداشت ...",
+            border: InputBorder.none,
+            hintStyle: TextStyle(
+              fontWeight: FontWeight.normal,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: "ذخیره",
+            onPressed: () {},
+            icon: const Icon(Icons.cloud_done_outlined),
+          ),
+
+          PopupMenuButton(
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: "clear", child: Text("پاک کردن صفحه")),
+
+              const PopupMenuItem(value: "pdf", child: Text("خروجی PDF")),
+
+              const PopupMenuItem(value: "setting", child: Text("تنظیمات")),
+            ],
+
+            onSelected: (v) {
+              switch (v) {
+                case "clear":
+                  _confirmClearPage(context);
+                  break;
+              }
+            },
+          ),
+        ],
+      ),
 
       body: SafeArea(
         child: Column(
           children: [
-            //-----------------------------------
-            // بالا
-            //-----------------------------------
+            //--------------------------------------------------
+            // Header
+            //--------------------------------------------------
             Padding(
-              padding: const EdgeInsets.all(15),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "نام یادداشت",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final typeWidth = (constraints.maxWidth * 0.34).clamp(
+                        120.0,
+                        160.0,
+                      );
 
-                  const SizedBox(width: 15),
-
-                  SizedBox(
-                    width: 180,
-                    child: CategoryPicker(
-                      selectedItems: [],
-                      onChanged: (items) {
-                        // setState(() {
-                        //   selectedCategories = items;
-                        // });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            //-----------------------------------
-            // کاغذ
-            //-----------------------------------
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  const ratio = 210 / 297;
-
-                  double maxWidth = constraints.maxWidth - 40;
-
-                  double maxHeight = constraints.maxHeight - 40;
-
-                  double width = maxWidth;
-
-                  double height = width / ratio;
-
-                  if (height > maxHeight) {
-                    height = maxHeight;
-
-                    width = height * ratio;
-                  }
-
-                  return Center(
-                    child: Container(
-                      width: width,
-                      height: height,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            blurRadius: 18,
-                            color: Colors.black26,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      clipBehavior: Clip.hardEdge,
-                      child: DrawingCanvas(
-                        controller: context.read<DrawingController>(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            //-----------------------------------
-            // پایین
-            //-----------------------------------
-            Container(
-              height: 75,
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
-              child: Consumer<DrawingController>(
-                builder: (_, controller, __) {
-                  return Scrollbar(
-                    thumbVisibility: true,
-                    interactive: true,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      return Row(
                         children: [
-                          //-----------------------------------
-                          // Undo
-                          //-----------------------------------
-                          IconButton(
-                            tooltip: "Undo",
-                            onPressed: controller.canUndo
-                                ? controller.undo
-                                : null,
-                            icon: const Icon(Icons.undo),
-                          ),
-
-                          //-----------------------------------
-                          // Redo
-                          //-----------------------------------
-                          IconButton(
-                            tooltip: "Redo",
-                            onPressed: controller.canRedo
-                                ? controller.redo
-                                : null,
-                            icon: const Icon(Icons.redo),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          //-----------------------------------
-                          // پاک کردن صفحه
-                          //-----------------------------------
-                          IconButton(
-                            tooltip: "Clear",
-                            onPressed: controller.clear,
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-
-                          const VerticalDivider(),
-
-                          //-----------------------------------
-                          // رنگ ها
-                          //-----------------------------------
-                          ...[
-                            Colors.black,
-                            Colors.red,
-                            Colors.green,
-                            Colors.blue,
-                            Colors.orange,
-                            Colors.purple,
-                            Colors.brown,
-                          ].map(
-                            (color) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () => controller.setColor(color),
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: controller.penColor == color
-                                          ? Colors.black
-                                          : Colors.grey.shade400,
-                                      width: controller.penColor == color
-                                          ? 3
-                                          : 1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: controller.penColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black, width: 2),
-                            ),
-                          ),
-
-                          const VerticalDivider(),
-
-                          ToggleButtons(
-                            borderRadius: BorderRadius.circular(10),
-                            isSelected: [
-                              controller.selectedTool == ToolType.pen,
-                              controller.selectedTool == ToolType.highlighter,
-                              controller.selectedTool == ToolType.eraser,
-                            ],
-                            onPressed: (index) {
-                              switch (index) {
-                                case 0:
-                                  controller.setTool(ToolType.pen);
-                                  break;
-
-                                case 1:
-                                  controller.setTool(ToolType.highlighter);
-                                  break;
-
-                                case 2:
-                                  controller.setTool(ToolType.eraser);
-                                  break;
-                              }
-                            },
-                            children: const [
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Icon(Icons.edit),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Icon(Icons.draw),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12),
-                                child: Icon(Icons.auto_fix_off),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(width: 15),
-
-                          const Text(
-                            "ضخامت",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
+                          //--------------------------------------------------
+                          // نوع
+                          //--------------------------------------------------
                           SizedBox(
-                            width: 140,
-                            child: Slider(
-                              value: controller.penWidth,
-                              min: 1,
-                              max: 20,
-                              divisions: 19,
-                              label: controller.penWidth.toStringAsFixed(0),
-                              onChanged: controller.setWidth,
+                            width: typeWidth,
+                            child: DropdownMenu<NoteType>(
+                              width: typeWidth,
+                              label: const Text("نوع"),
+                              initialSelection: NoteType.note,
+                              menuHeight: 400,
+                              dropdownMenuEntries: noteTypes.map((item) {
+                                return DropdownMenuEntry<NoteType>(
+                                  value: item.type,
+                                  label: item.title,
+                                  leadingIcon: Icon(item.icon),
+                                );
+                              }).toList(),
+                              onSelected: (value) {
+                                // TODO
+                              },
                             ),
-                          ),
-
-                          const SizedBox(width: 15),
-
-                          Chip(
-                            avatar: const Icon(Icons.edit, size: 18),
-                            label: Text(switch (controller.selectedTool) {
-                              ToolType.pen => "قلم",
-                              ToolType.highlighter => "هایلایتر",
-                              ToolType.eraser => "پاک‌کن",
-                            }),
-                          ),
-
-                          const SizedBox(width: 10),
-
-                          SizedBox(
-                            width: 40,
-                            child: Center(
-                              child: Text(
-                                controller.penWidth.toStringAsFixed(0),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 15),
-
-                          SizedBox(
-                            width: 50,
-                            child: Center(
-                              child: CustomPaint(
-                                size: const Size(45, 30),
-                                painter: _PenPreviewPainter(
-                                  controller.penColor,
-                                  controller.penWidth,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // به جای Spacer
-                          const SizedBox(width: 40),
-
-                          //-----------------------------------
-                          // صفحات
-                          //-----------------------------------
-                          IconButton(
-                            tooltip: "صفحه قبل",
-                            icon: const Icon(Icons.chevron_left),
-                            onPressed: controller.canPrevious
-                                ? controller.previousPage
-                                : null,
-                          ),
-
-                          Text(
-                            "${controller.currentPage + 1} / ${controller.pageCount}",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17,
-                            ),
-                          ),
-
-                          IconButton(
-                            tooltip: "صفحه بعد",
-                            icon: const Icon(Icons.chevron_right),
-                            onPressed: controller.nextPage,
-                          ),
-
-                          IconButton(
-                            tooltip: "صفحه جدید",
-                            onPressed: controller.nextPage,
-                            icon: const Icon(Icons.note_add_outlined),
-                          ),
-
-                          const SizedBox(width: 15),
-
-                          FilledButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.send),
-                            label: const Text("ارسال"),
                           ),
 
                           const SizedBox(width: 12),
+
+                          //--------------------------------------------------
+                          // دسته بندی
+                          //--------------------------------------------------
+                          Expanded(
+                            child: CategoryPicker(
+                              selectedItems: const [],
+                              onChanged: (items) {},
+                            ),
+                          ),
                         ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            //--------------------------------------------------
+            // کاغذ
+            //--------------------------------------------------
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double maxWidth = constraints.maxWidth - 40;
+
+                  double maxHeight = constraints.maxHeight - 24;
+
+                  double width = maxWidth;
+
+                  double height = width / _paperRatio;
+
+                  if (height > maxHeight) {
+                    height = maxHeight;
+                    width = height * _paperRatio;
+                  }
+
+                  return Center(
+                    child: Card(
+                      elevation: 5,
+                      color: Colors.white,
+                      clipBehavior: Clip.antiAlias,
+
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+
+                      child: SizedBox(
+                        width: width,
+                        height: height,
+
+                        child: Stack(
+                          children: [
+                            //--------------------------------------------------
+                            // Canvas
+                            //--------------------------------------------------
+                            Positioned.fill(
+                              child: DrawingCanvas(
+                                controller: context.read<DrawingController>(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
                 },
               ),
+            ),
+
+            //--------------------------------------------------
+            // Toolbar
+            //--------------------------------------------------
+            Consumer<DrawingController>(
+              builder: (_, controller, __) {
+                return Container(
+                  height: 54,
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                        color: Colors.black.withOpacity(.08),
+                      ),
+                    ],
+                  ),
+
+                  child: Consumer<DrawingController>(
+                    builder: (_, controller, __) {
+                      return Row(
+                        children: [
+                          const SizedBox(width: 8),
+
+                          IconButton.filledTonal(
+                            icon: const Icon(Icons.undo),
+                            onPressed: controller.canUndo
+                                ? controller.undo
+                                : null,
+                          ),
+
+                          const SizedBox(width: 4),
+
+                          IconButton.filledTonal(
+                            icon: const Icon(Icons.redo),
+                            onPressed: controller.canRedo
+                                ? controller.redo
+                                : null,
+                          ),
+
+                          const Spacer(),
+
+                          IconButton.filledTonal(
+                            onPressed: () {
+                              _showPenDialog(context, controller);
+                            },
+
+                            icon: Icon(switch (controller.selectedTool) {
+                              ToolType.pen => Icons.edit,
+
+                              ToolType.highlighter => Icons.draw,
+
+                              ToolType.eraser => Icons.auto_fix_off,
+                            }, color: controller.penColor),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          FilledButton.tonalIcon(
+                            onPressed: () {
+                              _showPages(context, controller);
+                            },
+
+                            icon: const Icon(Icons.article_outlined),
+
+                            label: Text(
+                              "${controller.currentPage + 1}/${controller.pageCount}",
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          IconButton.filled(
+                            onPressed: () {},
+
+                            icon: const Icon(Icons.send),
+                          ),
+
+                          const SizedBox(width: 8),
+                        ],
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _PenPreviewPainter extends CustomPainter {
-  final Color color;
+  void _showPenDialog(BuildContext context, DrawingController controller) {
+    showModalBottomSheet(
+      context: context,
 
-  final double width;
+      showDragHandle: true,
 
-  const _PenPreviewPainter(this.color, this.width);
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = width
-      ..strokeCap = StrokeCap.round
-      ..isAntiAlias = true;
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
 
-    canvas.drawLine(
-      Offset(5, size.height / 2),
-      Offset(size.width - 5, size.height / 2),
-      paint,
+                crossAxisAlignment: CrossAxisAlignment.start,
+
+                children: [
+                  const Text(
+                    "ابزار",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 10,
+
+                    children: [
+                      ChoiceChip(
+                        label: const Text("قلم"),
+
+                        selected: controller.selectedTool == ToolType.pen,
+
+                        onSelected: (_) {
+                          controller.setTool(ToolType.pen);
+
+                          setState(() {});
+                        },
+                      ),
+
+                      ChoiceChip(
+                        label: const Text("هایلایتر"),
+
+                        selected:
+                            controller.selectedTool == ToolType.highlighter,
+
+                        onSelected: (_) {
+                          controller.setTool(ToolType.highlighter);
+
+                          setState(() {});
+                        },
+                      ),
+
+                      ChoiceChip(
+                        label: const Text("پاک‌کن"),
+
+                        selected: controller.selectedTool == ToolType.eraser,
+
+                        onSelected: (_) {
+                          controller.setTool(ToolType.eraser);
+
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "رنگ",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Wrap(
+                    spacing: 8,
+
+                    children: [
+                      for (final color in [
+                        Colors.black,
+                        Colors.red,
+                        Colors.green,
+                        Colors.blue,
+                        Colors.orange,
+                        Colors.purple,
+                        Colors.brown,
+                      ])
+                        InkWell(
+                          onTap: () {
+                            controller.setColor(color);
+
+                            setState(() {});
+                          },
+
+                          borderRadius: BorderRadius.circular(20),
+
+                          child: CircleAvatar(
+                            radius: 16,
+
+                            backgroundColor: color,
+
+                            child: controller.penColor == color
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "ضخامت",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  Slider(
+                    value: controller.penWidth,
+
+                    min: 1,
+
+                    max: 20,
+
+                    divisions: 19,
+
+                    label: controller.penWidth.round().toString(),
+
+                    onChanged: (v) {
+                      controller.setWidth(v);
+
+                      setState(() {});
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  @override
-  bool shouldRepaint(covariant _PenPreviewPainter oldDelegate) {
-    return oldDelegate.color != color || oldDelegate.width != width;
+  Future<void> showDeletePageDialog(
+    BuildContext context,
+    DrawingController controller,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(Icons.delete_outline, size: 36, color: Colors.red),
+          title: const Text("حذف صفحه"),
+          content: const Text(
+            "آیا از حذف این صفحه مطمئن هستید؟\nاین عمل قابل بازگشت نیست.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("انصراف"),
+            ),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.delete),
+              label: const Text("حذف"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      controller.removeCurrentPage();
+    }
+  }
+
+  void _showPages(BuildContext context, DrawingController controller) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.chevron_left),
+                title: const Text("صفحه قبل"),
+                enabled: controller.canPrevious,
+                onTap: () {
+                  Navigator.pop(context);
+                  controller.previousPage();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.chevron_right),
+                title: const Text("صفحه بعد"),
+                onTap: () {
+                  Navigator.pop(context);
+                  controller.nextPage();
+                },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.note_add_outlined),
+                title: const Text("صفحه جدید"),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  // اگر متد جداگانه‌ای برای ایجاد صفحه داری،
+                  // اینجا آن را صدا بزن.
+                  controller.nextPage();
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text("حذف صفحه"),
+                onTap: () {
+                  showDeletePageDialog(
+                    context,
+                    context.read<DrawingController>(),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmClearPage(BuildContext context) async {
+    final controller = context.read<DrawingController>();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("پاک کردن صفحه"),
+        content: const Text(
+          "آیا از پاک کردن تمام نوشته‌های این صفحه مطمئن هستید؟",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("انصراف"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("پاک کن"),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      controller.clear();
+    }
   }
 }
+
+enum NoteType { note, meeting, letter, task }
+
+class NoteTypeItem {
+  final NoteType type;
+  final String title;
+  final IconData icon;
+
+  const NoteTypeItem({
+    required this.type,
+    required this.title,
+    required this.icon,
+  });
+}
+
+const noteTypes = [
+  NoteTypeItem(type: NoteType.note, title: "یادداشت", icon: Icons.edit_note),
+  NoteTypeItem(type: NoteType.meeting, title: "صورت جلسه", icon: Icons.groups),
+];
