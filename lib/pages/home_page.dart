@@ -245,15 +245,48 @@ class HomePage extends StatelessWidget {
 
                           const SizedBox(width: 12),
 
-                          FilledButton.tonalIcon(
-                            onPressed: () {
-                              _showPages(context, controller);
-                            },
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: "صفحه قبل",
+                                  onPressed: controller.canPrevious
+                                      ? controller.previousPage
+                                      : null,
+                                  icon: const Icon(Icons.chevron_left),
+                                ),
 
-                            icon: const Icon(Icons.article_outlined),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () => _showPages(context, controller),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      "${controller.currentPage + 1} / ${controller.pageCount}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ),
 
-                            label: Text(
-                              "${controller.currentPage + 1}/${controller.pageCount}",
+                                IconButton(
+                                  tooltip: "صفحه بعد",
+                                  onPressed: controller.nextPage,
+                                  icon: const Icon(Icons.chevron_right),
+                                ),
+                              ],
                             ),
                           ),
 
@@ -471,47 +504,22 @@ class HomePage extends StatelessWidget {
       showDragHandle: true,
       builder: (_) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
             children: [
-              ListTile(
-                leading: const Icon(Icons.chevron_left),
-                title: const Text("صفحه قبل"),
-                enabled: controller.canPrevious,
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.previousPage();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.chevron_right),
-                title: const Text("صفحه بعد"),
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.nextPage();
-                },
-              ),
-              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.note_add_outlined),
                 title: const Text("صفحه جدید"),
                 onTap: () {
                   Navigator.pop(context);
-
-                  // اگر متد جداگانه‌ای برای ایجاد صفحه داری،
-                  // اینجا آن را صدا بزن.
                   controller.nextPage();
                 },
               ),
-
               ListTile(
-                leading: const Icon(Icons.delete),
+                leading: const Icon(Icons.delete_outline),
                 title: const Text("حذف صفحه"),
                 onTap: () {
-                  showDeletePageDialog(
-                    context,
-                    context.read<DrawingController>(),
-                  );
+                  Navigator.pop(context);
+                  showDeletePageDialog(context, controller);
                 },
               ),
             ],
