@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/profile_page.dart';
+import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
+import 'package:provider/provider.dart';
 
 import 'home_page.dart';
 
 class MainPage extends StatelessWidget {
-  const MainPage({super.key});
+  MainPage({super.key});
+  final user = UserController();
 
   @override
   Widget build(BuildContext context) {
@@ -20,21 +24,25 @@ class MainPage extends StatelessWidget {
         title: "کارپوشه",
         icon: Icons.work_history,
         color: Colors.indigo,
+        page: const RecordsPage(title: "کارپوشه"),
       ),
       _MenuItem(
         title: "صورت جلسه ها",
         icon: Icons.edit_document,
         color: Colors.amber,
+        page: const RecordsPage(title: "صورت جلسه ها"),
       ),
       _MenuItem(
         title: "نامه ها",
         icon: Icons.markunread_sharp,
         color: Colors.green,
+        page: const RecordsPage(title: "نامه ها"),
       ),
       _MenuItem(
         title: "فعالیت ها",
         icon: Icons.history_toggle_off,
         color: Colors.purple,
+        page: const RecordsPage(title: "فعالیت ها"),
       ),
       _MenuItem(title: "گزارش", icon: Icons.bar_chart, color: Colors.red),
       _MenuItem(
@@ -46,6 +54,7 @@ class MainPage extends StatelessWidget {
         title: "دستور کار",
         icon: Icons.star_rounded,
         color: Colors.orange,
+        page: const RecordsPage(title: "دستور کار"),
       ),
       _MenuItem(
         title: "اعلانات",
@@ -149,14 +158,31 @@ class MainPage extends StatelessWidget {
                     },
                     child: Hero(
                       tag: "profile_avatar",
-                      child: const CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Color(0xffe9eef6),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.blueGrey,
-                          size: 30,
-                        ),
+                      child: Consumer<UserController>(
+                        builder: (_, user, __) {
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(28),
+                            onTap: () {
+                              // صفحه پروفایل
+                            },
+                            child: CircleAvatar(
+                              radius: 28,
+                              backgroundColor: const Color(0xffe9eef6),
+
+                              backgroundImage: user.avatar.isNotEmpty
+                                  ? NetworkImage(user.avatar)
+                                  : null,
+
+                              child: user.avatar.isEmpty
+                                  ? const Icon(
+                                      Icons.person,
+                                      color: Colors.blueGrey,
+                                      size: 30,
+                                    )
+                                  : null,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

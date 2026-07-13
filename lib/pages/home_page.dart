@@ -292,14 +292,14 @@ class HomePage extends StatelessWidget {
                                   onTap: () => _showPages(context, controller),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
+                                      horizontal: 8,
                                       vertical: 8,
                                     ),
                                     child: Text(
                                       "${controller.currentPage + 1} / ${controller.pageCount}",
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),

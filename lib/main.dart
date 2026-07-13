@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:karnamaft/pages/main_page.dart';
+import 'package:karnamaft/controllers/drawing_controller.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
+import 'package:karnamaft/pages/splash_page.dart';
 import 'package:provider/provider.dart';
-
-import 'controllers/drawing_controller.dart';
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => DrawingController(),
+    MultiProvider(
+      providers: [
+        //------------------------------------------
+        // Drawing
+        //------------------------------------------
+        ChangeNotifierProvider(
+          create: (_) => DrawingController(),
+        ),
+
+        //------------------------------------------
+        // User
+        //------------------------------------------
+        ChangeNotifierProvider(
+          create: (_) => UserController(),
+        ),
+      ],
+
       child: const MyApp(),
     ),
   );
@@ -24,12 +39,18 @@ class MyApp extends StatelessWidget {
       title: "کارنما",
 
       builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child!,
+        );
       },
 
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+      ),
 
-      home: const MainPage(),
+      home: const SplashPage(),
     );
   }
 }

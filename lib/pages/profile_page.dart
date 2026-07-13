@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/profile_model.dart';
+import 'package:karnamaft/pages/login_page.dart';
+import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:karnamaft/widgets/profile/about_card.dart';
 import 'package:karnamaft/widgets/profile/account_card.dart';
 import 'package:karnamaft/widgets/profile/active_sessions_card.dart';
 import 'package:karnamaft/widgets/profile/logout_card.dart';
 import 'package:karnamaft/widgets/profile/password_card.dart';
 import 'package:karnamaft/widgets/profile/profile_header.dart';
-
-
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -48,11 +48,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _logoutSession(UserSession session) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "خروج از دستگاه ${session.deviceName}",
-        ),
-      ),
+      SnackBar(content: Text("خروج از دستگاه ${session.deviceName}")),
     );
   }
 
@@ -64,26 +60,28 @@ class _ProfilePageState extends State<ProfilePage> {
     String currentPassword,
     String newPassword,
   ) async {
-    await Future.delayed(
-      const Duration(milliseconds: 800),
-    );
+    await Future.delayed(const Duration(milliseconds: 800));
   }
 
   //--------------------------------------
   // Logout
   //--------------------------------------
 
-  void _logout() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("خروج از حساب کاربری"),
-      ),
-    );
+  Future<void> _logout() async {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("خروج از حساب کاربری")));
+    await AuthStorage.logout();
 
-    // بعداً:
-    // حذف Token
-    // حذف اطلاعات کاربر
-    // رفتن به LoginPage
+    if (!mounted) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+
+      (route) => false,
+    );
   }
 
   @override
@@ -91,43 +89,30 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xfff5f6fa),
 
-      appBar: AppBar(
-        title: const Text("حساب کاربری"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text("حساب کاربری"), centerTitle: true),
 
       body: SafeArea(
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(
-            vertical: 16,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
             //----------------------------------
             // Header
             //----------------------------------
-
-            ProfileHeader(
-              profile: profile,
-              onAvatarTap: _changeAvatar,
-            ),
+            ProfileHeader(profile: profile, onAvatarTap: _changeAvatar),
 
             const SizedBox(height: 16),
 
             //----------------------------------
             // Account
             //----------------------------------
-
-            AccountCard(
-              profile: profile,
-            ),
+            AccountCard(profile: profile),
 
             const SizedBox(height: 16),
 
             //----------------------------------
             // Sessions
             //----------------------------------
-
             ActiveSessionsCard(
               sessions: profile.sessions,
               onLogoutSession: _logoutSession,
@@ -138,17 +123,13 @@ class _ProfilePageState extends State<ProfilePage> {
             //----------------------------------
             // Password
             //----------------------------------
-
-            PasswordCard(
-              onChangePassword: _changePassword,
-            ),
+            PasswordCard(onChangePassword: _changePassword),
 
             const SizedBox(height: 16),
 
             //----------------------------------
             // About
             //----------------------------------
-
             const AboutCard(),
 
             const SizedBox(height: 16),
@@ -156,10 +137,7 @@ class _ProfilePageState extends State<ProfilePage> {
             //----------------------------------
             // Logout
             //----------------------------------
-
-            LogoutCard(
-              onLogout: _logout,
-            ),
+            LogoutCard(onLogout: _logout),
           ],
         ),
       ),
