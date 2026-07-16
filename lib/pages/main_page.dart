@@ -3,6 +3,7 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
+import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:provider/provider.dart';
 
 import 'home_page.dart';
@@ -170,7 +171,13 @@ class MainPage extends StatelessWidget {
                               backgroundColor: const Color(0xffe9eef6),
 
                               backgroundImage: user.avatar.isNotEmpty
-                                  ? NetworkImage(user.avatar)
+                                  ? NetworkImage(
+                                      user.avatar,
+                                      headers: {
+                                        "Authorization":
+                                            "Bearer ${AuthStorage.getToken()}",
+                                      },
+                                    )
                                   : null,
 
                               child: user.avatar.isEmpty
