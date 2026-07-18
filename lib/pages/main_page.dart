@@ -164,7 +164,12 @@ class MainPage extends StatelessWidget {
                           return InkWell(
                             borderRadius: BorderRadius.circular(28),
                             onTap: () {
-                              // صفحه پروفایل
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ProfilePage(),
+                                ),
+                              );
                             },
                             child: CircleAvatar(
                               radius: 28,
@@ -172,10 +177,9 @@ class MainPage extends StatelessWidget {
 
                               backgroundImage: user.avatar.isNotEmpty
                                   ? NetworkImage(
-                                      user.avatar,
+                                      "https://hajideligani.ir/api/me/avatar",
                                       headers: {
-                                        "Authorization":
-                                            "Bearer ${AuthStorage.getToken()}",
+                                        "Authorization": "Bearer ${user.token}",
                                       },
                                     )
                                   : null,

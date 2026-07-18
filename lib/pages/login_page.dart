@@ -82,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      context.read<UserController>().setUser(user);
+      context.read<UserController>().setUser(user,response.token);
 
       if (!mounted) return;
 

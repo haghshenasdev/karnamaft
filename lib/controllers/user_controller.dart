@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 
 class UserController extends ChangeNotifier {
   UserModel? _user;
+  String _token = "";
 
   //--------------------------------------------------
   // Getter
@@ -21,12 +22,15 @@ class UserController extends ChangeNotifier {
 
   int get id => _user?.id ?? 0;
 
+  String get token => _token;
+
   //--------------------------------------------------
   // Set User
   //--------------------------------------------------
 
-  void setUser(UserModel user) {
+  void setUser(UserModel user, String token) {
     _user = user;
+    _token = token;
     notifyListeners();
   }
 

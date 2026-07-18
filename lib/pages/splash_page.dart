@@ -15,7 +15,6 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
-
   @override
   void initState() {
     super.initState();
@@ -24,106 +23,86 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _start() async {
-  await Future.delayed(
-    const Duration(milliseconds: 600),
-  );
+    await Future.delayed(const Duration(milliseconds: 600));
 
-  //--------------------------------------
-  // Token Exists ?
-  //--------------------------------------
+    //--------------------------------------
+    // Token Exists ?
+    //--------------------------------------
 
-  final loggedIn =
-      await AuthStorage.isLoggedIn();
-
-  if (!mounted) return;
-
-  if (!loggedIn) {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const LoginPage(),
-      ),
-    );
-
-    return;
-  }
-
-  //--------------------------------------
-  // Read User
-  //--------------------------------------
-
-  try {
-    final user =
-        await const AuthService().me();
+    final loggedIn = await AuthStorage.isLoggedIn();
 
     if (!mounted) return;
 
-    //--------------------------------------
-    // Save in Provider
-    //--------------------------------------
+    if (!loggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
 
-    context.read<UserController>().setUser(
-      user,
-    );
+      return;
+    }
 
     //--------------------------------------
-    // Dashboard
-    //--------------------------------------
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MainPage(),
-      ),
-    );
-  } catch (_) {
-    //--------------------------------------
-    // Token Invalid
+    // Read User
     //--------------------------------------
 
-    await AuthStorage.logout();
+    try {
+      final user = await const AuthService().me();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const LoginPage(),
-      ),
-    );
+      //--------------------------------------
+      // Save in Provider
+      //--------------------------------------
+      final token = await AuthStorage.getToken();
+      context.read<UserController>().setUser(user, token!);
+
+      //--------------------------------------
+      // Dashboard
+      //--------------------------------------
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainPage()),
+      );
+    } catch (_) {
+      //--------------------------------------
+      // Token Invalid
+      //--------------------------------------
+
+      await AuthStorage.logout();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
-
     final theme = Theme.of(context);
 
     return Scaffold(
-
       backgroundColor: const Color(0xfff5f6fa),
 
       body: Center(
-
         child: Column(
-
           mainAxisAlignment: MainAxisAlignment.center,
 
           children: [
-
             CircleAvatar(
-
               radius: 46,
 
-              backgroundColor:
-                  theme.colorScheme.primaryContainer,
+              backgroundColor: theme.colorScheme.primaryContainer,
 
               child: Icon(
                 Icons.edit_note_rounded,
                 size: 42,
                 color: theme.colorScheme.primary,
               ),
-
             ),
 
             const SizedBox(height: 24),
@@ -138,7 +117,6 @@ class _SplashPageState extends State<SplashPage> {
             const SizedBox(height: 12),
 
             const CircularProgressIndicator(),
-
           ],
         ),
       ),
