@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:karnamaft/models/profile_model.dart';
-
+import 'package:karnamaft/controllers/user_controller.dart';
+import 'package:provider/provider.dart';
 
 class ProfileHeader extends StatelessWidget {
-  final UserProfile profile;
+  final UserController profile;
 
   final VoidCallback? onAvatarTap;
 
-  const ProfileHeader({
-    super.key,
-    required this.profile,
-    this.onAvatarTap,
-  });
+  const ProfileHeader({super.key, required this.profile, this.onAvatarTap});
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +17,7 @@ class ProfileHeader extends StatelessWidget {
       elevation: 0,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       color: colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
         child: Column(
@@ -31,7 +25,6 @@ class ProfileHeader extends StatelessWidget {
             //-----------------------------------------
             // Avatar
             //-----------------------------------------
-
             Stack(
               children: [
                 Hero(
@@ -39,18 +32,21 @@ class ProfileHeader extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 52,
                     backgroundColor: colorScheme.primaryContainer,
-                    backgroundImage:
-                        profile.avatar.isNotEmpty
-                            ? NetworkImage(profile.avatar)
-                            : null,
-                    child:
-                        profile.avatar.isEmpty
-                            ? Icon(
-                              Icons.person_rounded,
-                              size: 54,
-                              color: colorScheme.primary,
-                            )
-                            : null,
+                    backgroundImage: profile.avatar.isNotEmpty
+                        ? NetworkImage(
+                            "https://hajideligani.ir/api/me/avatar",
+                            headers: {
+                              "Authorization": "Bearer ${profile.token}",
+                            },
+                          )
+                        : null,
+                    child: profile.avatar.isEmpty
+                        ? Icon(
+                            Icons.person_rounded,
+                            size: 54,
+                            color: colorScheme.primary,
+                          )
+                        : null,
                   ),
                 ),
 
@@ -82,14 +78,13 @@ class ProfileHeader extends StatelessWidget {
             //-----------------------------------------
             // Name
             //-----------------------------------------
-
             SelectableText(
-              profile.fullName,
+              context.read<UserController>().name,
               textAlign: TextAlign.center,
               maxLines: 2,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 8),
@@ -97,7 +92,6 @@ class ProfileHeader extends StatelessWidget {
             //-----------------------------------------
             // Email
             //-----------------------------------------
-
             SelectableText(
               profile.email,
               textAlign: TextAlign.center,
