@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 
 import '../../widgets/search/search_bar_widget.dart';
@@ -19,14 +21,27 @@ class _RecordsPageState extends State<RecordsPage> {
   //--------------------------------------------------
 
   final TextEditingController searchController = TextEditingController();
+  final ScrollController scrollController = ScrollController();
 
   //--------------------------------------------------
   // State
   //--------------------------------------------------
 
-  bool loading = false;
+  final MinuteService service = MinuteService();
+
+  bool loading = true;
 
   int totalCount = 0;
+
+  List<RecordItem> records = [];
+
+  bool loadingMore = false;
+
+  int currentPage = 1;
+
+  bool hasMore = true;
+
+  String search = "";
 
   //--------------------------------------------------
   // Dispose
@@ -35,9 +50,71 @@ class _RecordsPageState extends State<RecordsPage> {
   @override
   void dispose() {
     searchController.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+
+    loadData();
+
+    scrollController.addListener(() {
+      if (!scrollController.hasClients) return;
+
+      if (scrollController.position.pixels >
+          scrollController.position.maxScrollExtent - 250) {
+        loadMore();
+      }
+    });
+  }
+
+  Future<void> loadData() async {
+    setState(() {
+      loading = true;
+    });
+
+    final result = await service.list(page: 1, search: search, sort: "-id");
+
+    records = result.data.map((e) => e.toRecord()).toList();
+
+    totalCount = result.total;
+
+    currentPage = result.currentPage;
+
+    hasMore = result.hasNextPage;
+
+    setState(() {
+      loading = false;
+    });
+  }
+
+  Future<void> loadMore() async {
+    if (loadingMore) return;
+
+    if (!hasMore) return;
+
+    loadingMore = true;
+
+    setState(() {});
+
+    final result = await service.list(
+      page: currentPage + 1,
+      search: search,
+      sort: "-id",
+    );
+
+    records.addAll(result.data.map((e) => e.toRecord()));
+
+    currentPage = result.currentPage;
+
+    hasMore = result.hasNextPage;
+
+    loadingMore = false;
+
+    setState(() {});
+  }
   //--------------------------------------------------
   // UI
   //--------------------------------------------------
@@ -123,33 +200,18 @@ class _RecordsPageState extends State<RecordsPage> {
               child: loading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
+                      controller: scrollController,
                       padding: const EdgeInsets.only(top: 12, bottom: 100),
-                      itemCount: 10,
+                      itemCount: records.length + (loadingMore ? 1 : 0),
 
                       itemBuilder: (_, index) {
-                        final record = RecordItem(
-                          id: index,
-
-                          title:
-                              "درخواست خرید تجهیزات آزمایشگاه شماره ${index + 1}",
-
-                          description:
-                              "این متن خلاصه‌ای از صورت جلسه یا نامه است که بعداً از API دریافت خواهد شد.",
-
-                          from: "دبیرخانه مرکزی",
-
-                          to: "معاون آموزشی",
-
-                          number: "1405/${1000 + index}",
-
-                          date: "1405/04/22",
-
-                          tag: "فوری",
-
-                          status: RecordStatus.pending,
-
-                          hasAttachment: true,
-                        );
+                        if (index == records.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+                        final record = records[index];
 
                         return RecordCard(
                           record: record,

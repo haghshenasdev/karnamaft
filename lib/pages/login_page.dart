@@ -82,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      context.read<UserController>().setUser(user,response.token);
+      context.read<UserController>().setUser(user, response.token);
 
       if (!mounted) return;
 
@@ -143,21 +143,10 @@ class _LoginPageState extends State<LoginPage> {
                           // Logo
                           //----------------------------------
                           Center(
-                            child: Container(
-                              width: 90,
-                              height: 90,
-
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer,
-
-                                shape: BoxShape.circle,
-                              ),
-
-                              child: Icon(
-                                Icons.edit_note_rounded,
-                                size: 48,
-                                color: theme.colorScheme.primary,
-                              ),
+                            child: Image.asset(
+                              'assets/icon/app_icon.png',
+                              width: 100,
+                              fit: BoxFit.contain,
                             ),
                           ),
 
@@ -167,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                           // Title
                           //----------------------------------
                           Text(
-                            "کارنامک",
+                            "کارنما",
                             textAlign: TextAlign.center,
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.bold,

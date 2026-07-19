@@ -83,38 +83,19 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: const Color(0xfff5f6fa),
 
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-
           children: [
-            CircleAvatar(
-              radius: 46,
-
-              backgroundColor: theme.colorScheme.primaryContainer,
-
-              child: Icon(
-                Icons.edit_note_rounded,
-                size: 42,
-                color: theme.colorScheme.primary,
-              ),
+            Image.asset(
+              'assets/icon/app_icon.png',
+              width: 100,
+              fit: BoxFit.contain,
             ),
-
             const SizedBox(height: 24),
-
-            Text(
-              "کارنامک",
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
 
             const CircularProgressIndicator(),
           ],
