@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/models/page_result.dart';
@@ -33,7 +34,7 @@ class MinuteService {
         rootPath,
         queryParameters: {
           "page": page,
-          // if (sort != null) "sort": sort,  // error
+          if (sort != null) "sort": sort, // error
           if (search != null && search.isNotEmpty) "search": search,
         },
       );
