@@ -65,6 +65,7 @@ class _LoginPageState extends State<LoginPage> {
   //--------------------------------------------------
 
   Future<void> _login() async {
+    _loading = true;
     FocusScope.of(context).unfocus();
 
     TextInput.finishAutofillContext();
@@ -85,6 +86,7 @@ class _LoginPageState extends State<LoginPage> {
       context.read<UserController>().setUser(user, response.token);
 
       if (!mounted) return;
+      _loading = false;
 
       Navigator.pushAndRemoveUntil(
         context,
@@ -94,6 +96,7 @@ class _LoginPageState extends State<LoginPage> {
         (route) => false,
       );
     } catch (e) {
+      _loading = false;
       if (!mounted) return;
 
       ScaffoldMessenger.of(
@@ -166,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                           const SizedBox(height: 8),
 
                           Text(
-                            "سامانه مدیریت مکاتبات",
+                            "سامانه هوشمند اتوماسیون اداری",
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodyLarge?.copyWith(
                               color: Colors.grey[700],
@@ -200,12 +203,13 @@ class _LoginPageState extends State<LoginPage> {
                               ).requestFocus(_passwordFocus);
                             },
 
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: "ایمیل",
+                              prefixIcon: const Icon(Icons.email_outlined),
 
-                              prefixIcon: Icon(Icons.email_outlined),
-
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
 
                             validator: (value) {
@@ -266,7 +270,9 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
 
-                              border: const OutlineInputBorder(),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
                             ),
 
                             validator: (value) {

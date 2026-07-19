@@ -184,6 +184,7 @@ class _SearchPageState extends State<SearchPage> {
                     onChanged: (_) => _search(),
                     onClear: _search,
                     onVoice: () {},
+                    backBtn: true,
                   ),
                 ),
               ),

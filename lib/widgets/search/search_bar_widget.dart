@@ -15,6 +15,7 @@ class SearchBarWidget extends StatelessWidget {
   final VoidCallback? onTap;
 
   final String hint;
+  final bool? backBtn;
 
   const SearchBarWidget({
     super.key,
@@ -24,6 +25,7 @@ class SearchBarWidget extends StatelessWidget {
     this.onClear,
     this.onChanged,
     this.onTap,
+    this.backBtn,
     this.hint = "جستجو...",
   });
 
@@ -40,14 +42,16 @@ class SearchBarWidget extends StatelessWidget {
             //-------------------------------------
             // Back
             //-------------------------------------
-            IconButton(
-              onPressed:
-                  onBack ??
-                  () {
-                    Navigator.pop(context);
-                  },
-              icon: const Icon(Icons.arrow_back),
-            ),
+            if (backBtn == true)
+              IconButton(
+                onPressed:
+                    onBack ??
+                    () {
+                      Navigator.pop(context);
+                    },
+                icon: const Icon(Icons.arrow_back),
+              ),
+            const SizedBox(width: 4),
 
             //-------------------------------------
             // TextField
