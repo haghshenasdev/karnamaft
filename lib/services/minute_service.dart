@@ -28,15 +28,26 @@ class MinuteService {
     int page = 1,
     String? search,
     String? sort,
+    Map<String, String>? filters,
   }) async {
     try {
+      final query = <String, dynamic>{"page": page};
+
+      if (sort != null) {
+        query["sort"] = sort;
+      }
+
+      if (filters != null) {
+        filters.forEach((key, value) {
+          if (value.isNotEmpty) {
+            query["filter[$key]"] = value;
+          }
+        });
+      }
+
       final response = await ApiClient.dio.get(
         rootPath,
-        queryParameters: {
-          "page": page,
-          if (sort != null) "sort": sort, // error
-          if (search != null && search.isNotEmpty) "search": search,
-        },
+        queryParameters: query,
       );
 
       final json = response.data;

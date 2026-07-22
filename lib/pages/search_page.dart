@@ -185,6 +185,7 @@ class _SearchPageState extends State<SearchPage> {
                     onClear: _search,
                     onVoice: () {},
                     backBtn: true,
+                    autofocus: true,
                   ),
                 ),
               ),

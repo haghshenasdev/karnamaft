@@ -11,16 +11,12 @@ void main() {
         //------------------------------------------
         // Drawing
         //------------------------------------------
-        ChangeNotifierProvider(
-          create: (_) => DrawingController(),
-        ),
+        ChangeNotifierProvider(create: (_) => DrawingController()),
 
         //------------------------------------------
         // User
         //------------------------------------------
-        ChangeNotifierProvider(
-          create: (_) => UserController(),
-        ),
+        ChangeNotifierProvider(create: (_) => UserController()),
       ],
 
       child: const MyApp(),
@@ -39,16 +35,10 @@ class MyApp extends StatelessWidget {
       title: "کارنما",
 
       builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: child!,
-        );
+        return Directionality(textDirection: TextDirection.rtl, child: child!);
       },
 
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-      ),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
 
       home: const SplashPage(),
     );

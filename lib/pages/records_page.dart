@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/record_card.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 import '../../widgets/search/search_bar_widget.dart';
 
@@ -42,6 +46,9 @@ class _RecordsPageState extends State<RecordsPage> {
   bool hasMore = true;
 
   String search = "";
+  Timer? _searchDebounce;
+  String sort = "-id";
+  final Map<String, String> filters = {};
 
   //--------------------------------------------------
   // Dispose
@@ -49,6 +56,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     searchController.dispose();
     scrollController.dispose();
     super.dispose();
@@ -73,16 +81,15 @@ class _RecordsPageState extends State<RecordsPage> {
   Future<void> loadData() async {
     setState(() {
       loading = true;
+      records.clear();
     });
 
-    final result = await service.list(page: 1, search: search, sort: "-id");
+    final result = await service.list(page: 1, sort: sort, filters: filters);
 
     records = result.data.map((e) => e.toRecord()).toList();
 
     totalCount = result.total;
-
     currentPage = result.currentPage;
-
     hasMore = result.hasNextPage;
 
     setState(() {
@@ -101,8 +108,8 @@ class _RecordsPageState extends State<RecordsPage> {
 
     final result = await service.list(
       page: currentPage + 1,
-      search: search,
-      sort: "-id",
+      sort: sort,
+      filters: filters,
     );
 
     records.addAll(result.data.map((e) => e.toRecord()));
@@ -114,6 +121,44 @@ class _RecordsPageState extends State<RecordsPage> {
     loadingMore = false;
 
     setState(() {});
+  }
+
+  Future<void> changeSort(String value) async {
+    if (sort == value) return;
+
+    sort = value;
+    currentPage = 1;
+    hasMore = true;
+
+    await loadData();
+  }
+
+  void onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (value.trim().isEmpty) {
+        filters.remove("search");
+      } else {
+        filters["search"] = value.trim();
+      }
+
+      currentPage = 1;
+      hasMore = true;
+
+      loadData();
+    });
+  }
+
+  void clearSearch() {
+    searchController.clear();
+
+    filters.remove("search");
+
+    currentPage = 1;
+    hasMore = true;
+
+    loadData();
   }
   //--------------------------------------------------
   // UI
@@ -149,9 +194,9 @@ class _RecordsPageState extends State<RecordsPage> {
 
                 hint: "جستجو...",
 
-                onChanged: (value) {},
+                onChanged: onSearchChanged,
 
-                onClear: () {},
+                onClear: clearSearch,
 
                 onVoice: () {},
               ),
@@ -165,20 +210,16 @@ class _RecordsPageState extends State<RecordsPage> {
               child: Row(
                 children: [
                   FilledButton.tonalIcon(
-                    onPressed: () {},
-
+                    onPressed: showFilterDialog,
                     icon: const Icon(Icons.filter_alt_outlined),
-
                     label: const Text("فیلتر"),
                   ),
 
                   const SizedBox(width: 8),
 
                   FilledButton.tonalIcon(
-                    onPressed: () {},
-
+                    onPressed: showSortDialog,
                     icon: const Icon(Icons.sort),
-
                     label: const Text("مرتب سازی"),
                   ),
 
@@ -225,6 +266,7 @@ class _RecordsPageState extends State<RecordsPage> {
                           onRefer: () {},
 
                           onMore: () {},
+                          keyword: filters["search"] ?? '',
                         );
                       },
                     ),
@@ -241,5 +283,167 @@ class _RecordsPageState extends State<RecordsPage> {
         label: const Text("جدید"),
       ),
     );
+  }
+
+  Future<void> showSortDialog() async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.arrow_downward),
+                title: const Text("جدیدترین"),
+                onTap: () => Navigator.pop(context, "-id"),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.arrow_upward),
+                title: const Text("قدیمی‌ترین"),
+                onTap: () => Navigator.pop(context, "id"),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.sort_by_alpha),
+                title: const Text("عنوان (الف تا ی)"),
+                onTap: () => Navigator.pop(context, "title"),
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.sort_by_alpha),
+                title: const Text("عنوان (ی تا الف)"),
+                onTap: () => Navigator.pop(context, "-title"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (value != null) {
+      await changeSort(value);
+    }
+  }
+
+  Future<void> showFilterDialog() async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "فیلترها",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    //--------------------------------------------------
+                    // Date
+                    //--------------------------------------------------
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today),
+
+                      title: const Text("تاریخ"),
+
+                      subtitle: Text(filters["date"] ?? "همه تاریخ‌ها"),
+
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (filters.containsKey("date"))
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setSheetState(() {
+                                  filters.remove("date");
+                                });
+                              },
+                            ),
+
+                          IconButton(
+                            icon: const Icon(Icons.edit_calendar),
+                            onPressed: () async {
+                              Navigator.pop(context);
+
+                              await pickDate();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const Divider(),
+
+                    //--------------------------------------------------
+                    // Buttons
+                    //--------------------------------------------------
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              filters.remove("date");
+
+                              loadData();
+
+                              Navigator.pop(context);
+                            },
+                            child: const Text("حذف فیلترها"),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () {
+                              loadData();
+
+                              Navigator.pop(context);
+                            },
+                            child: const Text("اعمال"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> pickDate() async {
+    final Jalali? date = await showJalaliDropdownDialog(context);
+
+    if (date == null) return;
+
+    // نمایش به کاربر (شمسی)
+    // searchController.text =
+    // "${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}";
+
+    // تبدیل به میلادی برای API
+    final gregorian = date.toDateTime();
+
+    filters["date"] =
+        "${gregorian.year}-${gregorian.month.toString().padLeft(2, '0')}-${gregorian.day.toString().padLeft(2, '0')}";
+
+    loadData();
   }
 }

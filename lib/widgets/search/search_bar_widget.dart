@@ -16,6 +16,7 @@ class SearchBarWidget extends StatelessWidget {
 
   final String hint;
   final bool? backBtn;
+  final bool autofocus;
 
   const SearchBarWidget({
     super.key,
@@ -27,6 +28,7 @@ class SearchBarWidget extends StatelessWidget {
     this.onTap,
     this.backBtn,
     this.hint = "جستجو...",
+    this.autofocus = false,
   });
 
   @override
@@ -59,7 +61,7 @@ class SearchBarWidget extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
-                autofocus: true,
+                autofocus: autofocus,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.right,
                 onChanged: (value) {

@@ -15,7 +15,7 @@ class RecordItem {
 
   final String? number;
 
-  final String? date;
+  final DateTime? date;
 
   final String? tag;
 

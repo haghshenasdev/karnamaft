@@ -58,7 +58,7 @@ class MinuteModel {
 
       number: id.toString(),
 
-      date: date == null ? "" : "${date!.year}/${date!.month}/${date!.day}",
+      date: date,
 
       tag: null,
 

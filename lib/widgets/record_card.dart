@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/widgets/record_action_bar.dart';
+import 'package:karnamaft/widgets/search/highlight_text.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 class RecordCard extends StatelessWidget {
   final RecordItem record;
@@ -10,6 +12,7 @@ class RecordCard extends StatelessWidget {
   final VoidCallback? onFile;
   final VoidCallback? onRefer;
   final VoidCallback? onMore;
+  final String keyword;
 
   const RecordCard({
     super.key,
@@ -19,6 +22,7 @@ class RecordCard extends StatelessWidget {
     this.onFile,
     this.onRefer,
     this.onMore,
+    this.keyword = '',
   });
 
   @override
@@ -47,8 +51,9 @@ class RecordCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      record.title,
+                    child: HighlightText(
+                      text: record.title,
+                      keyword: keyword,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -112,7 +117,8 @@ class RecordCard extends StatelessWidget {
                 children: [
                   if (record.number != null) Chip(label: Text(record.number!)),
 
-                  if (record.date != null) Chip(label: Text(record.date!)),
+                  if (record.date != null)
+                    Chip(label: Text(jalaliToString(record.date!))),
 
                   if (record.tag != null)
                     Chip(
@@ -148,6 +154,12 @@ class RecordCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String jalaliToString(DateTime? date) {
+    if (date == null) return '';
+    final j = Jalali.fromDateTime(date);
+    return '${j.year}/${j.month.toString().padLeft(2, '0')}/${j.day.toString().padLeft(2, '0')}';
   }
 }
 
