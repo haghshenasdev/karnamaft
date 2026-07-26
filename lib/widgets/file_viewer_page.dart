@@ -47,7 +47,8 @@ class _FileViewerPageState extends State<FileViewerPage> {
   }
 
   bool get isPdf {
-    return widget.fileName.toLowerCase().endsWith(".pdf");
+    final name = widget.fileName.toLowerCase();
+    return name.contains(".pdf");
   }
 
   bool get isWord {
@@ -174,7 +175,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
               // PDF
               //--------------------------------------
 
-              if (isPdf) {
+              if (isPdf || isPdfBytes(bytes)) {
                 return SfPdfViewer.memory(
                   bytes,
                   controller: _pdfController,
@@ -514,5 +515,14 @@ class _FileViewerPageState extends State<FileViewerPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("چاپ این نوع فایل پشتیبانی نمی‌شود.")),
     );
+  }
+
+  bool isPdfBytes(Uint8List bytes) {
+    if (bytes.length < 4) return false;
+
+    return bytes[0] == 0x25 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x44 &&
+        bytes[3] == 0x46;
   }
 }
