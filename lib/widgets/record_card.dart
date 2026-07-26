@@ -54,7 +54,7 @@ class RecordCard extends StatelessWidget {
                     child: HighlightText(
                       text: record.title,
                       keyword: keyword,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,

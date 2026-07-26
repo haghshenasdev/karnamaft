@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/record_card.dart';
@@ -257,7 +258,14 @@ class _RecordsPageState extends State<RecordsPage> {
                         return RecordCard(
                           record: record,
 
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MinuteShowPage(id: record.id),
+                              ),
+                            );
+                          },
 
                           onOpen: () {},
 

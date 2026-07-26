@@ -70,9 +70,9 @@ class MinuteService {
     }
   }
 
-  Future<MinuteModel> show(id) async {
+  Future<MinuteModel> show(int id) async {
     try {
-      final response = await ApiClient.dio.get(rootPath);
+      final response = await ApiClient.dio.get("$rootPath/$id");
 
       return MinuteModel.fromJson(response.data["data"]);
     } catch (e) {
