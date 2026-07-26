@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
 
 import '../widgets/show/record_info_card.dart';
@@ -163,7 +164,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               //--------------------------------------------------
               // Preview
               //--------------------------------------------------
-              RecordPreview(minute: item,),
+              RecordPreview(minute: item),
 
               const SizedBox(height: 20),
 
@@ -190,7 +191,10 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                     RecordField(title: "شناسه", value: item.id.toString()),
 
                   if (item.date != null)
-                    RecordField(title: "تاریخ", value: formatDate(item.date)),
+                    RecordField(
+                      title: "تاریخ",
+                      value: DateHelper.toDate(item.date),
+                    ),
 
                   if (item.typer_id != null)
                     RecordField(
@@ -204,13 +208,13 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                   if (item.created_at != null)
                     RecordField(
                       title: "ایجاد شده",
-                      value: formatDate(item.created_at),
+                      value: DateHelper.toDateTime(item.created_at),
                     ),
 
                   if (item.updated_at != null)
                     RecordField(
                       title: "آخرین بروزرسانی",
-                      value: formatDate(item.updated_at),
+                      value: DateHelper.toDateTime((item.updated_at)),
                     ),
                 ],
               ),
