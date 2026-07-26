@@ -12,8 +12,9 @@ import '../widgets/show/record_title.dart';
 
 class MinuteShowPage extends StatefulWidget {
   final int id;
+  final String title;
 
-  const MinuteShowPage({super.key, required this.id});
+  const MinuteShowPage({super.key, required this.id, required this.title});
 
   @override
   State<MinuteShowPage> createState() => _MinuteShowPageState();
@@ -102,7 +103,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
     if (loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text("نمایش رکورد")),
+        appBar: AppBar(title: Text(widget.title)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -113,7 +114,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
     if (error != null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("نمایش رکورد")),
+        appBar: AppBar(title: Text(widget.title)),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -149,7 +150,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     return Scaffold(
       backgroundColor: const Color(0xfff5f6fa),
 
-      appBar: AppBar(title: const Text("نمایش رکورد"), centerTitle: false),
+      appBar: AppBar(title: Text(widget.title), centerTitle: false),
 
       body: RefreshIndicator(
         onRefresh: loadData,

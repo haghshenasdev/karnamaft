@@ -262,7 +262,10 @@ class _RecordsPageState extends State<RecordsPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => MinuteShowPage(id: record.id),
+                                builder: (_) => MinuteShowPage(
+                                  id: record.id,
+                                  title: "صورتجلسه ${record.id}",
+                                ),
                               ),
                             );
                           },
