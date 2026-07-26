@@ -1,18 +1,25 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:karnamaft/models/minute_model.dart';
+import 'package:karnamaft/widgets/file_viewer_page.dart';
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+
+import '../../services/minute_service.dart';
 
 class RecordPreview extends StatelessWidget {
-  final String? file;
+  final MinuteModel minute;
 
-  const RecordPreview({super.key, this.file});
+  const RecordPreview({super.key, required this.minute});
 
-  bool get hasFile => file != null && file!.trim().isNotEmpty;
+  final MinuteService _service = const MinuteService();
+
+  bool get hasFile => minute.file != null && minute.file!.trim().isNotEmpty;
 
   String get extension {
     if (!hasFile) return "";
 
-    final uri = Uri.parse(file!);
+    final uri = Uri.parse(minute.file!);
 
     final name = uri.path.toLowerCase();
 
@@ -30,14 +37,17 @@ class RecordPreview extends StatelessWidget {
 
   bool get isWord => extension == "doc" || extension == "docx";
 
-  Future<void> openFile() async {
-    if (!hasFile) return;
-
-    final uri = Uri.parse(file!);
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void openFile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FileViewerPage(
+          title: minute.title,
+          fileName: minute.file!,
+          future: _service.getFile(minute.id, minute.file),
+        ),
+      ),
+    );
   }
 
   @override
@@ -72,25 +82,43 @@ class RecordPreview extends StatelessWidget {
     //--------------------------------------------------
 
     if (isImage) {
-      return Card(
-        elevation: 0,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: SizedBox(
-          height: 260,
-          width: double.infinity,
-          child: CachedNetworkImage(
-            imageUrl: file!,
-            fit: BoxFit.cover,
-            placeholder: (_, __) =>
-                const Center(child: CircularProgressIndicator()),
-            errorWidget: (_, __, ___) =>
-                const Center(child: Icon(Icons.broken_image, size: 60)),
-          ),
-        ),
+      return FutureBuilder<Uint8List?>(
+        future: _service.getFile(minute.id, minute.file),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 260,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasError || snapshot.data == null) {
+            return Card(
+              child: SizedBox(
+                height: 260,
+                child: const Center(child: Icon(Icons.broken_image, size: 70)),
+              ),
+            );
+          }
+
+          return Card(
+            elevation: 0,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: InkWell(
+              onTap: () => openFile(context),
+              child: SizedBox(
+                height: 260,
+                width: double.infinity,
+                child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+              ),
+            ),
+          );
+        },
       );
     }
-
     //--------------------------------------------------
     // PDF
     //--------------------------------------------------
@@ -101,7 +129,7 @@ class RecordPreview extends StatelessWidget {
         color: Colors.red,
         title: "فایل PDF",
         subtitle: "برای مشاهده فایل لمس کنید",
-        onTap: openFile,
+        onTap: () => openFile(context),
       );
     }
 
@@ -115,7 +143,7 @@ class RecordPreview extends StatelessWidget {
         color: Colors.blue,
         title: "فایل Word",
         subtitle: "برای مشاهده فایل لمس کنید",
-        onTap: openFile,
+        onTap: () => openFile(context),
       );
     }
 
@@ -127,8 +155,8 @@ class RecordPreview extends StatelessWidget {
       icon: Icons.insert_drive_file,
       color: theme.colorScheme.primary,
       title: "فایل پیوست",
-      subtitle: file!,
-      onTap: openFile,
+      subtitle: minute.file!,
+      onTap: () => openFile(context),
     );
   }
 }

@@ -1,7 +1,13 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/models/page_result.dart';
+import 'package:karnamaft/storage/auth_storage.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
 import '../models/login_request.dart';
@@ -88,5 +94,27 @@ class MinuteService {
     } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
+  }
+
+  Future<Uint8List?> getFile(int id, String? fileName) async {
+    if (fileName == null || fileName.trim().isEmpty) {
+      return null;
+    }
+
+    final token = await AuthStorage.getToken();
+
+    final response = await ApiClient.dio.get<List<int>>(
+      "/appendix-other-show/minutes/$id/$id.$fileName",
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: {"Authorization": "Bearer $token"},
+      ),
+    );
+
+    if (response.data == null) {
+      return null;
+    }
+
+    return Uint8List.fromList(response.data!);
   }
 }

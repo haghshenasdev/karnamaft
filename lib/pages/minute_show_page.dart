@@ -163,7 +163,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               //--------------------------------------------------
               // Preview
               //--------------------------------------------------
-              RecordPreview(file: item.file),
+              RecordPreview(minute: item,),
 
               const SizedBox(height: 20),
 
