@@ -5,10 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 class RecordPreview extends StatelessWidget {
   final String? file;
 
-  const RecordPreview({
-    super.key,
-    this.file,
-  });
+  const RecordPreview({super.key, this.file});
 
   bool get hasFile => file != null && file!.trim().isNotEmpty;
 
@@ -27,20 +24,11 @@ class RecordPreview extends StatelessWidget {
   }
 
   bool get isImage =>
-      [
-        "jpg",
-        "jpeg",
-        "png",
-        "gif",
-        "bmp",
-        "webp",
-      ].contains(extension);
+      ["jpg", "jpeg", "png", "gif", "bmp", "webp"].contains(extension);
 
   bool get isPdf => extension == "pdf";
 
-  bool get isWord =>
-      extension == "doc" ||
-      extension == "docx";
+  bool get isWord => extension == "doc" || extension == "docx";
 
   Future<void> openFile() async {
     if (!hasFile) return;
@@ -48,10 +36,7 @@ class RecordPreview extends StatelessWidget {
     final uri = Uri.parse(file!);
 
     if (await canLaunchUrl(uri)) {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -62,9 +47,7 @@ class RecordPreview extends StatelessWidget {
     if (!hasFile) {
       return Card(
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
           height: 230,
           alignment: Alignment.center,
@@ -92,24 +75,17 @@ class RecordPreview extends StatelessWidget {
       return Card(
         elevation: 0,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: SizedBox(
           height: 260,
           width: double.infinity,
           child: CachedNetworkImage(
             imageUrl: file!,
             fit: BoxFit.cover,
-            placeholder: (_, __) => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            errorWidget: (_, __, ___) => const Center(
-              child: Icon(
-                Icons.broken_image,
-                size: 60,
-              ),
-            ),
+            placeholder: (_, __) =>
+                const Center(child: CircularProgressIndicator()),
+            errorWidget: (_, __, ___) =>
+                const Center(child: Icon(Icons.broken_image, size: 60)),
           ),
         ),
       );
@@ -176,9 +152,7 @@ class _FileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
@@ -188,11 +162,7 @@ class _FileCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 80,
-                color: color,
-              ),
+              Icon(icon, size: 80, color: color),
 
               const SizedBox(height: 20),
 
@@ -213,13 +183,13 @@ class _FileCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
 
-              const SizedBox(height: 20),
+              // const SizedBox(height: 20),
 
-              FilledButton.icon(
-                onPressed: onTap,
-                icon: const Icon(Icons.open_in_new),
-                label: const Text("باز کردن"),
-              ),
+              // FilledButton.icon(
+              //   onPressed: onTap,
+              //   icon: const Icon(Icons.open_in_new),
+              //   label: const Text("باز کردن"),
+              // ),
             ],
           ),
         ),
