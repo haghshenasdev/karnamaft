@@ -62,27 +62,27 @@ class RecordCard extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(width: 12),
+                  if (record.status != null) const SizedBox(width: 12),
+                  if (record.status != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: record.status!.color(context).withOpacity(.12),
 
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: record.status.color(context).withOpacity(.12),
-
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      record.status.title,
-                      style: TextStyle(
-                        color: record.status.color(context),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        record.status!.title,
+                        style: TextStyle(
+                          color: record.status!.color(context),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
 

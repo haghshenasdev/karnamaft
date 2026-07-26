@@ -19,7 +19,7 @@ class RecordItem {
 
   final String? tag;
 
-  final RecordStatus status;
+  final RecordStatus? status;
 
   final bool hasAttachment;
 

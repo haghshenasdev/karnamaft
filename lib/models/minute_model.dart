@@ -62,7 +62,7 @@ class MinuteModel {
 
       tag: null,
 
-      status: RecordStatus.pending,
+      status: null,
 
       hasAttachment: (file ?? "").isNotEmpty,
     );
