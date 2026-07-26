@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/login_page.dart';
@@ -51,33 +52,45 @@ class _SplashPageState extends State<SplashPage> {
 
       if (!mounted) return;
 
-      //--------------------------------------
-      // Save in Provider
-      //--------------------------------------
       final token = await AuthStorage.getToken();
       context.read<UserController>().setUser(user, token!);
-
-      //--------------------------------------
-      // Dashboard
-      //--------------------------------------
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => MainPage()),
       );
-    } catch (_) {
+    } on DioException catch (e) {
       //--------------------------------------
       // Token Invalid
       //--------------------------------------
 
-      await AuthStorage.logout();
+      if (e.response?.statusCode == 401) {
+        await AuthStorage.logout();
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+        return;
+      }
+
+      //--------------------------------------
+      // Internet یا خطای سرور
+      //--------------------------------------
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ارتباط با سرور برقرار نشد.")),
       );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 

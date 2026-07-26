@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
@@ -65,7 +66,10 @@ class _LoginPageState extends State<LoginPage> {
   //--------------------------------------------------
 
   Future<void> _login() async {
-    _loading = true;
+    setState(() {
+      _loading = true;
+    });
+
     FocusScope.of(context).unfocus();
 
     TextInput.finishAutofillContext();
@@ -86,8 +90,9 @@ class _LoginPageState extends State<LoginPage> {
       context.read<UserController>().setUser(user, response.token);
 
       if (!mounted) return;
-      _loading = false;
-
+      setState(() {
+        _loading = false;
+      });
       Navigator.pushAndRemoveUntil(
         context,
 
@@ -95,13 +100,27 @@ class _LoginPageState extends State<LoginPage> {
 
         (route) => false,
       );
-    } catch (e) {
-      _loading = false;
+    } on DioException catch (e) {
+      setState(() {
+        _loading = false;
+      });
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ارتباط با سرور برقرار نشد.")),
+      );
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+      debugPrint(e.toString());
+      if (!mounted) return;
+
+      String errm = e.toString();
+      if (errm == 'The provided credentials are incorrect.') {
+        errm = 'رمز عبور یا نام کاربری اشتباه است';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(errm)));
     }
   }
 
