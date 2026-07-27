@@ -67,4 +67,53 @@ class MinuteModel {
       hasAttachment: (file ?? "").isNotEmpty,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "id": id,
+      "title": title,
+      "text": text,
+      "file": file,
+      "date": date?.toIso8601String(),
+      "typer_id": typer_id,
+      "task_id": task_id,
+      "created_at": created_at?.toIso8601String(),
+      "updated_at": updated_at?.toIso8601String(),
+    };
+  }
+
+  MinuteModel copyWith({
+    int? id,
+    String? title,
+    String? text,
+    String? file,
+    DateTime? date,
+    int? typer_id,
+    int? task_id,
+    DateTime? created_at,
+    DateTime? updated_at,
+  }) {
+    return MinuteModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      text: text ?? this.text,
+      file: file ?? this.file,
+      date: date ?? this.date,
+      typer_id: typer_id ?? this.typer_id,
+      task_id: task_id ?? this.task_id,
+      created_at: created_at ?? this.created_at,
+      updated_at: updated_at ?? this.updated_at,
+    );
+  }
+
+  Map<String, dynamic> toUpdateJson() {
+    return {
+      "title": title,
+      "text": text,
+      "file": file,
+      "date": date?.toIso8601String(),
+      "typer_id": typer_id,
+      "task_id": task_id,
+    };
+  }
 }

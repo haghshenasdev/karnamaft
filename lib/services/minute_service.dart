@@ -117,4 +117,17 @@ class MinuteService {
 
     return Uint8List.fromList(response.data!);
   }
+
+  Future<MinuteModel> update(int id, MinuteModel model) async {
+    try {
+      final response = await ApiClient.dio.put(
+        "$rootPath/$id",
+        data: model.toUpdateJson(),
+      );
+
+      return MinuteModel.fromJson(response.data["data"]);
+    } catch (e) {
+      throw ApiErrorHandler.handle(e);
+    }
+  }
 }

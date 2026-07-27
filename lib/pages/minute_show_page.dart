@@ -32,6 +32,11 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   //--------------------------------------------------
 
   bool loading = true;
+  bool editing = false;
+
+  late TextEditingController titleController;
+  late TextEditingController textController;
+  late TextEditingController dateController;
 
   String? error;
 
@@ -46,6 +51,14 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     super.initState();
 
     loadData();
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    textController.dispose();
+    dateController.dispose();
+    super.dispose();
   }
 
   //--------------------------------------------------
@@ -65,6 +78,11 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
       setState(() {
         minute = result;
+        titleController = TextEditingController(text: result.title);
+        textController = TextEditingController(text: result.text);
+        dateController = TextEditingController(
+          text: DateHelper.toDate(result.date),
+        );
         loading = false;
       });
     } catch (e) {
@@ -150,7 +168,20 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     return Scaffold(
       backgroundColor: const Color(0xfff5f6fa),
 
-      appBar: AppBar(title: Text(widget.title), centerTitle: false),
+      appBar: AppBar(
+        title: Text(widget.title),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(editing ? Icons.close : Icons.edit),
+            onPressed: () {
+              setState(() {
+                editing = !editing;
+              });
+            },
+          ),
+        ],
+      ),
 
       body: RefreshIndicator(
         onRefresh: loadData,
@@ -172,14 +203,31 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               //--------------------------------------------------
               // Title
               //--------------------------------------------------
-              RecordTitle(title: item.title),
+              editing
+                  ? TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: "عنوان",
+                        border: OutlineInputBorder(),
+                      ),
+                    )
+                  : RecordTitle(title: item.title),
 
               const SizedBox(height: 20),
 
               //--------------------------------------------------
               // Text
               //--------------------------------------------------
-              RecordText(text: item.text),
+              editing
+                  ? TextField(
+                      controller: textController,
+                      maxLines: 20,
+                      decoration: const InputDecoration(
+                        labelText: "متن",
+                        border: OutlineInputBorder(),
+                      ),
+                    )
+                  : RecordText(text: item.text),
 
               const SizedBox(height: 20),
 
@@ -192,10 +240,18 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                     RecordField(title: "شناسه", value: item.id.toString()),
 
                   if (item.date != null)
-                    RecordField(
-                      title: "تاریخ",
-                      value: DateHelper.toDate(item.date),
-                    ),
+                    editing
+                        ? TextField(
+                            controller: dateController,
+                            decoration: const InputDecoration(
+                              labelText: "تاریخ",
+                              border: OutlineInputBorder(),
+                            ),
+                          )
+                        : RecordField(
+                            title: "تاریخ",
+                            value: DateHelper.toDate(item.date),
+                          ),
 
                   if (item.typer_id != null)
                     RecordField(
@@ -225,19 +281,82 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               //--------------------------------------------------
               // Actions
               //--------------------------------------------------
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.arrow_back),
-                label: const Text("بازگشت"),
-              ),
+              if (editing)
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.save),
 
+                        label: const Text("ذخیره"),
+
+                        onPressed: save,
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          setState(() {
+                            editing = false;
+                          });
+                        },
+
+                        child: const Text("انصراف"),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text("بازگشت"),
+                ),
               const SizedBox(height: 40),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> save() async {
+    if (minute == null) {
+      return;
+    }
+
+    final model = minute!.copyWith(
+      title: titleController.text,
+      text: textController.text,
+    );
+
+    setState(() {
+      loading = true;
+    });
+
+    try {
+      final result = await _service.update(minute!.id, model);
+
+      setState(() {
+        minute = result;
+
+        editing = false;
+
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 }
