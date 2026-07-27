@@ -113,8 +113,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     //--------------------------------------------------
     // Loading
     //--------------------------------------------------

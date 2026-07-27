@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/user_model.dart';
 

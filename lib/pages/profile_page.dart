@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
-import 'package:karnamaft/models/profile_model.dart';
 import 'package:karnamaft/pages/login_page.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:karnamaft/widgets/profile/about_card.dart';
 import 'package:karnamaft/widgets/profile/account_card.dart';
-import 'package:karnamaft/widgets/profile/active_sessions_card.dart';
 import 'package:karnamaft/widgets/profile/logout_card.dart';
 import 'package:karnamaft/widgets/profile/password_card.dart';
 import 'package:karnamaft/widgets/profile/profile_header.dart';
@@ -48,11 +46,11 @@ class _ProfilePageState extends State<ProfilePage> {
   // Logout Session
   //--------------------------------------
 
-  void _logoutSession(UserSession session) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("خروج از دستگاه ${session.deviceName}")),
-    );
-  }
+  // void _logoutSession(UserSession session) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     SnackBar(content: Text("خروج از دستگاه ${session.deviceName}")),
+  //   );
+  // }
 
   //--------------------------------------
   // Change Password
@@ -119,7 +117,6 @@ class _ProfilePageState extends State<ProfilePage> {
             //   sessions: profile.sessions,
             //   onLogoutSession: _logoutSession,
             // ),
-
             const SizedBox(height: 16),
 
             //----------------------------------

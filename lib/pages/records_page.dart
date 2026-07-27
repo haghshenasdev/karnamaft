@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/services/minute_service.dart';

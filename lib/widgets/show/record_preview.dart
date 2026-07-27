@@ -3,7 +3,6 @@ import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/widgets/file_viewer_page.dart';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 
 import '../../services/minute_service.dart';
 

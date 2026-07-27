@@ -5,7 +5,6 @@ import 'package:photo_view/photo_view.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -450,15 +449,15 @@ class _FileViewerPageState extends State<FileViewerPage> {
     _pdfController.previousPage();
   }
 
-  void _fitScreen() {
-    if (isImage) {
-      _photoController.scale = PhotoViewComputedScale.contained as double?;
-    }
+  // void _fitScreen() {
+  //   if (isImage) {
+  //     _photoController.scale = PhotoViewComputedScale.contained as double?;
+  //   }
 
-    if (isPdf) {
-      _pdfController.zoomLevel = 1;
-    }
-  }
+  //   if (isPdf) {
+  //     _pdfController.zoomLevel = 1;
+  //   }
+  // }
 
   Future<void> _share(Uint8List bytes) async {
     await SharePlus.instance.share(

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -6,8 +5,6 @@ import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/models/page_result.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
 import '../models/login_request.dart';
