@@ -5,6 +5,7 @@ import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
+import 'package:provider/provider.dart';
 
 import '../widgets/show/record_info_card.dart';
 import '../widgets/show/record_preview.dart';
@@ -22,7 +23,7 @@ class MinuteShowPage extends StatefulWidget {
 }
 
 class _MinuteShowPageState extends State<MinuteShowPage> {
-  var user = UserController();
+  UserController get user => context.read<UserController>();
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
@@ -67,7 +68,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   //--------------------------------------------------
 
   Future<void> loadData() async {
-
     setState(() {
       loading = true;
       error = null;
@@ -253,19 +253,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             value: DateHelper.toDate(item.date),
                           ),
 
-                  if (item.typer != null)
-                    RecordField(title: "نویسنده", value: item.typer!.name),
-                  if (item.typer?.avatarUrl != null)
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: const Color(0xffe9eef6),
-
-                      backgroundImage: NetworkImage(
-                        "https://hajideligani.ir/api/get_avatar/${item.typer?.avatarUrl}",
-                        headers: {"Authorization": "Bearer ${user.token}"},
-                      ),
-                    ),
-
                   if (item.taskCreator != null)
                     RecordField(title: "جلسه", value: item.taskCreator!.name),
                   if (item.organs.isNotEmpty)
@@ -286,6 +273,88 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                     ),
                 ],
               ),
+
+              if (item.typer != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+
+                  padding: const EdgeInsets.all(12),
+
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+
+                    borderRadius: BorderRadius.circular(16),
+
+                    border: Border.all(color: const Color(0xffe5e9f2)),
+                  ),
+
+                  child: Row(
+                    children: [
+                      // Avatar
+                      CircleAvatar(
+                        radius: 40,
+
+                        backgroundColor: const Color(0xffe9eef6),
+
+                        backgroundImage:
+                            (item.typer!.avatarUrl != null &&
+                                item.typer!.avatarUrl!.isNotEmpty)
+                            ? NetworkImage(
+                                "https://hajideligani.ir/api/get_avatar/${item.typer!.avatarUrl}",
+                                headers: {
+                                  "Authorization": "Bearer ${user.token}",
+                                },
+                              )
+                            : null,
+
+                        child:
+                            (item.typer!.avatarUrl == null ||
+                                item.typer!.avatarUrl!.isEmpty)
+                            ? const Icon(
+                                Icons.person,
+                                size: 32,
+                                color: Colors.grey,
+                              )
+                            : null,
+                      ),
+
+                      const SizedBox(width: 14),
+
+                      // Name
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                          children: [
+                            const Text(
+                              "نویسنده",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+
+                            const SizedBox(height: 4),
+
+                            Text(
+                              item.typer!.name,
+
+                              maxLines: 2,
+
+                              overflow: TextOverflow.ellipsis,
+
+                              style: const TextStyle(
+                                fontSize: 15,
+
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               const SizedBox(height: 24),
 
