@@ -1,3 +1,4 @@
+import 'package:karnamaft/models/minute_relation.dart';
 import 'package:karnamaft/models/record_item.dart';
 
 class MinuteModel {
@@ -13,6 +14,13 @@ class MinuteModel {
   final int? task_id;
   final DateTime? created_at;
   final DateTime? updated_at;
+  final MinuteUser? typer;
+
+  final TaskCreator? taskCreator;
+
+  final List<OrganModel> organs;
+
+  final List<GroupModel> group;
 
   const MinuteModel({
     required this.id,
@@ -24,6 +32,10 @@ class MinuteModel {
     this.task_id,
     this.created_at,
     this.updated_at,
+    this.typer,
+    this.taskCreator,
+    required this.organs,
+    required this.group,
   });
 
   factory MinuteModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +53,19 @@ class MinuteModel {
       updated_at: json["updated_at"] == null
           ? null
           : DateTime.parse(json["updated_at"]),
+      typer: json["typer"] != null ? MinuteUser.fromJson(json["typer"]) : null,
+
+      taskCreator: json["task_creator"] != null
+          ? TaskCreator.fromJson(json["task_creator"])
+          : null,
+
+      organs: json['organs'] != null
+          ? (json['organs'] as List).map((e) => OrganModel.fromJson(e)).toList()
+          : [],
+
+      group: json['group'] != null
+          ? (json['group'] as List).map((e) => GroupModel.fromJson(e)).toList()
+          : [],
     );
   }
 
@@ -103,6 +128,8 @@ class MinuteModel {
       task_id: task_id ?? this.task_id,
       created_at: created_at ?? this.created_at,
       updated_at: updated_at ?? this.updated_at,
+      organs: [],
+      group: [],
     );
   }
 

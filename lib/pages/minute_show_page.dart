@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
@@ -21,6 +22,7 @@ class MinuteShowPage extends StatefulWidget {
 }
 
 class _MinuteShowPageState extends State<MinuteShowPage> {
+  var user = UserController();
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
@@ -49,7 +51,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   @override
   void initState() {
     super.initState();
-
     loadData();
   }
 
@@ -66,6 +67,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   //--------------------------------------------------
 
   Future<void> loadData() async {
+
     setState(() {
       loading = true;
       error = null;
@@ -251,15 +253,26 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             value: DateHelper.toDate(item.date),
                           ),
 
-                  if (item.typer_id != null)
-                    RecordField(
-                      title: "تایپیست",
-                      value: item.typer_id.toString(),
+                  if (item.typer != null)
+                    RecordField(title: "نویسنده", value: item.typer!.name),
+                  if (item.typer?.avatarUrl != null)
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: const Color(0xffe9eef6),
+
+                      backgroundImage: NetworkImage(
+                        "https://hajideligani.ir/api/get_avatar/${item.typer?.avatarUrl}",
+                        headers: {"Authorization": "Bearer ${user.token}"},
+                      ),
                     ),
 
-                  if (item.task_id != null)
-                    RecordField(title: "وظیفه", value: item.task_id.toString()),
-
+                  if (item.taskCreator != null)
+                    RecordField(title: "جلسه", value: item.taskCreator!.name),
+                  if (item.organs.isNotEmpty)
+                    RecordField(
+                      title: "امضا کنندگان",
+                      value: item.organs.map((e) => e.name).join("، "),
+                    ),
                   if (item.created_at != null)
                     RecordField(
                       title: "ایجاد شده",
