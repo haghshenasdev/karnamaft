@@ -4,7 +4,11 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
+import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
+import 'package:karnamaft/widgets/minute_file_editor.dart';
+import 'package:karnamaft/widgets/record_chip_list.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/show/record_info_card.dart';
@@ -40,6 +44,9 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   late TextEditingController titleController;
   late TextEditingController textController;
   late TextEditingController dateController;
+
+  String? selectedFile;
+  String? newUploadFile;
 
   String? error;
 
@@ -80,10 +87,13 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
       setState(() {
         minute = result;
+        selectedFile = result.file;
         titleController = TextEditingController(text: result.title);
         textController = TextEditingController(text: result.text);
         dateController = TextEditingController(
-          text: DateHelper.toDate(result.date),
+          text: result.date != null
+              ? DateFormat("yyyy-MM-dd").format(result.date!)
+              : "",
         );
         loading = false;
       });
@@ -200,12 +210,31 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
               const SizedBox(height: 20),
 
+              if (editing)
+                Column(
+                  children: [
+                    MinuteFileEditor(
+                      file: selectedFile,
+
+                      onChanged: (value) {
+                        setState(() {
+                          newUploadFile = value;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+                  ],
+                ),
+
               //--------------------------------------------------
               // Title
               //--------------------------------------------------
               editing
                   ? TextField(
                       controller: titleController,
+                      minLines: 1,
+                      maxLines: 4,
                       decoration: const InputDecoration(
                         labelText: "عنوان",
                         border: OutlineInputBorder(),
@@ -221,6 +250,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               editing
                   ? TextField(
                       controller: textController,
+                      minLines: 1,
                       maxLines: 20,
                       decoration: const InputDecoration(
                         labelText: "متن",
@@ -243,9 +273,20 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                     editing
                         ? TextField(
                             controller: dateController,
-                            decoration: const InputDecoration(
+
+                            readOnly: true,
+
+                            onTap: selectDate,
+
+                            decoration: InputDecoration(
                               labelText: "تاریخ",
-                              border: OutlineInputBorder(),
+
+                              border: const OutlineInputBorder(),
+
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.calendar_month),
+                                onPressed: selectDate,
+                              ),
                             ),
                           )
                         : RecordField(
@@ -256,9 +297,16 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                   if (item.taskCreator != null)
                     RecordField(title: "جلسه", value: item.taskCreator!.name),
                   if (item.organs.isNotEmpty)
-                    RecordField(
+                    RecordChipList(
                       title: "امضا کنندگان",
-                      value: item.organs.map((e) => e.name).join("، "),
+                      icon: Icons.business,
+                      items: item.organs.map((e) => e.name).toList(),
+                    ),
+                  if (item.group.isNotEmpty)
+                    RecordChipList(
+                      title: "دسته بندی",
+                      icon: Icons.sell_outlined,
+                      items: item.group.map((e) => e.name).toList(),
                     ),
                   if (item.created_at != null)
                     RecordField(
@@ -413,14 +461,25 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     final model = minute!.copyWith(
       title: titleController.text,
       text: textController.text,
+      date: dateController.text.isNotEmpty
+          ? DateTime.parse(dateController.text)
+          : null,
+      file: minute!.file,
     );
+
+    // print(model.toUpdateJson());
 
     setState(() {
       loading = true;
     });
 
     try {
-      final result = await _service.update(minute!.id, model);
+      final result = await _service.update(
+        minute!.id,
+        model,
+
+        uploadFile: newUploadFile,
+      );
 
       setState(() {
         minute = result;
@@ -438,5 +497,24 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> selectDate() async {
+    DateTime initial = minute?.date ?? DateTime.now();
+
+    final jalali = await showJalaliDropdownDialog(
+      context,
+      initialDate: Jalali.fromDateTime(initial),
+    );
+
+    if (jalali == null) {
+      return;
+    }
+
+    final gregorian = jalali.toDateTime();
+
+    setState(() {
+      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+    });
   }
 }

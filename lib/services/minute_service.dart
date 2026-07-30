@@ -115,15 +115,45 @@ class MinuteService {
     return Uint8List.fromList(response.data!);
   }
 
-  Future<MinuteModel> update(int id, MinuteModel model) async {
+  Future<MinuteModel> update(
+    int id,
+    MinuteModel model, {
+    String? uploadFile,
+  }) async {
     try {
-      final response = await ApiClient.dio.put(
+      final formData = FormData.fromMap({
+        "_method": "PUT",
+
+        "title": model.title,
+
+        "text": model.text ?? "",
+
+        "file": model.file ?? "none",
+
+        "date": model.date!.toIso8601String(),
+
+        "typer_id": model.typer_id,
+
+        "task_id": model.task_id,
+
+        if (uploadFile != null)
+          "upload_file": await MultipartFile.fromFile(uploadFile),
+      });
+
+      final response = await ApiClient.dio.post(
         "$rootPath/$id",
-        data: model.toUpdateJson(),
+
+        data: formData,
+
+        options: Options(contentType: "multipart/form-data"),
       );
 
       return MinuteModel.fromJson(response.data["data"]);
     } catch (e) {
+      if (e is DioException) {
+        print(e.response?.data);
+      }
+
       throw ApiErrorHandler.handle(e);
     }
   }

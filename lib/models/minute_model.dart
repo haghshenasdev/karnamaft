@@ -120,16 +120,30 @@ class MinuteModel {
   }) {
     return MinuteModel(
       id: id ?? this.id,
+
       title: title ?? this.title,
+
       text: text ?? this.text,
+
       file: file ?? this.file,
+
       date: date ?? this.date,
+
       typer_id: typer_id ?? this.typer_id,
+
       task_id: task_id ?? this.task_id,
+
       created_at: created_at ?? this.created_at,
+
       updated_at: updated_at ?? this.updated_at,
-      organs: [],
-      group: [],
+
+      typer: typer,
+
+      taskCreator: taskCreator,
+
+      organs: organs,
+
+      group: group,
     );
   }
 
