@@ -3,22 +3,31 @@ import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/widgets/file_viewer_page.dart';
 import 'dart:typed_data';
 
-
 import '../../services/minute_service.dart';
 
 class RecordPreview extends StatelessWidget {
-  final MinuteModel minute;
+  final String title;
 
-  const RecordPreview({super.key, required this.minute});
+  final int id;
 
-  final MinuteService _service = const MinuteService();
+  final String? file;
 
-  bool get hasFile => minute.file != null && minute.file!.trim().isNotEmpty;
+  final Future<Uint8List?> Function(int id, String? fileName) getFile;
+
+  const RecordPreview({
+    super.key,
+    required this.title,
+    required this.id,
+    required this.file,
+    required this.getFile,
+  });
+
+  bool get hasFile => file != null && file!.trim().isNotEmpty;
 
   String get extension {
     if (!hasFile) return "";
 
-    final uri = Uri.parse(minute.file!);
+    final uri = Uri.parse(file!);
 
     final name = uri.path.toLowerCase();
 
@@ -41,9 +50,9 @@ class RecordPreview extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => FileViewerPage(
-          title: minute.title,
-          fileName: minute.file!,
-          future: _service.getFile(minute.id, minute.file),
+          title: title,
+          fileName: file!,
+          future: getFile(id, file),
         ),
       ),
     );
@@ -82,7 +91,7 @@ class RecordPreview extends StatelessWidget {
 
     if (isImage) {
       return FutureBuilder<Uint8List?>(
-        future: _service.getFile(minute.id, minute.file),
+        future: getFile(id, file),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const SizedBox(
@@ -154,7 +163,7 @@ class RecordPreview extends StatelessWidget {
       icon: Icons.insert_drive_file,
       color: theme.colorScheme.primary,
       title: "فایل پیوست",
-      subtitle: minute.file!,
+      subtitle: file!,
       onTap: () => openFile(context),
     );
   }

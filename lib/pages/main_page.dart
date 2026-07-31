@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
+import 'package:karnamaft/pages/letter_show_page.dart';
+import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
@@ -32,13 +34,21 @@ class MainPage extends StatelessWidget {
         title: "صورت جلسه ها",
         icon: Icons.edit_document,
         color: Colors.amber,
-        page: const RecordsPage(title: "صورت جلسه ها", service: MinuteService()),
+        page: RecordsPage(
+          title: "صورت جلسه ها",
+          service: const MinuteService(),
+          showPageBuilder: (id, title) => MinuteShowPage(id: id, title: title),
+        ),
       ),
       _MenuItem(
         title: "نامه ها",
         icon: Icons.markunread_sharp,
         color: Colors.green,
-        page: const RecordsPage(title: "نامه ها", service: LetterService()),
+        page: RecordsPage(
+          title: "نامه ها",
+          service: const LetterService(),
+          showPageBuilder: (id, title) => LetterShowPage(id: id, title: title),
+        ),
       ),
       _MenuItem(
         title: "فعالیت ها",

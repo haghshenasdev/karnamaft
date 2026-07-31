@@ -13,8 +13,14 @@ import '../../widgets/search/search_bar_widget.dart';
 class RecordsPage extends StatefulWidget {
   final String title;
   final RecordService service;
+  final Widget Function(int id, String title) showPageBuilder;
 
-  const RecordsPage({super.key, required this.title, required this.service});
+  const RecordsPage({
+    super.key,
+    required this.title,
+    required this.service,
+    required this.showPageBuilder,
+  });
 
   @override
   State<RecordsPage> createState() => _RecordsPageState();
@@ -264,9 +270,9 @@ class _RecordsPageState extends State<RecordsPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => MinuteShowPage(
-                                  id: record.id,
-                                  title: "صورتجلسه ${record.id}",
+                                builder: (_) => widget.showPageBuilder(
+                                  record.id,
+                                  "${widget.title} ${record.id}",
                                 ),
                               ),
                             );

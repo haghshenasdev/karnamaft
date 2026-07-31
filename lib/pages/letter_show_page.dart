@@ -1,38 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
-import 'package:karnamaft/models/minute_model.dart';
-import 'package:karnamaft/services/minute_service.dart';
-import 'package:karnamaft/utils/date_helper.dart';
-import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
-import 'package:karnamaft/widgets/minute_file_editor.dart';
-import 'package:karnamaft/widgets/record_chip_list.dart';
-import 'package:karnamaft/widgets/show/record_field.dart';
-import 'package:persian_datetime_picker/persian_datetime_picker.dart';
+import 'package:karnamaft/models/letter_model.dart';
+import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/services/letter_service.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/minute_file_editor.dart';
+import '../widgets/record_chip_list.dart';
+import '../widgets/show/record_field.dart';
 import '../widgets/show/record_info_card.dart';
 import '../widgets/show/record_preview.dart';
 import '../widgets/show/record_text.dart';
 import '../widgets/show/record_title.dart';
 
-class MinuteShowPage extends StatefulWidget {
+class LetterShowPage extends StatefulWidget {
   final int id;
   final String title;
 
-  const MinuteShowPage({super.key, required this.id, required this.title});
+  const LetterShowPage({super.key, required this.id, required this.title});
 
   @override
-  State<MinuteShowPage> createState() => _MinuteShowPageState();
+  State<LetterShowPage> createState() => _LetterShowPageState();
 }
 
-class _MinuteShowPageState extends State<MinuteShowPage> {
+class _LetterShowPageState extends State<LetterShowPage> {
   UserController get user => context.read<UserController>();
+
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
 
-  final MinuteService _service = const MinuteService();
+  final LetterService _service = const LetterService();
 
   //--------------------------------------------------
   // State
@@ -41,20 +39,16 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   bool loading = true;
   bool editing = false;
 
-  late TextEditingController titleController;
-  late TextEditingController textController;
-  late TextEditingController dateController;
+  String? error;
+
+  LetterModel? letter;
 
   String? selectedFile;
   String? newUploadFile;
 
-  String? error;
-
-  MinuteModel? minute;
-
-  //--------------------------------------------------
-  // Init
-  //--------------------------------------------------
+  late TextEditingController subjectController;
+  late TextEditingController descriptionController;
+  late TextEditingController summaryController;
 
   @override
   void initState() {
@@ -64,15 +58,11 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
   @override
   void dispose() {
-    titleController.dispose();
-    textController.dispose();
-    dateController.dispose();
+    subjectController.dispose();
+    descriptionController.dispose();
+    summaryController.dispose();
     super.dispose();
   }
-
-  //--------------------------------------------------
-  // Load
-  //--------------------------------------------------
 
   Future<void> loadData() async {
     setState(() {
@@ -86,15 +76,16 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       if (!mounted) return;
 
       setState(() {
-        minute = result;
+        letter = result;
+
         selectedFile = result.file;
-        titleController = TextEditingController(text: result.title);
-        textController = TextEditingController(text: result.text);
-        dateController = TextEditingController(
-          text: result.date != null
-              ? DateFormat("yyyy-MM-dd").format(result.date!)
-              : "",
-        );
+
+        subjectController = TextEditingController(text: result.subject);
+
+        descriptionController = TextEditingController(text: result.description);
+
+        summaryController = TextEditingController(text: result.summary);
+
         loading = false;
       });
     } catch (e) {
@@ -106,22 +97,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       });
     }
   }
-
-  //--------------------------------------------------
-  // Date
-  //--------------------------------------------------
-
-  String formatDate(DateTime? date) {
-    if (date == null) {
-      return "-";
-    }
-
-    return DateFormat("yyyy/MM/dd HH:mm").format(date);
-  }
-
-  //--------------------------------------------------
-  // UI
-  //--------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +144,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       );
     }
 
-    final item = minute!;
+    final item = letter!;
 
     //--------------------------------------------------
     // Success
@@ -180,7 +155,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
       appBar: AppBar(
         title: Text(widget.title),
-        centerTitle: false,
+
         actions: [
           IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
@@ -195,6 +170,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
       body: RefreshIndicator(
         onRefresh: loadData,
+
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
 
@@ -202,17 +178,17 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+
             children: [
               //--------------------------------------------------
               // Preview
               //--------------------------------------------------
               RecordPreview(
                 id: item.id,
-                title: item.title,
+                title: item.subject,
                 file: item.file,
                 getFile: _service.getFile,
               ),
-
               const SizedBox(height: 20),
 
               if (editing)
@@ -233,101 +209,110 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                 ),
 
               //--------------------------------------------------
-              // Title
+              // Subject
               //--------------------------------------------------
               editing
                   ? TextField(
-                      controller: titleController,
-                      minLines: 1,
-                      maxLines: 4,
+                      controller: subjectController,
                       decoration: const InputDecoration(
-                        labelText: "عنوان",
+                        labelText: "موضوع",
                         border: OutlineInputBorder(),
                       ),
                     )
-                  : RecordTitle(title: item.title),
+                  : RecordTitle(title: item.subject),
 
               const SizedBox(height: 20),
 
               //--------------------------------------------------
-              // Text
+              // Description
               //--------------------------------------------------
               editing
                   ? TextField(
-                      controller: textController,
-                      minLines: 1,
-                      maxLines: 20,
+                      controller: descriptionController,
+                      minLines: 3,
+                      maxLines: 10,
                       decoration: const InputDecoration(
-                        labelText: "متن",
+                        labelText: "توضیحات",
                         border: OutlineInputBorder(),
                       ),
                     )
-                  : RecordText(text: item.text),
+                  : RecordText(text: item.description),
 
               const SizedBox(height: 20),
 
               //--------------------------------------------------
-              // Information Card
+              // Summary
+              //--------------------------------------------------
+              if (editing)
+                TextField(
+                  controller: summaryController,
+                  minLines: 2,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: "خلاصه",
+                    border: OutlineInputBorder(),
+                  ),
+                )
+              else if ((item.summary ?? "").isNotEmpty)
+                RecordText(text: item.summary),
+
+              const SizedBox(height: 20),
+
+              //--------------------------------------------------
+              // اطلاعات
               //--------------------------------------------------
               RecordInfoCard(
                 children: [
-                  if (item.id > 0)
-                    RecordField(title: "شناسه", value: item.id.toString()),
+                  RecordField(title: "شناسه", value: item.id.toString()),
 
-                  if (item.date != null)
-                    editing
-                        ? TextField(
-                            controller: dateController,
+                  RecordField(title: "وضعیت", value: item.recordStatus.title),
 
-                            readOnly: true,
+                  RecordField(title: "نوع", value: item.kindTitle ?? "-"),
 
-                            onTap: selectDate,
+                  if (item.organ != null)
+                    RecordField(title: "سازمان", value: item.organ!.name),
 
-                            decoration: InputDecoration(
-                              labelText: "تاریخ",
-
-                              border: const OutlineInputBorder(),
-
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_month),
-                                onPressed: selectDate,
-                              ),
-                            ),
-                          )
-                        : RecordField(
-                            title: "تاریخ",
-                            value: DateHelper.toDate(item.date),
-                          ),
-
-                  if (item.taskCreator != null)
-                    RecordField(title: "جلسه", value: item.taskCreator!.name),
-                  if (item.organs.isNotEmpty)
-                    RecordChipList(
-                      title: "امضا کنندگان",
-                      icon: Icons.business,
-                      items: item.organs.map((e) => e.name).toList(),
-                    ),
-                  if (item.group.isNotEmpty)
-                    RecordChipList(
-                      title: "دسته بندی",
-                      icon: Icons.sell_outlined,
-                      items: item.group.map((e) => e.name).toList(),
-                    ),
-                  if (item.created_at != null)
-                    RecordField(
-                      title: "ایجاد شده",
-                      value: DateHelper.toDateTime(item.created_at),
-                    ),
-
-                  if (item.updated_at != null)
-                    RecordField(
-                      title: "آخرین بروزرسانی",
-                      value: DateHelper.toDateTime((item.updated_at)),
-                    ),
+                  if (item.daftar != null)
+                    RecordField(title: "دفتر", value: item.daftar!.name),
                 ],
               ),
 
-              if (item.typer != null)
+              const SizedBox(height: 16),
+
+              //--------------------------------------------------
+              // Customers
+              //--------------------------------------------------
+              if (item.customers.isNotEmpty)
+                RecordChipList(
+                  title: "مشتریان",
+                  icon: Icons.people_outline,
+                  items: item.customers.map((e) => e.name).toList(),
+                ),
+
+              //--------------------------------------------------
+              // Organs Owner
+              //--------------------------------------------------
+              if (item.organsOwner.isNotEmpty)
+                RecordChipList(
+                  title: "ارگان های مرتبط",
+                  icon: Icons.account_balance_outlined,
+                  items: item.organsOwner.map((e) => e.name).toList(),
+                ),
+
+              //--------------------------------------------------
+              // Projects
+              //--------------------------------------------------
+              if (item.projects.isNotEmpty)
+                RecordChipList(
+                  title: "پروژه ها",
+                  icon: Icons.folder_outlined,
+                  items: item.projects.map((e) => e.name).toList(),
+                ),
+
+              //--------------------------------------------------
+              // User
+              //--------------------------------------------------
+              if (item.user != null)
                 Container(
                   margin: const EdgeInsets.only(top: 12),
 
@@ -335,25 +320,22 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
                   decoration: BoxDecoration(
                     color: Colors.white,
-
                     borderRadius: BorderRadius.circular(16),
-
                     border: Border.all(color: const Color(0xffe5e9f2)),
                   ),
 
                   child: Row(
                     children: [
-                      // Avatar
                       CircleAvatar(
-                        radius: 40,
+                        radius: 38,
 
                         backgroundColor: const Color(0xffe9eef6),
 
                         backgroundImage:
-                            (item.typer!.avatarUrl != null &&
-                                item.typer!.avatarUrl!.isNotEmpty)
+                            (item.user!.avatarUrl != null &&
+                                item.user!.avatarUrl!.isNotEmpty)
                             ? NetworkImage(
-                                "https://hajideligani.ir/api/get_avatar/${item.typer!.avatarUrl}",
+                                "https://hajideligani.ir/api/get_avatar/${item.user!.avatarUrl}",
                                 headers: {
                                   "Authorization": "Bearer ${user.token}",
                                 },
@@ -361,8 +343,8 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             : null,
 
                         child:
-                            (item.typer!.avatarUrl == null ||
-                                item.typer!.avatarUrl!.isEmpty)
+                            (item.user!.avatarUrl == null ||
+                                item.user!.avatarUrl!.isEmpty)
                             ? const Icon(
                                 Icons.person,
                                 size: 32,
@@ -373,14 +355,13 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
                       const SizedBox(width: 14),
 
-                      // Name
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
 
                           children: [
                             const Text(
-                              "نویسنده",
+                              "ثبت کننده",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
@@ -390,7 +371,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             const SizedBox(height: 4),
 
                             Text(
-                              item.typer!.name,
+                              item.user!.name,
 
                               maxLines: 2,
 
@@ -398,7 +379,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
                               style: const TextStyle(
                                 fontSize: 15,
-
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -409,21 +389,19 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                   ),
                 ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               //--------------------------------------------------
-              // Actions
+              // Buttons
               //--------------------------------------------------
               if (editing)
                 Row(
                   children: [
                     Expanded(
                       child: FilledButton.icon(
-                        icon: const Icon(Icons.save),
-
-                        label: const Text("ذخیره"),
-
                         onPressed: save,
+                        icon: const Icon(Icons.save),
+                        label: const Text("ذخیره"),
                       ),
                     ),
 
@@ -436,7 +414,6 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             editing = false;
                           });
                         },
-
                         child: const Text("انصراف"),
                       ),
                     ),
@@ -450,6 +427,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                   icon: const Icon(Icons.arrow_back),
                   label: const Text("بازگشت"),
                 ),
+
               const SizedBox(height: 40),
             ],
           ),
@@ -459,20 +437,16 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   }
 
   Future<void> save() async {
-    if (minute == null) {
+    if (letter == null) {
       return;
     }
 
-    final model = minute!.copyWith(
-      title: titleController.text,
-      text: textController.text,
-      date: dateController.text.isNotEmpty
-          ? DateTime.parse(dateController.text)
-          : null,
-      file: minute!.file,
+    final model = letter!.copyWith(
+      subject: subjectController.text.trim(),
+      description: descriptionController.text.trim(),
+      summary: summaryController.text.trim(),
+      file: letter!.file,
     );
-
-    // print(model.toUpdateJson());
 
     setState(() {
       loading = true;
@@ -480,20 +454,29 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
     try {
       final result = await _service.update(
-        minute!.id,
+        letter!.id,
         model,
-
         uploadFile: newUploadFile,
       );
 
+      if (!mounted) return;
+
       setState(() {
-        minute = result;
+        letter = result;
+
+        selectedFile = result.file;
 
         editing = false;
 
         loading = false;
       });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("نامه با موفقیت ذخیره شد.")));
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         loading = false;
       });
@@ -502,24 +485,5 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
-  }
-
-  Future<void> selectDate() async {
-    DateTime initial = minute?.date ?? DateTime.now();
-
-    final jalali = await showJalaliDropdownDialog(
-      context,
-      initialDate: Jalali.fromDateTime(initial),
-    );
-
-    if (jalali == null) {
-      return;
-    }
-
-    final gregorian = jalali.toDateTime();
-
-    setState(() {
-      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
-    });
   }
 }
