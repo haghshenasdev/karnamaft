@@ -22,9 +22,7 @@ class LetterService implements RecordService<LetterModel> {
     Map<String, String>? filters,
   }) async {
     try {
-      final query = <String, dynamic>{
-        "page": page,
-      };
+      final query = <String, dynamic>{"page": page};
 
       if (sort != null) {
         query["sort"] = sort;
@@ -95,12 +93,10 @@ class LetterService implements RecordService<LetterModel> {
     final token = await AuthStorage.getToken();
 
     final response = await ApiClient.dio.get<List<int>>(
-      "/appendix-other-show/letters/$id/$id.$fileName",
+      "/private-show/$id/$id.$fileName",
       options: Options(
         responseType: ResponseType.bytes,
-        headers: {
-          "Authorization": "Bearer $token",
-        },
+        headers: {"Authorization": "Bearer $token"},
       ),
     );
 
@@ -133,9 +129,7 @@ class LetterService implements RecordService<LetterModel> {
       final response = await ApiClient.dio.post(
         "$rootPath/$id",
         data: formData,
-        options: Options(
-          contentType: "multipart/form-data",
-        ),
+        options: Options(contentType: "multipart/form-data"),
       );
 
       return LetterModel.fromJson(response.data["data"]);
