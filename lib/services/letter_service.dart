@@ -1,33 +1,18 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
-import 'package:karnamaft/models/minute_model.dart';
+import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/page_result.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
 
-import '../api/api_client.dart';
-import '../models/login_request.dart';
-import '../models/login_response.dart';
+class LetterService implements RecordService<LetterModel> {
+  const LetterService();
 
-class MinuteService implements RecordService<MinuteModel> {
-  const MinuteService();
-  final rootPath = "/admin/minutes";
-
-  Future<LoginResponse> create(LoginRequest request) async {
-    try {
-      final response = await ApiClient.dio.post(
-        rootPath,
-        data: request.toJson(),
-      );
-
-      return LoginResponse.fromJson(response.data);
-    } catch (e) {
-      throw ApiErrorHandler.handle(e);
-    }
-  }
+  final String rootPath = "/admin/letters";
 
   @override
   Future<PageResult<RecordItem>> list({
@@ -37,10 +22,16 @@ class MinuteService implements RecordService<MinuteModel> {
     Map<String, String>? filters,
   }) async {
     try {
-      final query = <String, dynamic>{"page": page};
+      final query = <String, dynamic>{
+        "page": page,
+      };
 
       if (sort != null) {
         query["sort"] = sort;
+      }
+
+      if (search != null && search.isNotEmpty) {
+        query["search"] = search;
       }
 
       if (filters != null) {
@@ -61,7 +52,7 @@ class MinuteService implements RecordService<MinuteModel> {
       final List<dynamic> items = json["data"] ?? [];
 
       final records = items
-          .map((e) => MinuteModel.fromJson(e).toRecord())
+          .map((e) => LetterModel.fromJson(e).toRecord())
           .toList();
 
       return PageResult<RecordItem>(
@@ -76,11 +67,11 @@ class MinuteService implements RecordService<MinuteModel> {
     }
   }
 
-  Future<MinuteModel> show(int id) async {
+  Future<LetterModel> show(int id) async {
     try {
       final response = await ApiClient.dio.get("$rootPath/$id");
 
-      return MinuteModel.fromJson(response.data["data"]);
+      return LetterModel.fromJson(response.data["data"]);
     } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
@@ -90,7 +81,7 @@ class MinuteService implements RecordService<MinuteModel> {
     try {
       final response = await ApiClient.dio.delete("$rootPath/$id");
 
-      return response.statusCode == 200 ? true : false;
+      return response.statusCode == 200;
     } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
@@ -104,10 +95,12 @@ class MinuteService implements RecordService<MinuteModel> {
     final token = await AuthStorage.getToken();
 
     final response = await ApiClient.dio.get<List<int>>(
-      "/appendix-other-show/minutes/$id/$id.$fileName",
+      "/appendix-other-show/letters/$id/$id.$fileName",
       options: Options(
         responseType: ResponseType.bytes,
-        headers: {"Authorization": "Bearer $token"},
+        headers: {
+          "Authorization": "Bearer $token",
+        },
       ),
     );
 
@@ -118,26 +111,20 @@ class MinuteService implements RecordService<MinuteModel> {
     return Uint8List.fromList(response.data!);
   }
 
-  Future<MinuteModel> update(
+  Future<LetterModel> update(
     int id,
-    MinuteModel model, {
+    LetterModel model, {
     String? uploadFile,
   }) async {
     try {
       final formData = FormData.fromMap({
         "_method": "PUT",
 
-        "title": model.title,
-
-        "text": model.text ?? "",
-
-        "file": model.file ?? "none",
-
-        "date": model.date!.toIso8601String(),
-
-        "typer_id": model.typer_id,
-
-        "task_id": model.task_id,
+        "subject": model.subject,
+        "description": model.description ?? "",
+        "summary": model.summary ?? "",
+        "status": model.status,
+        "kind": model.kind,
 
         if (uploadFile != null)
           "upload_file": await MultipartFile.fromFile(uploadFile),
@@ -145,13 +132,13 @@ class MinuteService implements RecordService<MinuteModel> {
 
       final response = await ApiClient.dio.post(
         "$rootPath/$id",
-
         data: formData,
-
-        options: Options(contentType: "multipart/form-data"),
+        options: Options(
+          contentType: "multipart/form-data",
+        ),
       );
 
-      return MinuteModel.fromJson(response.data["data"]);
+      return LetterModel.fromJson(response.data["data"]);
     } catch (e) {
       if (e is DioException) {
         print(e.response?.data);

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/pages/minute_show_page.dart';
-import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
@@ -12,8 +12,9 @@ import '../../widgets/search/search_bar_widget.dart';
 
 class RecordsPage extends StatefulWidget {
   final String title;
+  final RecordService service;
 
-  const RecordsPage({super.key, required this.title});
+  const RecordsPage({super.key, required this.title, required this.service});
 
   @override
   State<RecordsPage> createState() => _RecordsPageState();
@@ -30,8 +31,6 @@ class _RecordsPageState extends State<RecordsPage> {
   //--------------------------------------------------
   // State
   //--------------------------------------------------
-
-  final MinuteService service = MinuteService();
 
   bool loading = true;
 
@@ -84,9 +83,13 @@ class _RecordsPageState extends State<RecordsPage> {
       records.clear();
     });
 
-    final result = await service.list(page: 1, sort: sort, filters: filters);
+    final result = await widget.service.list(
+      page: 1,
+      sort: sort,
+      filters: filters,
+    );
 
-    records = result.data.map((e) => e.toRecord()).toList();
+    records = result.data;
 
     totalCount = result.total;
     currentPage = result.currentPage;
@@ -106,13 +109,13 @@ class _RecordsPageState extends State<RecordsPage> {
 
     setState(() {});
 
-    final result = await service.list(
+    final result = await widget.service.list(
       page: currentPage + 1,
       sort: sort,
       filters: filters,
     );
 
-    records.addAll(result.data.map((e) => e.toRecord()));
+    records.addAll(result.data);
 
     currentPage = result.currentPage;
 
@@ -300,7 +303,7 @@ class _RecordsPageState extends State<RecordsPage> {
                               ),
                             );
 
-                            final success = await MinuteService().delete(
+                            final success = await widget.service.delete(
                               record.id,
                             );
 

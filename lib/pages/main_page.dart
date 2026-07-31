@@ -3,6 +3,8 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
+import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/services/minute_service.dart';
 import 'package:provider/provider.dart';
 
 import 'home_page.dart';
@@ -24,25 +26,25 @@ class MainPage extends StatelessWidget {
         title: "کارپوشه",
         icon: Icons.work_history,
         color: Colors.indigo,
-        page: const RecordsPage(title: "کارپوشه"),
+        // page: const RecordsPage(title: "کارپوشه", service: null),
       ),
       _MenuItem(
         title: "صورت جلسه ها",
         icon: Icons.edit_document,
         color: Colors.amber,
-        page: const RecordsPage(title: "صورت جلسه ها"),
+        page: const RecordsPage(title: "صورت جلسه ها", service: MinuteService()),
       ),
       _MenuItem(
         title: "نامه ها",
         icon: Icons.markunread_sharp,
         color: Colors.green,
-        page: const RecordsPage(title: "نامه ها"),
+        page: const RecordsPage(title: "نامه ها", service: LetterService()),
       ),
       _MenuItem(
         title: "فعالیت ها",
         icon: Icons.history_toggle_off,
         color: Colors.purple,
-        page: const RecordsPage(title: "فعالیت ها"),
+        // page: const RecordsPage(title: "فعالیت ها", service: null),
       ),
       _MenuItem(title: "گزارش", icon: Icons.bar_chart, color: Colors.red),
       _MenuItem(
@@ -54,7 +56,7 @@ class MainPage extends StatelessWidget {
         title: "دستور کار",
         icon: Icons.star_rounded,
         color: Colors.orange,
-        page: const RecordsPage(title: "دستور کار"),
+        // page: const RecordsPage(title: "دستور کار", service: null),
       ),
       _MenuItem(
         title: "اعلانات",
