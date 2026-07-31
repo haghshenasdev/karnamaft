@@ -6,13 +6,14 @@ class RecordActionBar extends StatelessWidget {
   final VoidCallback? onFile;
   final VoidCallback? onRefer;
   final VoidCallback? onMore;
+  final VoidCallback? onDelete;
 
   const RecordActionBar({
     super.key,
     this.onOpen,
     this.onFile,
     this.onRefer,
-    this.onMore,
+    this.onMore, this.onDelete,
   });
 
   @override
@@ -63,7 +64,7 @@ class RecordActionBar extends StatelessWidget {
                   onPrint: () {},
                   onPdf: () {},
                   onShare: () {},
-                  onDelete: () {},
+                  onDelete: onDelete,
                 );
               },
             );

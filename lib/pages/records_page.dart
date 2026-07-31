@@ -276,6 +276,62 @@ class _RecordsPageState extends State<RecordsPage> {
                           onRefer: () {},
 
                           onMore: () {},
+                          onDelete: () async {
+                            final confirmed = await showDeleteDialog(context);
+                            if (!confirmed) return;
+
+                            final messenger = ScaffoldMessenger.of(context);
+
+                            // بستن پیام‌های قبلی
+                            messenger.clearMaterialBanners();
+
+                            // نمایش بنر در حال حذف
+                            messenger.showMaterialBanner(
+                              const MaterialBanner(
+                                leading: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                                content: Text("در حال حذف رکورد..."),
+                                actions: [SizedBox.shrink()],
+                              ),
+                            );
+
+                            final success = await MinuteService().delete(
+                              record.id,
+                            );
+
+                            // بستن بنر
+                            messenger.clearMaterialBanners();
+
+                            if (!context.mounted) return;
+
+                            if (success) {
+                              setState(() {
+                                records.removeWhere((e) => e.id == record.id);
+                                totalCount--;
+                              });
+
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text("رکورد با موفقیت حذف شد."),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text("حذف رکورد انجام نشد."),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
                           keyword: filters["search"] ?? '',
                         );
                       },
@@ -455,5 +511,34 @@ class _RecordsPageState extends State<RecordsPage> {
         "${gregorian.year}-${gregorian.month.toString().padLeft(2, '0')}-${gregorian.day.toString().padLeft(2, '0')}";
 
     loadData();
+  }
+
+  Future<bool> showDeleteDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          icon: const Icon(Icons.delete_outline, color: Colors.red),
+          title: const Text('حذف'),
+          content: const Text(
+            'آیا از حذف این مورد مطمئن هستید؟\nاین عملیات قابل بازگشت نیست.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('انصراف'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('حذف'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result ?? false;
   }
 }

@@ -12,6 +12,7 @@ class RecordCard extends StatelessWidget {
   final VoidCallback? onFile;
   final VoidCallback? onRefer;
   final VoidCallback? onMore;
+  final VoidCallback? onDelete;
   final String keyword;
 
   const RecordCard({
@@ -22,6 +23,7 @@ class RecordCard extends StatelessWidget {
     this.onFile,
     this.onRefer,
     this.onMore,
+    this.onDelete,
     this.keyword = '',
   });
 
@@ -148,6 +150,7 @@ class RecordCard extends StatelessWidget {
                 onFile: onFile,
                 onRefer: onRefer,
                 onMore: onMore,
+                onDelete: onDelete,
               ),
             ],
           ),
