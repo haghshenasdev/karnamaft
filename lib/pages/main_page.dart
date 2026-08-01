@@ -5,8 +5,10 @@ import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
+import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/services/task_service.dart';
 import 'package:provider/provider.dart';
 
 import 'home_page.dart';
@@ -54,19 +56,24 @@ class MainPage extends StatelessWidget {
         title: "فعالیت ها",
         icon: Icons.history_toggle_off,
         color: Colors.purple,
+        page: RecordsPage(
+          title: "فعالیت ها",
+          service: const TaskService(),
+          showPageBuilder: (id, title) => TaskShowPage(id: id, title: title),
+        ),
         // page: const RecordsPage(title: "فعالیت ها", service: null),
-      ),
-      _MenuItem(title: "گزارش", icon: Icons.bar_chart, color: Colors.red),
-      _MenuItem(
-        title: "تقویم",
-        icon: Icons.calendar_month_rounded,
-        color: Colors.teal,
       ),
       _MenuItem(
         title: "دستور کار",
         icon: Icons.star_rounded,
         color: Colors.orange,
         // page: const RecordsPage(title: "دستور کار", service: null),
+      ),
+      _MenuItem(title: "گزارش", icon: Icons.bar_chart, color: Colors.red),
+      _MenuItem(
+        title: "تقویم",
+        icon: Icons.calendar_month_rounded,
+        color: Colors.teal,
       ),
       _MenuItem(
         title: "اعلانات",
