@@ -138,6 +138,7 @@ class TaskService implements RecordService<TaskModel> {
         "started_at": model.startedAt,
 
         "ended_at": model.endedAt,
+        "created_by": model.creator?.id,
 
         if (uploadFile != null)
           "upload_file": await MultipartFile.fromFile(uploadFile),
