@@ -3,11 +3,13 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/letter_show_page.dart';
 import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/pages/profile_page.dart';
+import 'package:karnamaft/pages/project_show_page.dart';
 import 'package:karnamaft/pages/records_page.dart';
 import 'package:karnamaft/pages/search_page.dart';
 import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/services/task_service.dart';
 import 'package:provider/provider.dart';
 
@@ -61,13 +63,16 @@ class MainPage extends StatelessWidget {
           service: const TaskService(),
           showPageBuilder: (id, title) => TaskShowPage(id: id, title: title),
         ),
-        // page: const RecordsPage(title: "فعالیت ها", service: null),
       ),
       _MenuItem(
         title: "دستور کار",
         icon: Icons.star_rounded,
         color: Colors.orange,
-        // page: const RecordsPage(title: "دستور کار", service: null),
+        page: RecordsPage(
+          title: "دستورکار",
+          service: const ProjectService(),
+          showPageBuilder: (id, title) => ProjectShowPage(id: id, title: title),
+        ),
       ),
       _MenuItem(title: "گزارش", icon: Icons.bar_chart, color: Colors.red),
       _MenuItem(
