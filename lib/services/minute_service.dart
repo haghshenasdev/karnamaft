@@ -19,15 +19,39 @@ class MinuteService implements RecordService<MinuteModel> {
   const MinuteService();
   final rootPath = "/admin/minutes";
 
-  Future<LoginResponse> create(LoginRequest request) async {
+  Future<MinuteModel> create(MinuteModel model, {String? uploadFile}) async {
     try {
+      final formData = FormData.fromMap({
+        "title": model.title,
+
+        "text": model.text ?? "",
+
+        "date": model.date != null ? model.date!.toIso8601String() : null,
+
+        "typer_id": model.typer_id,
+
+        "task_id": model.task_id,
+
+        if (uploadFile != null)
+          "file": await MultipartFile.fromFile(uploadFile),
+      });
+
       final response = await ApiClient.dio.post(
         rootPath,
-        data: request.toJson(),
+
+        data: formData,
+
+        options: Options(contentType: "multipart/form-data"),
       );
 
-      return LoginResponse.fromJson(response.data);
+      return MinuteModel.fromJson(response.data["data"]);
     } catch (e) {
+      if (e is DioException) {
+        print("CREATE MINUTE ERROR:");
+
+        print(e.response?.data);
+      }
+
       throw ApiErrorHandler.handle(e);
     }
   }

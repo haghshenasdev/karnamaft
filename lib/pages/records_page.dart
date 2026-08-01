@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/pages/minute_create_page.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 
@@ -348,7 +349,19 @@ class _RecordsPageState extends State<RecordsPage> {
       ),
 
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+
+            MaterialPageRoute(builder: (_) => const MinuteCreatePage()),
+          );
+
+          if (result != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("صورتجلسه با موفقیت ایجاد شد")),
+            );
+          }
+        },
 
         icon: const Icon(Icons.add),
 
