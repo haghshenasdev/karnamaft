@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/utils/date_helper.dart';
+import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
+import 'package:karnamaft/widgets/user_chip_list.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/minute_file_editor.dart';
@@ -49,6 +54,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
   late TextEditingController subjectController;
   late TextEditingController descriptionController;
   late TextEditingController summaryController;
+  late TextEditingController dateController;
 
   @override
   void initState() {
@@ -62,6 +68,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
     descriptionController.dispose();
     summaryController.dispose();
     super.dispose();
+    dateController.dispose();
   }
 
   Future<void> loadData() async {
@@ -85,6 +92,11 @@ class _LetterShowPageState extends State<LetterShowPage> {
         descriptionController = TextEditingController(text: result.description);
 
         summaryController = TextEditingController(text: result.summary);
+        dateController = TextEditingController(
+          text: result.created_at != null
+              ? DateFormat("yyyy-MM-dd").format(result.created_at!)
+              : "",
+        );
 
         loading = false;
       });
@@ -264,13 +276,37 @@ class _LetterShowPageState extends State<LetterShowPage> {
               RecordInfoCard(
                 children: [
                   RecordField(title: "شناسه", value: item.id.toString()),
+                  if (item.created_at != null)
+                    editing
+                        ? TextField(
+                            controller: dateController,
+
+                            readOnly: true,
+
+                            onTap: selectDate,
+
+                            decoration: InputDecoration(
+                              labelText: "تاریخ",
+
+                              border: const OutlineInputBorder(),
+
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.calendar_month),
+                                onPressed: selectDate,
+                              ),
+                            ),
+                          )
+                        : RecordField(
+                            title: "تاریخ",
+                            value: DateHelper.toDate(item.created_at),
+                          ),
 
                   RecordField(title: "وضعیت", value: item.recordStatus.title),
 
                   RecordField(title: "نوع", value: item.kindTitle ?? "-"),
 
                   if (item.organ != null)
-                    RecordField(title: "سازمان", value: item.organ!.name),
+                    RecordField(title: "گیرنده", value: item.organ!.name),
 
                   if (item.daftar != null)
                     RecordField(title: "دفتر", value: item.daftar!.name),
@@ -284,7 +320,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
               //--------------------------------------------------
               if (item.customers.isNotEmpty)
                 RecordChipList(
-                  title: "مشتریان",
+                  title: "صاحب حقیقی",
                   icon: Icons.people_outline,
                   items: item.customers.map((e) => e.name).toList(),
                 ),
@@ -294,17 +330,24 @@ class _LetterShowPageState extends State<LetterShowPage> {
               //--------------------------------------------------
               if (item.organsOwner.isNotEmpty)
                 RecordChipList(
-                  title: "ارگان های مرتبط",
+                  title: "صاحب حقوقی",
                   icon: Icons.account_balance_outlined,
                   items: item.organsOwner.map((e) => e.name).toList(),
                 ),
 
+              if (item.cartables.isNotEmpty)
+                UserChipList(
+                  title: "کارپوشه",
+                  icon: Icons.account_circle_outlined,
+                  users: item.cartables,
+                  token: user.token,
+                ),
               //--------------------------------------------------
               // Projects
               //--------------------------------------------------
               if (item.projects.isNotEmpty)
                 RecordChipList(
-                  title: "پروژه ها",
+                  title: "دستورکار ها",
                   icon: Icons.folder_outlined,
                   items: item.projects.map((e) => e.name).toList(),
                 ),
@@ -485,5 +528,24 @@ class _LetterShowPageState extends State<LetterShowPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> selectDate() async {
+    DateTime initial = letter?.created_at ?? DateTime.now();
+
+    final jalali = await showJalaliDropdownDialog(
+      context,
+      initialDate: Jalali.fromDateTime(initial),
+    );
+
+    if (jalali == null) {
+      return;
+    }
+
+    final gregorian = jalali.toDateTime();
+
+    setState(() {
+      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+    });
   }
 }

@@ -2,11 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
-import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/services/RecordService.dart';
-import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/record_card.dart';
-import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 import '../../widgets/search/search_bar_widget.dart';
 
@@ -282,7 +279,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
                           onFile: () {},
 
-                          onRefer: () {},
+                          onRefer: null,
 
                           onMore: () {},
                           onDelete: () async {
@@ -423,43 +420,11 @@ class _RecordsPageState extends State<RecordsPage> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-
-                    //--------------------------------------------------
-                    // Date
-                    //--------------------------------------------------
-                    ListTile(
-                      leading: const Icon(Icons.calendar_today),
-
-                      title: const Text("تاریخ"),
-
-                      subtitle: Text(filters["date"] ?? "همه تاریخ‌ها"),
-
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (filters.containsKey("date"))
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                setSheetState(() {
-                                  filters.remove("date");
-                                });
-                              },
-                            ),
-
-                          IconButton(
-                            icon: const Icon(Icons.edit_calendar),
-                            onPressed: () async {
-                              Navigator.pop(context);
-
-                              await pickDate();
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
+                    ...widget.service.filters.map((filter) {
+                      return filter.builder(context, filters, () {
+                        setSheetState(() {});
+                      }, filter.field);
+                    }),
                     const Divider(),
 
                     //--------------------------------------------------
@@ -470,10 +435,9 @@ class _RecordsPageState extends State<RecordsPage> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
-                              filters.remove("date");
-
+                              filters.clear();
                               loadData();
-
+                              setSheetState(() {});
                               Navigator.pop(context);
                             },
                             child: const Text("حذف فیلترها"),
@@ -502,24 +466,6 @@ class _RecordsPageState extends State<RecordsPage> {
         );
       },
     );
-  }
-
-  Future<void> pickDate() async {
-    final Jalali? date = await showJalaliDropdownDialog(context);
-
-    if (date == null) return;
-
-    // نمایش به کاربر (شمسی)
-    // searchController.text =
-    // "${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}";
-
-    // تبدیل به میلادی برای API
-    final gregorian = date.toDateTime();
-
-    filters["date"] =
-        "${gregorian.year}-${gregorian.month.toString().padLeft(2, '0')}-${gregorian.day.toString().padLeft(2, '0')}";
-
-    loadData();
   }
 
   Future<bool> showDeleteDialog(BuildContext context) async {

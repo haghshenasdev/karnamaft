@@ -1,12 +1,15 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/models/page_result.dart';
+import 'package:karnamaft/models/record_filter.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
+import 'package:karnamaft/widgets/date_record_filter.dart';
 
 import '../api/api_client.dart';
 import '../models/login_request.dart';
@@ -160,4 +163,27 @@ class MinuteService implements RecordService<MinuteModel> {
       throw ApiErrorHandler.handle(e);
     }
   }
+
+  @override
+  List<RecordFilter> get filters => [
+    RecordFilter(
+      key: "date",
+
+      field: "date",
+
+      title: "تاریخ ",
+
+      icon: Icons.calendar_today,
+
+      builder: (context, values, refresh, field) {
+        return DateRecordFilter(
+          values: values,
+
+          field: field,
+
+          onChanged: refresh,
+        );
+      },
+    ),
+  ];
 }

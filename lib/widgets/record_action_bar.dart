@@ -13,7 +13,8 @@ class RecordActionBar extends StatelessWidget {
     this.onOpen,
     this.onFile,
     this.onRefer,
-    this.onMore, this.onDelete,
+    this.onMore,
+    this.onDelete,
   });
 
   @override
@@ -40,12 +41,13 @@ class RecordActionBar extends StatelessWidget {
 
         const SizedBox(width: 8),
 
-        _ActionButton(
-          icon: Icons.reply_outlined,
-          label: "ارجاع",
-          color: color,
-          onTap: onRefer,
-        ),
+        if (onRefer != null)
+          _ActionButton(
+            icon: Icons.reply_outlined,
+            label: "ارجاع",
+            color: color,
+            onTap: onRefer,
+          ),
 
         const Spacer(),
 

@@ -26,8 +26,12 @@ class LetterModel {
   final List<LetterCustomer> customers;
 
   final List<LetterOrganOwner> organsOwner;
+  final List<LetterUser> cartables;
 
   final List<LetterProject> projects;
+
+  final DateTime? created_at;
+  final DateTime? updated_at;
 
   const LetterModel({
     required this.id,
@@ -44,6 +48,9 @@ class LetterModel {
     required this.customers,
     required this.organsOwner,
     required this.projects,
+    this.created_at,
+    this.updated_at,
+    required this.cartables,
   });
 
   RecordStatus get recordStatus {
@@ -83,6 +90,13 @@ class LetterModel {
       status: json["status"],
       kind: json["kind"],
 
+      created_at: json["created_at"] == null
+          ? null
+          : DateTime.parse(json["created_at"]),
+      updated_at: json["updated_at"] == null
+          ? null
+          : DateTime.parse(json["updated_at"]),
+
       user: json["user"] != null ? LetterUser.fromJson(json["user"]) : null,
 
       type: json["type"] != null ? LetterType.fromJson(json["type"]) : null,
@@ -105,6 +119,12 @@ class LetterModel {
                 .toList()
           : [],
 
+      cartables: json["cartables"] != null
+          ? (json["cartables"] as List)
+                .map((e) => LetterUser.fromJson(e))
+                .toList()
+          : [],
+
       projects: json["projects"] != null
           ? (json["projects"] as List)
                 .map((e) => LetterProject.fromJson(e))
@@ -121,7 +141,7 @@ class LetterModel {
       from: organ?.name,
       to: customers.isNotEmpty ? customers.first.name : null,
       number: id.toString(),
-      date: null,
+      date: created_at,
       tag: kindTitle,
       status: recordStatus,
       hasAttachment: (file ?? "").isNotEmpty,
@@ -131,6 +151,7 @@ class LetterModel {
   Map<String, dynamic> toJson() {
     return {
       "id": id,
+      "created_at": created_at?.toIso8601String(),
       "subject": subject,
       "description": description,
       "summary": summary,
@@ -148,6 +169,8 @@ class LetterModel {
     String? file,
     int? status,
     int? kind,
+    DateTime? created_at,
+    DateTime? updated_at,
   }) {
     return LetterModel(
       id: id ?? this.id,
@@ -163,13 +186,18 @@ class LetterModel {
       daftar: daftar,
       customers: customers,
       organsOwner: organsOwner,
+      cartables: cartables,
       projects: projects,
+      created_at: created_at ?? this.created_at,
+
+      updated_at: updated_at ?? this.updated_at,
     );
   }
 
   Map<String, dynamic> toUpdateJson() {
     return {
       "subject": subject,
+      "created_at": created_at?.toIso8601String(),
       "description": description,
       "summary": summary,
       "file": file,

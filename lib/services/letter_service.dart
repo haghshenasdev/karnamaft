@@ -1,13 +1,16 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/page_result.dart';
+import 'package:karnamaft/models/record_filter.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
+import 'package:karnamaft/widgets/date_record_filter.dart';
 
 class LetterService implements RecordService<LetterModel> {
   const LetterService();
@@ -121,6 +124,8 @@ class LetterService implements RecordService<LetterModel> {
         "summary": model.summary ?? "",
         "status": model.status,
         "kind": model.kind,
+        "daftar_id": model.daftar?.id,
+        "created_at": model.created_at,
 
         if (uploadFile != null)
           "upload_file": await MultipartFile.fromFile(uploadFile),
@@ -141,4 +146,51 @@ class LetterService implements RecordService<LetterModel> {
       throw ApiErrorHandler.handle(e);
     }
   }
+
+  @override
+  List<RecordFilter> get filters => [
+    RecordFilter(
+      key: "date",
+
+      field: "created_at",
+
+      title: "تاریخ ثبت",
+
+      icon: Icons.calendar_today,
+
+      builder: (context, values, refresh, field) {
+        return DateRecordFilter(
+          values: values,
+
+          field: field,
+
+          onChanged: refresh,
+        );
+      },
+    ),
+
+    // RecordFilter(
+    //   key: "status",
+    //   title: "وضعیت",
+    //   icon: Icons.flag,
+
+    //   builder: (context, values, refresh) {
+    //     return DropdownButtonFormField<String>(
+    //       value: values["status"],
+
+    //       items: [
+    //         "فعال",
+    //         "مختومه",
+    //       ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+
+    //       onChanged: (v) {
+    //         if (v != null) {
+    //           values["status"] = v;
+    //           refresh();
+    //         }
+    //       },
+    //     );
+    //   },
+    // ),
+  ];
 }
