@@ -5,7 +5,6 @@ enum SearchType {
   note,
   letter,
   meeting,
-  resolution,
   activity,
   agenda,
   workspace,
@@ -22,9 +21,6 @@ extension SearchTypeExtension on SearchType {
 
       case SearchType.meeting:
         return "صورت جلسه";
-
-      case SearchType.resolution:
-        return "مصوبه";
 
       case SearchType.activity:
         return "فعالیت";
@@ -48,9 +44,6 @@ extension SearchTypeExtension on SearchType {
       case SearchType.meeting:
         return Icons.groups;
 
-      case SearchType.resolution:
-        return Icons.gavel;
-
       case SearchType.activity:
         return Icons.task;
 
@@ -72,9 +65,6 @@ extension SearchTypeExtension on SearchType {
 
       case SearchType.meeting:
         return Colors.orange;
-
-      case SearchType.resolution:
-        return Colors.red;
 
       case SearchType.activity:
         return Colors.purple;

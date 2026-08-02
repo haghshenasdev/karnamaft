@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/search_item.dart';
+import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/search/highlight_text.dart';
 
 class SearchResultCard extends StatelessWidget {
@@ -133,7 +134,7 @@ class SearchResultCard extends StatelessWidget {
                   const SizedBox(height: 18),
 
                   Text(
-                    _formatDate(item.date),
+                    DateHelper.toDate(item.date),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],

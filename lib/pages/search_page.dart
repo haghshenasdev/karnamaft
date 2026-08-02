@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/models/search_item.dart';
 import 'package:karnamaft/models/search_page_mapper.dart';
 import 'package:karnamaft/repository/search_repository.dart';
+import 'package:karnamaft/services/history_service.dart';
 import 'package:karnamaft/widgets/search/empty_widget.dart';
 import 'package:karnamaft/widgets/search/filter_bar.dart';
 import 'package:karnamaft/widgets/search/group_header.dart';
@@ -38,12 +39,9 @@ class _SearchPageState extends State<SearchPage> {
   //
   //------------------------------------------------
 
-  final List<String> recentSearches = [
-    "جلسه شورای آموزشی",
-    "نامه ریاست",
-    "مصوبه بودجه",
-    "کارپوشه مالی",
-  ];
+  List<String> recentSearches = [];
+
+  static const String searchHistoryKey = "search_history";
 
   //------------------------------------------------
   //
@@ -56,7 +54,6 @@ class _SearchPageState extends State<SearchPage> {
     "صورت جلسه",
     "یادداشت",
     "فعالیت",
-    "مصوبه",
     "بودجه",
     "دانشگاه",
     "هیئت علمی",
@@ -94,10 +91,20 @@ class _SearchPageState extends State<SearchPage> {
   //--------------------------------------------------
   // Init
   //--------------------------------------------------
+  Future<void> _loadHistory() async {
+    final data = await HistoryService.get(searchHistoryKey);
+
+    if (!mounted) return;
+
+    setState(() {
+      recentSearches = data;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    _loadHistory();
 
     controller.addListener(() {
       _searchTimer?.cancel();
@@ -169,6 +176,16 @@ class _SearchPageState extends State<SearchPage> {
         loading = false;
       });
     }
+  }
+
+  Future<void> _saveSearchHistory() async {
+    final keyword = controller.text.trim();
+
+    if (keyword.isEmpty) return;
+
+    await HistoryService.add(searchHistoryKey, keyword);
+
+    await _loadHistory();
   }
 
   Future<void> loadMore(SearchType type) async {
@@ -316,16 +333,30 @@ class _SearchPageState extends State<SearchPage> {
                         //----------------------------------------
                         // Recent
                         //----------------------------------------
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(20, 18, 20, 10),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
 
-                          child: Text(
-                            "آخرین جستجوها",
+                          child: Row(
+                            children: [
+                              const Text(
+                                "آخرین جستجوها",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
 
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                              const Spacer(),
+
+                              TextButton(
+                                onPressed: () async {
+                                  await HistoryService.clear(searchHistoryKey);
+
+                                  await _loadHistory();
+                                },
+                                child: const Text("پاک کردن"),
+                              ),
+                            ],
                           ),
                         ),
 
@@ -557,7 +588,8 @@ class _SearchPageState extends State<SearchPage> {
 
                                                   keyword: controller.text,
 
-                                                  onTap: () {
+                                                  onTap: () async {
+                                                    await _saveSearchHistory();
                                                     Navigator.push(
                                                       context,
 
