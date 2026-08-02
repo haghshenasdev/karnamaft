@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/models/login_request.dart';
+import 'package:karnamaft/services/minute_ps_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
@@ -21,6 +24,8 @@ class MinuteCreatePage extends StatefulWidget {
 class _MinuteCreatePageState extends State<MinuteCreatePage> {
   final MinuteService _service = const MinuteService();
 
+  Uint8List? selectedFileBytes;
+
   //--------------------------------------------------
   // Controllers
   //--------------------------------------------------
@@ -36,6 +41,10 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
   //--------------------------------------------------
 
   String? selectedFile;
+  final MinutePsService _psService = const MinutePsService();
+  bool processingFile = false;
+
+  String processingMessage = "";
 
   bool saving = false;
 
@@ -115,7 +124,9 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
 
         typer_id: typerId,
 
-        task_id: taskId, organs: [], group: [],
+        task_id: taskId,
+        organs: [],
+        group: [],
       );
 
       final result = await _service.create(model);
@@ -158,8 +169,61 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
                 setState(() {
                   selectedFile = value;
                 });
+
+                if (value != null && selectedFileBytes == null) {
+                  // اندروید و ویندوز
+                  Future.microtask(() {
+                    processSelectedFile();
+                  });
+                }
+              },
+
+              onBytesChanged: (bytes) {
+                selectedFileBytes = bytes;
+
+                // وب
+                if (bytes != null) {
+                  Future.microtask(() {
+                    processSelectedFile();
+                  });
+                }
               },
             ),
+
+            const SizedBox(height: 12),
+
+            if (processingFile)
+              Container(
+                padding: const EdgeInsets.all(16),
+
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+
+                  borderRadius: BorderRadius.circular(14),
+                ),
+
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 24,
+
+                      height: 24,
+
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    Expanded(
+                      child: Text(
+                        processingMessage,
+
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             const SizedBox(height: 20),
 
@@ -371,5 +435,42 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
         ),
       ),
     );
+  }
+
+  Future<void> processSelectedFile() async {
+    setState(() {
+      processingFile = true;
+      processingMessage = "در حال خواندن متن فایل...";
+    });
+
+    try {
+      final result = await _psService.processFile(
+        filePath: selectedFile,
+        bytes: selectedFileBytes,
+        fileName: selectedFile,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        titleController.text = result.title;
+        textController.text = result.text;
+        processingMessage = "پردازش فایل با موفقیت انجام شد";
+      });
+    } catch (e) {
+      setState(() {
+        processingMessage = "خطا در پردازش فایل";
+        error = e.toString();
+      });
+    } finally {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted) return;
+
+        setState(() {
+          processingFile = false;
+          processingMessage = "";
+        });
+      });
+    }
   }
 }

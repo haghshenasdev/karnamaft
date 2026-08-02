@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -8,38 +7,48 @@ class MinuteFileEditor extends StatelessWidget {
 
   final ValueChanged<String?> onChanged;
 
+  final ValueChanged<Uint8List?>? onBytesChanged;
+
   const MinuteFileEditor({
     super.key,
-    required this.file,
-    required this.onChanged,
-  });
 
+    required this.file,
+
+    required this.onChanged,
+
+    this.onBytesChanged,
+  });
   Future<void> pickFile(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
+
       allowedExtensions: ["pdf", "jpg", "jpeg", "png", "doc", "docx"],
+
+      withData: kIsWeb,
     );
 
     if (result == null) {
       return;
     }
 
-    final path = result.files.single.path;
+    final picked = result.files.single;
 
-    if (path != null) {
-      final size = File(path).lengthSync();
+    if (picked.size > 20 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("حجم فایل نباید بیشتر از 20 مگابایت باشد"),
+        ),
+      );
 
-      if (size > 20 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("حجم فایل نباید بیشتر از 20 مگابایت باشد"),
-          ),
-        );
+      return;
+    }
 
-        return;
-      }
+    if (kIsWeb) {
+      onChanged(picked.name);
 
-      onChanged(path);
+      onBytesChanged?.call(picked.bytes);
+    } else {
+      onChanged(picked.path!);
     }
   }
 
