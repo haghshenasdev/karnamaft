@@ -79,6 +79,17 @@ class _SearchPageState extends State<SearchPage> {
   //--------------------------------------------------
 
   final Map<SearchType, bool> expanded = {};
+  final Map<SearchType, int> pages = {
+    SearchType.letter: 1,
+    SearchType.meeting: 1,
+    SearchType.activity: 1,
+    SearchType.agenda: 1,
+    SearchType.workspace: 1,
+  };
+
+  final Map<SearchType, bool> hasMore = {};
+
+  final Map<SearchType, bool> loadingMore = {};
 
   //--------------------------------------------------
   // Init
@@ -123,6 +134,8 @@ class _SearchPageState extends State<SearchPage> {
       return;
     }
 
+    pages.updateAll((key, value) => 1);
+
     setState(() {
       loading = true;
     });
@@ -130,13 +143,15 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final data = await SearchRepository.search(
         keyword: keyword,
-
+        pages: pages,
+        hasMore: hasMore,
         filter: selectedType,
       );
 
       results = data;
 
       groups = SearchRepository.groupByType(results);
+      setState(() {});
 
       for (final type in groups.keys) {
         expanded.putIfAbsent(type, () => true);
@@ -153,6 +168,50 @@ class _SearchPageState extends State<SearchPage> {
       setState(() {
         loading = false;
       });
+    }
+  }
+
+  Future<void> loadMore(SearchType type) async {
+    if (loadingMore[type] == true) return;
+
+    if (hasMore[type] == false) return;
+
+    setState(() {
+      loadingMore[type] = true;
+    });
+
+    final currentPage = pages[type] ?? 1;
+
+    final nextPage = currentPage + 1;
+
+    try {
+      final data = await SearchRepository.search(
+        keyword: controller.text.trim(),
+
+        pages: {...pages, type: nextPage},
+
+        hasMore: hasMore,
+
+        filter: type,
+      );
+
+      final newItems = data.where((e) => e.type == type).toList();
+
+      setState(() {
+        pages[type] = nextPage;
+
+        groups[type] = [...(groups[type] ?? []), ...newItems];
+
+        results = groups.values.expand((items) => items).toList();
+      });
+    } catch (e) {
+      debugPrint("LOAD MORE ERROR $type : $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          loadingMore[type] = false;
+        });
+      }
     }
   }
 
@@ -517,7 +576,38 @@ class _SearchPageState extends State<SearchPage> {
                                             }),
                                           ),
                                   ),
+                                  if (hasMore[type] ?? false)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 22,
+                                        vertical: 8,
+                                      ),
 
+                                      child: FilledButton.tonalIcon(
+                                        onPressed: loadingMore[type] == true
+                                            ? null
+                                            : () async {
+                                                await loadMore(type);
+                                              },
+
+                                        icon: loadingMore[type] == true
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : const Icon(Icons.expand_more),
+
+                                        label: Text(
+                                          loadingMore[type] == true
+                                              ? "در حال دریافت..."
+                                              : "نمایش بیشتر",
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 10),
 
                                   Padding(

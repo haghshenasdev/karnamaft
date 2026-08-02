@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:karnamaft/models/search_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/services/letter_service.dart';
@@ -10,6 +11,8 @@ class SearchRepository {
     required String keyword,
 
     SearchType? filter,
+    required Map<SearchType, bool> hasMore,
+    Map<SearchType, int>? pages,
   }) async {
     final List<SearchItem> results = [];
 
@@ -35,10 +38,11 @@ class SearchRepository {
       }
 
       final response = await source.$2.list(
-        page: 1,
+        page: pages?[source.$1] ?? 1,
         sort: "-id",
         filters: filters,
       );
+      hasMore[source.$1] = response.hasNextPage;
 
       results.addAll(
         response.data.map((record) => SearchItem.fromRecord(record, source.$1)),
