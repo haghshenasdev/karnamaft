@@ -1,14 +1,7 @@
 import 'package:flutter/material.dart';
 import 'record_item.dart';
 
-enum SearchType {
-  note,
-  letter,
-  meeting,
-  activity,
-  agenda,
-  workspace,
-}
+enum SearchType { note, letter, meeting, activity, agenda, workspace }
 
 extension SearchTypeExtension on SearchType {
   String get title {
@@ -39,16 +32,16 @@ extension SearchTypeExtension on SearchType {
         return Icons.edit_note;
 
       case SearchType.letter:
-        return Icons.mail;
+        return Icons.markunread_sharp;
 
       case SearchType.meeting:
-        return Icons.groups;
+        return Icons.edit_document;
 
       case SearchType.activity:
-        return Icons.task;
+        return Icons.history_toggle_off;
 
       case SearchType.agenda:
-        return Icons.event_note;
+        return Icons.star_rounded;
 
       case SearchType.workspace:
         return Icons.work;
@@ -64,13 +57,13 @@ extension SearchTypeExtension on SearchType {
         return Colors.green;
 
       case SearchType.meeting:
-        return Colors.orange;
+        return Colors.amber;
 
       case SearchType.activity:
         return Colors.purple;
 
       case SearchType.agenda:
-        return Colors.teal;
+        return Colors.orange;
 
       case SearchType.workspace:
         return Colors.indigo;
