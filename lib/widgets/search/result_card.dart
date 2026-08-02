@@ -92,7 +92,7 @@ class SearchResultCard extends StatelessWidget {
                         Chip(
                           visualDensity: VisualDensity.compact,
                           avatar: const Icon(Icons.search, size: 16),
-                          label: Text("در ${item.matchedField.title}"),
+                          label: Text("در ${item.matchedField.label}"),
                         ),
 
                         Chip(

@@ -70,6 +70,10 @@ class MinuteService implements RecordService<MinuteModel> {
         query["sort"] = sort;
       }
 
+      if (search != null && search.isNotEmpty) {
+        query["search"] = search;
+      }
+
       if (filters != null) {
         filters.forEach((key, value) {
           if (value.isNotEmpty) {

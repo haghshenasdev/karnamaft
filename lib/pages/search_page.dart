@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/search_item.dart';
+import 'package:karnamaft/models/search_page_mapper.dart';
 import 'package:karnamaft/repository/search_repository.dart';
 import 'package:karnamaft/widgets/search/empty_widget.dart';
 import 'package:karnamaft/widgets/search/filter_bar.dart';
@@ -20,6 +23,8 @@ class _SearchPageState extends State<SearchPage> {
   //--------------------------------------------------
 
   final TextEditingController controller = TextEditingController();
+  bool loading = false;
+  Timer? _searchTimer;
 
   //--------------------------------------------------
   // Filter
@@ -83,7 +88,13 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
 
-    controller.addListener(_search);
+    controller.addListener(() {
+      _searchTimer?.cancel();
+
+      _searchTimer = Timer(const Duration(milliseconds: 500), () {
+        _search();
+      });
+    });
 
     _search();
   }
@@ -91,7 +102,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     controller.dispose();
-
+    _searchTimer?.cancel();
     super.dispose();
   }
 
@@ -99,19 +110,50 @@ class _SearchPageState extends State<SearchPage> {
   // Search
   //--------------------------------------------------
 
-  void _search() {
-    results = SearchRepository.search(
-      keyword: controller.text,
-      filter: selectedType,
-    );
+  Future<void> _search() async {
+    final keyword = controller.text.trim();
 
-    groups = SearchRepository.groupByType(results);
+    if (keyword.isEmpty) {
+      setState(() {
+        results = [];
 
-    for (final type in groups.keys) {
-      expanded.putIfAbsent(type, () => true);
+        groups = {};
+      });
+
+      return;
     }
 
-    setState(() {});
+    setState(() {
+      loading = true;
+    });
+
+    try {
+      final data = await SearchRepository.search(
+        keyword: keyword,
+
+        filter: selectedType,
+      );
+
+      results = data;
+
+      groups = SearchRepository.groupByType(results);
+
+      for (final type in groups.keys) {
+        expanded.putIfAbsent(type, () => true);
+      }
+    } catch (e) {
+      debugPrint("SEARCH ERROR: $e");
+
+      results = [];
+
+      groups = {};
+    }
+
+    if (mounted) {
+      setState(() {
+        loading = false;
+      });
+    }
   }
 
   void _searchByText(String text) {
@@ -289,6 +331,8 @@ class _SearchPageState extends State<SearchPage> {
                         ),
                       ],
                     )
+                  : loading
+                  ? const Center(child: CircularProgressIndicator())
                   : results.isEmpty
                   ? EmptySearchWidget(keyword: controller.text)
                   : Column(
@@ -414,56 +458,63 @@ class _SearchPageState extends State<SearchPage> {
                                         : Column(
                                             key: ValueKey(type),
 
-                                            children: List.generate(
-                                              items.length,
-                                              (index) {
-                                                final item = items[index];
+                                            children: List.generate(items.length, (
+                                              index,
+                                            ) {
+                                              final item = items[index];
 
-                                                return TweenAnimationBuilder<
-                                                  double
-                                                >(
-                                                  tween: Tween(
-                                                    begin: 0,
-                                                    end: 1,
-                                                  ),
+                                              return TweenAnimationBuilder<
+                                                double
+                                              >(
+                                                tween: Tween(begin: 0, end: 1),
 
-                                                  duration: Duration(
-                                                    milliseconds:
-                                                        120 + (index * 40),
-                                                  ),
+                                                duration: Duration(
+                                                  milliseconds:
+                                                      120 + (index * 40),
+                                                ),
 
-                                                  curve: Curves.easeOut,
+                                                curve: Curves.easeOut,
 
-                                                  builder:
-                                                      (context, value, child) {
-                                                        return Opacity(
-                                                          opacity: value,
+                                                builder:
+                                                    (context, value, child) {
+                                                      return Opacity(
+                                                        opacity: value,
 
-                                                          child:
-                                                              Transform.translate(
-                                                                offset: Offset(
-                                                                  0,
-                                                                  (1 - value) *
-                                                                      20,
-                                                                ),
-
-                                                                child: child,
+                                                        child:
+                                                            Transform.translate(
+                                                              offset: Offset(
+                                                                0,
+                                                                (1 - value) *
+                                                                    20,
                                                               ),
-                                                        );
-                                                      },
 
-                                                  child: SearchResultCard(
-                                                    item: item,
-
-                                                    keyword: controller.text,
-
-                                                    onTap: () {
-                                                      _openResult(item);
+                                                              child: child,
+                                                            ),
+                                                      );
                                                     },
-                                                  ),
-                                                );
-                                              },
-                                            ),
+
+                                                child: SearchResultCard(
+                                                  item: item,
+
+                                                  keyword: controller.text,
+
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+
+                                                      MaterialPageRoute(
+                                                        builder: (_) {
+                                                          return SearchPageMapper.open(
+                                                            context,
+                                                            item,
+                                                          );
+                                                        },
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              );
+                                            }),
                                           ),
                                   ),
 

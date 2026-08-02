@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'record_item.dart';
 
 enum SearchType {
   note,
@@ -39,25 +40,25 @@ extension SearchTypeExtension on SearchType {
   IconData get icon {
     switch (this) {
       case SearchType.note:
-        return Icons.edit_note_rounded;
+        return Icons.edit_note;
 
       case SearchType.letter:
-        return Icons.mark_email_read_outlined;
+        return Icons.mail;
 
       case SearchType.meeting:
-        return Icons.groups_rounded;
+        return Icons.groups;
 
       case SearchType.resolution:
-        return Icons.gavel_rounded;
+        return Icons.gavel;
 
       case SearchType.activity:
-        return Icons.task_alt_rounded;
+        return Icons.task;
 
       case SearchType.agenda:
-        return Icons.event_note_rounded;
+        return Icons.event_note;
 
       case SearchType.workspace:
-        return Icons.work_history_rounded;
+        return Icons.work;
     }
   }
 
@@ -90,7 +91,7 @@ extension SearchTypeExtension on SearchType {
 enum MatchField { title, subtitle, description, number }
 
 extension MatchFieldExtension on MatchField {
-  String get title {
+  String get label {
     switch (this) {
       case MatchField.title:
         return "عنوان";
@@ -126,62 +127,39 @@ class SearchItem {
 
   const SearchItem({
     required this.id,
+
     required this.type,
+
     required this.title,
+
     required this.subtitle,
+
     required this.description,
+
     required this.number,
+
     required this.date,
+
     required this.matchedField,
   });
 
-  SearchItem copyWith({
-    int? id,
-    SearchType? type,
-    String? title,
-    String? subtitle,
-    String? description,
-    String? number,
-    DateTime? date,
-    MatchField? matchedField,
-  }) {
+  factory SearchItem.fromRecord(RecordItem record, SearchType type) {
     return SearchItem(
-      id: id ?? this.id,
-      type: type ?? this.type,
-      title: title ?? this.title,
-      subtitle: subtitle ?? this.subtitle,
-      description: description ?? this.description,
-      number: number ?? this.number,
-      date: date ?? this.date,
-      matchedField: matchedField ?? this.matchedField,
-    );
-  }
+      id: record.id,
 
-  factory SearchItem.fromJson(Map<String, dynamic> json) {
-    return SearchItem(
-      id: json["id"],
-      type: SearchType.values.firstWhere((e) => e.name == json["type"]),
-      title: json["title"] ?? "",
-      subtitle: json["subtitle"] ?? "",
-      description: json["description"] ?? "",
-      number: json["number"] ?? "",
-      date: DateTime.parse(json["date"]),
-      matchedField: MatchField.values.firstWhere(
-        (e) => e.name == json["matched_field"],
-      ),
-    );
-  }
+      type: type,
 
-  Map<String, dynamic> toJson() {
-    return {
-      "id": id,
-      "type": type.name,
-      "title": title,
-      "subtitle": subtitle,
-      "description": description,
-      "number": number,
-      "date": date.toIso8601String(),
-      "matched_field": matchedField.name,
-    };
+      title: record.title,
+
+      subtitle: record.from ?? "",
+
+      description: record.description ?? "",
+
+      number: record.number ?? "",
+
+      date: record.date ?? DateTime.now(),
+
+      matchedField: MatchField.title,
+    );
   }
 }

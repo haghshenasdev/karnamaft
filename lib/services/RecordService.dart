@@ -4,10 +4,14 @@ import 'package:karnamaft/models/record_item.dart';
 
 abstract class RecordService<T> {
   List<RecordFilter> get filters;
-  
+
   Future<PageResult<RecordItem>> list({
     int page = 1,
+
+    String? search,
+
     String? sort,
+
     Map<String, String>? filters,
   });
 
