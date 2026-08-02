@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/home_page.dart';
@@ -372,22 +373,39 @@ class MainPage extends StatelessWidget {
 
                           child: CircleAvatar(
                             radius: 32,
-
                             backgroundColor: const Color(0xffe9eef6),
+                            child: ClipOval(
+                              child: user.avatar.isEmpty
+                                  ? const Icon(
+                                      Icons.person,
+                                      color: Colors.blueGrey,
+                                      size: 30,
+                                    )
+                                  : CachedNetworkImage(
+                                      imageUrl:
+                                          "https://hajideligani.ir/api/me/avatar",
 
-                            backgroundImage: user.avatar.isNotEmpty
-                                ? NetworkImage(
-                                    "https://hajideligani.ir/api/me/avatar",
+                                      httpHeaders: {
+                                        "Authorization": "Bearer ${user.token}",
+                                      },
 
-                                    headers: {
-                                      "Authorization": "Bearer ${user.token}",
-                                    },
-                                  )
-                                : null,
+                                      width: 56,
+                                      height: 56,
+                                      fit: BoxFit.cover,
 
-                            child: user.avatar.isEmpty
-                                ? const Icon(Icons.person, size: 35)
-                                : null,
+                                      placeholder: (_, __) => const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+
+                                      errorWidget: (_, __, ___) => const Icon(
+                                        Icons.person,
+                                        color: Colors.blueGrey,
+                                        size: 30,
+                                      ),
+                                    ),
+                            ),
                           ),
                         );
                       },

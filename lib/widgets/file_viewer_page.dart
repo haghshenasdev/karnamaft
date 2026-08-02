@@ -465,7 +465,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
         files: [
           XFile.fromData(
             bytes,
-            name: widget.fileName,
+            name: "${widget.title}.${widget.fileName}",
             mimeType: _getMimeType(widget.fileName),
           ),
         ],
