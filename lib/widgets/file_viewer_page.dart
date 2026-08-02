@@ -461,7 +461,15 @@ class _FileViewerPageState extends State<FileViewerPage> {
 
   Future<void> _share(Uint8List bytes) async {
     await SharePlus.instance.share(
-      ShareParams(files: [XFile.fromData(bytes, name: widget.fileName)]),
+      ShareParams(
+        files: [
+          XFile.fromData(
+            bytes,
+            name: widget.fileName,
+            mimeType: _getMimeType(widget.fileName),
+          ),
+        ],
+      ),
     );
   }
 
@@ -523,5 +531,57 @@ class _FileViewerPageState extends State<FileViewerPage> {
         bytes[1] == 0x50 &&
         bytes[2] == 0x44 &&
         bytes[3] == 0x46;
+  }
+
+  String? _getMimeType(String fileName) {
+    final ext = fileName.toLowerCase().split('.').last;
+
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+
+      case 'png':
+        return 'image/png';
+
+      case 'gif':
+        return 'image/gif';
+
+      case 'webp':
+        return 'image/webp';
+
+      case 'bmp':
+        return 'image/bmp';
+
+      case 'doc':
+        return 'application/msword';
+
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      case 'xls':
+        return 'application/vnd.ms-excel';
+
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+      case 'txt':
+        return 'text/plain';
+
+      case 'zip':
+        return 'application/zip';
+
+      default:
+        return 'application/octet-stream';
+    }
   }
 }
