@@ -1,4 +1,5 @@
 import 'package:karnamaft/models/minute_relation.dart';
+import 'package:karnamaft/models/minutes_group_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 
 class MinuteModel {
@@ -20,7 +21,7 @@ class MinuteModel {
 
   final List<OrganModel>? organs;
 
-  final List<GroupModel> group;
+  final List<MinutesGroupModel>? group;
 
   const MinuteModel({
     required this.id,
@@ -64,7 +65,7 @@ class MinuteModel {
           : [],
 
       group: json['group'] != null
-          ? (json['group'] as List).map((e) => GroupModel.fromJson(e)).toList()
+          ? (json['group'] as List).map((e) => MinutesGroupModel.fromJson(e)).toList()
           : [],
     );
   }
@@ -118,6 +119,7 @@ class MinuteModel {
     DateTime? created_at,
     DateTime? updated_at,
     List<OrganModel>? organs,
+    List<MinutesGroupModel>? group,
   }) {
     return MinuteModel(
       id: id ?? this.id,

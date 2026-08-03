@@ -21,34 +21,55 @@ class MinuteService implements RecordService<MinuteModel> {
 
   Future<MinuteModel> create(MinuteModel model, {String? uploadFile}) async {
     try {
-      final formData = FormData.fromMap({
-        "title": model.title,
+      final formData = FormData();
 
-        "text": model.text ?? "",
+      formData.fields.addAll([
+        MapEntry("title", model.title),
 
-        "date": model.date != null ? model.date!.toIso8601String() : null,
+        MapEntry("text", model.text ?? ""),
 
-        "typer_id": model.typer_id,
+        MapEntry(
+          "date",
+          model.date != null ? model.date!.toIso8601String() : "",
+        ),
 
-        "task_id": model.task_id,
+        if (model.task_id != null)
+          MapEntry("task_id", model.task_id.toString()),
+      ]);
 
-        if (uploadFile != null)
-          "file": await MultipartFile.fromFile(uploadFile),
-      });
+      // امضا کنندگان
+      for (final organ in model.organs ?? []) {
+        formData.fields.add(MapEntry("organ_ids[]", organ.id.toString()));
+      }
+
+      // دسته بندی ها
+      for (final group in model.group ?? []) {
+        formData.fields.add(MapEntry("group_ids[]", group.id.toString()));
+      }
+
+      // فایل
+      if (uploadFile != null) {
+        formData.files.add(
+          MapEntry("upload_file", await MultipartFile.fromFile(uploadFile)),
+        );
+      }
 
       final response = await ApiClient.dio.post(
         rootPath,
 
         data: formData,
 
-        options: Options(contentType: "multipart/form-data"),
+        options: Options(
+          contentType: "multipart/form-data",
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
       );
 
       return MinuteModel.fromJson(response.data["data"]);
     } catch (e) {
       if (e is DioException) {
         print("CREATE MINUTE ERROR:");
-
         print(e.response?.data);
       }
 

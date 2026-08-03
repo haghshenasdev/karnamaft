@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/minute_model.dart';
 import 'package:karnamaft/models/minute_relation.dart';
+import 'package:karnamaft/models/minutes_group_model.dart';
+import 'package:karnamaft/models/minutes_group_service.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/models/task_model.dart';
@@ -37,6 +39,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   UserController get user => context.read<UserController>();
   List<OrganModel> selectedOrgans = [];
   TaskCreator? selectedTask;
+  List<MinutesGroupModel> selectedGroups = [];
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
@@ -106,6 +109,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               : "",
         );
         selectedOrgans = List.from(result.organs!);
+        selectedGroups = List.from(result.group!);
         loading = false;
       });
     } catch (e) {
@@ -399,11 +403,48 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                       icon: Icons.business,
                       items: item.organs!.map((e) => e.name).toList(),
                     ),
-                  if (item.group.isNotEmpty)
+                  if (editing)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "دسته بندی",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle),
+                              onPressed: selectGroup,
+                            ),
+                          ],
+                        ),
+
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: selectedGroups.map((e) {
+                            return Chip(
+                              label: Text(e.name),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                              onDeleted: () {
+                                setState(() {
+                                  selectedGroups.removeWhere(
+                                    (x) => x.id == e.id,
+                                  );
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    )
+                  else
                     RecordChipList(
                       title: "دسته بندی",
                       icon: Icons.sell_outlined,
-                      items: item.group.map((e) => e.name).toList(),
+                      items: item.group!.map((e) => e.name).toList(),
                     ),
                   if (item.created_at != null)
                     RecordField(
@@ -563,6 +604,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
           : null,
       file: minute!.file,
       organs: selectedOrgans,
+      group: selectedGroups,
       task_id: selectedTask?.id,
     );
 
@@ -674,6 +716,32 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
     setState(() {
       selectedTask = TaskCreator(id: item.id, name: item.title);
+    });
+  }
+
+  Future<void> selectGroup() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const MinutesGroupService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب دسته بندی",
+          multiSelect: true,
+          historyKey: "minute_groups",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final items = result as List<RecordItem>;
+
+    setState(() {
+      for (final item in items) {
+        if (selectedGroups.every((e) => e.id != item.id)) {
+          selectedGroups.add(MinutesGroupModel(id: item.id, name: item.title));
+        }
+      }
     });
   }
 }

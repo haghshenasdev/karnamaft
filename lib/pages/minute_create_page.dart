@@ -3,11 +3,19 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/models/login_request.dart';
+import 'package:karnamaft/models/minute_relation.dart';
+import 'package:karnamaft/models/minutes_group_model.dart';
+import 'package:karnamaft/models/minutes_group_service.dart';
+import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/minute_ps_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/services/organ_service.dart';
+import 'package:karnamaft/services/task_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
+import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:karnamaft/widgets/show/record_info_card.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
@@ -50,9 +58,11 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
 
   DateTime selectedDate = DateTime.now();
 
-  int? typerId;
+  List<OrganModel> selectedOrgans = [];
 
-  int? taskId;
+  TaskCreator? selectedTask;
+
+  List<MinutesGroupModel> selectedGroups = [];
 
   String? error;
 
@@ -65,6 +75,13 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
     dateController.dispose();
 
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
   }
 
   //--------------------------------------------------
@@ -121,15 +138,12 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
         date: selectedDate,
 
         file: selectedFile,
-
-        typer_id: typerId,
-
-        task_id: taskId,
-        organs: [],
-        group: [],
+        task_id: selectedTask?.id,
+        organs: selectedOrgans,
+        group: selectedGroups,
       );
 
-      final result = await _service.create(model);
+      final result = await _service.create(model, uploadFile: selectedFile);
 
       if (!mounted) return;
 
@@ -232,19 +246,24 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
             //--------------------------------------------------
             TextField(
               controller: titleController,
-
               minLines: 1,
-
               maxLines: 4,
-
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: "عنوان",
-
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-
                 prefixIcon: const Icon(Icons.title),
+                suffixIcon: titleController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          titleController.clear();
+                          setState(() {});
+                        },
+                      ),
               ),
             ),
 
@@ -255,25 +274,28 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
             //--------------------------------------------------
             TextField(
               controller: textController,
-
               minLines: 5,
-
               maxLines: 15,
-
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 labelText: "متن صورتجلسه",
-
                 alignLabelWithHint: true,
-
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-
                 prefixIcon: const Padding(
                   padding: EdgeInsets.only(bottom: 120),
-
                   child: Icon(Icons.notes),
                 ),
+                suffixIcon: textController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          textController.clear();
+                          setState(() {});
+                        },
+                      ),
               ),
             ),
 
@@ -308,82 +330,108 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
 
                 const SizedBox(height: 16),
 
-                //--------------------------------------------------
-                // Task
-                //--------------------------------------------------
-                InkWell(
-                  onTap: () {
-                    // اینجا بعداً انتخاب جلسه اضافه می‌شود
-                  },
-
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xffdddddd)),
-
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-
-                    child: Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const Icon(Icons.event_note),
-
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: Text(
-                            taskId == null
-                                ? "انتخاب جلسه"
-                                : "جلسه شماره $taskId",
-
-                            style: const TextStyle(fontSize: 15),
-                          ),
+                        const Text(
+                          "جلسه",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-
-                        const Icon(Icons.arrow_drop_down),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: selectTask,
+                        ),
                       ],
                     ),
-                  ),
+
+                    if (selectedTask != null)
+                      Chip(
+                        label: Text(selectedTask!.name),
+                        deleteIcon: const Icon(Icons.close, size: 18),
+                        onDeleted: () {
+                          setState(() {
+                            selectedTask = null;
+                          });
+                        },
+                      ),
+                  ],
                 ),
 
                 const SizedBox(height: 16),
 
-                //--------------------------------------------------
-                // Type
-                //--------------------------------------------------
-                InkWell(
-                  onTap: () {
-                    // انتخاب نویسنده
-                  },
-
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-
-                    decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xffdddddd)),
-
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-
-                    child: Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const Icon(Icons.person),
-
-                        const SizedBox(width: 12),
-
-                        Expanded(
-                          child: Text(
-                            typerId == null
-                                ? "انتخاب نویسنده"
-                                : "کاربر شماره $typerId",
-                          ),
+                        const Text(
+                          "امضا کنندگان",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-
-                        const Icon(Icons.arrow_drop_down),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle),
+                          onPressed: selectSigner,
+                        ),
                       ],
                     ),
-                  ),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedOrgans.map((e) {
+                        return Chip(
+                          label: Text(e.name),
+                          deleteIcon: const Icon(Icons.close, size: 18),
+                          onDeleted: () {
+                            setState(() {
+                              selectedOrgans.removeWhere((x) => x.id == e.id);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          "دسته بندی",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle),
+                          onPressed: selectGroup,
+                        ),
+                      ],
+                    ),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedGroups.map((e) {
+                        return Chip(
+                          label: Text(e.name),
+                          deleteIcon: const Icon(Icons.close, size: 18),
+                          onDeleted: () {
+                            setState(() {
+                              selectedGroups.removeWhere((x) => x.id == e.id);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -472,5 +520,79 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
         });
       });
     }
+  }
+
+  Future<void> selectTask() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const TaskService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب جلسه",
+          multiSelect: false,
+          historyKey: "minute_tasks",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final item = result as RecordItem;
+
+    setState(() {
+      selectedTask = TaskCreator(id: item.id, name: item.title);
+    });
+  }
+
+  Future<void> selectSigner() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const OrganService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب امضا کنندگان",
+          multiSelect: true,
+          historyKey: "minute_signers",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final items = result as List<RecordItem>;
+
+    setState(() {
+      for (final item in items) {
+        if (selectedOrgans.every((e) => e.id != item.id)) {
+          selectedOrgans.add(OrganModel(id: item.id, name: item.title));
+        }
+      }
+    });
+  }
+
+  Future<void> selectGroup() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const MinutesGroupService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب دسته بندی",
+          multiSelect: true,
+          historyKey: "minute_groups",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final items = result as List<RecordItem>;
+
+    setState(() {
+      for (final item in items) {
+        if (selectedGroups.every((e) => e.id != item.id)) {
+          selectedGroups.add(MinutesGroupModel(id: item.id, name: item.title));
+        }
+      }
+    });
   }
 }

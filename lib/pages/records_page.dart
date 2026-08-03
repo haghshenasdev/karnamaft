@@ -360,6 +360,7 @@ class _RecordsPageState extends State<RecordsPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("صورتجلسه با موفقیت ایجاد شد")),
             );
+            loadData();
           }
         },
 
