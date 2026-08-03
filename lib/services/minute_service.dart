@@ -179,7 +179,11 @@ class MinuteService implements RecordService<MinuteModel> {
 
         data: formData,
 
-        options: Options(contentType: "multipart/form-data"),
+        options: Options(
+          contentType: "multipart/form-data",
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
       );
 
       return MinuteModel.fromJson(response.data["data"]);
