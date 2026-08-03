@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:karnamaft/services/scan_service.dart';
 
-class MinuteFileEditor extends StatelessWidget {
+class MinuteFileEditor extends StatefulWidget {
   final String? file;
 
   final ValueChanged<String?> onChanged;
@@ -11,13 +12,51 @@ class MinuteFileEditor extends StatelessWidget {
 
   const MinuteFileEditor({
     super.key,
-
     required this.file,
-
     required this.onChanged,
-
     this.onBytesChanged,
   });
+
+  @override
+  State<MinuteFileEditor> createState() => _MinuteFileEditorState();
+}
+
+class _MinuteFileEditorState extends State<MinuteFileEditor>
+    with WidgetsBindingObserver {
+  bool waitingForScan = false;
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state != AppLifecycleState.resumed) return;
+
+    if (!waitingForScan) return;
+
+    waitingForScan = false;
+
+    final file = await ScanService.processReturnedScan();
+
+    if (file != null && mounted) {
+      widget.onChanged(file);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
+    }
+  }
+
   Future<void> pickFile(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -44,33 +83,12 @@ class MinuteFileEditor extends StatelessWidget {
     }
 
     if (kIsWeb) {
-      onChanged(picked.name);
+      widget.onChanged(picked.name);
 
-      onBytesChanged?.call(picked.bytes);
+      widget.onBytesChanged?.call(picked.bytes);
     } else {
-      onChanged(picked.path!);
+      widget.onChanged(picked.path!);
     }
-  }
-
-  Future<void> scanFile(BuildContext context) async {
-    /*
-      این قسمت را بعداً به ScanService
-      که قبلاً ساختی وصل می‌کنیم
-
-      مثال:
-
-      final result =
-          await ScanService.scan();
-
-      if(result != null){
-          onChanged(result);
-      }
-
-    */
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("اتصال اسکنر در مرحله بعد اضافه می‌شود")),
-    );
   }
 
   @override
@@ -107,7 +125,7 @@ class MinuteFileEditor extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          if (file != null && file!.isNotEmpty)
+          if (widget.file != null && widget.file!.isNotEmpty)
             ListTile(
               contentPadding: EdgeInsets.zero,
 
@@ -123,7 +141,7 @@ class MinuteFileEditor extends StatelessWidget {
               ),
 
               title: Text(
-                file!.split('/').last,
+                widget.file!.split('/').last,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -132,7 +150,7 @@ class MinuteFileEditor extends StatelessWidget {
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
 
                 onPressed: () {
-                  onChanged(null);
+                  widget.onChanged(null);
                 },
               ),
             )
@@ -166,9 +184,7 @@ class MinuteFileEditor extends StatelessWidget {
 
                   label: const Text("اسکن"),
 
-                  onPressed: () {
-                    scanFile(context);
-                  },
+                  onPressed: scanFile,
                 ),
               ),
             ],
@@ -176,5 +192,19 @@ class MinuteFileEditor extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> scanFile() async {
+    try {
+      waitingForScan = true;
+
+      await ScanService.startScan();
+    } catch (e) {
+      waitingForScan = false;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("خطا در باز کردن اسکنر\n$e")));
+    }
   }
 }

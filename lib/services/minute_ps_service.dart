@@ -42,6 +42,7 @@ class MinutePsService {
     String? filePath,
     Uint8List? bytes,
     String? fileName,
+    CancelToken? cancelToken,
   }) async {
     try {
       MultipartFile file;
@@ -62,8 +63,12 @@ class MinutePsService {
 
       final response = await ApiClient.dio.post(
         "/minute_ps",
+
         data: formData,
+
         options: Options(contentType: "multipart/form-data"),
+
+        cancelToken: cancelToken,
       );
 
       if (response.data["success"] == true) {
@@ -71,18 +76,29 @@ class MinutePsService {
       }
 
       throw Exception("OCR انجام نشد");
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        throw e;
+      }
+
+      throw ApiErrorHandler.handle(e);
     } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
   }
 
   /// ارسال متن OCR برای اصلاح و استخراج عنوان
-  Future<MinutePsTextResult> analyzeText(String text) async {
+  Future<MinutePsTextResult> analyzeText(
+    String text, {
+    CancelToken? cancelToken,
+  }) async {
     try {
       final response = await ApiClient.dio.post(
         "/minute_ps_text",
 
         data: {"text": text},
+
+        cancelToken: cancelToken,
       );
 
       if (response.data["success"] == true) {
@@ -90,6 +106,12 @@ class MinutePsService {
       }
 
       throw Exception("تحلیل متن انجام نشد");
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        throw e;
+      }
+
+      throw ApiErrorHandler.handle(e);
     } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
@@ -103,13 +125,15 @@ class MinutePsService {
     String? filePath,
     Uint8List? bytes,
     String? fileName,
+    CancelToken? cancelToken,
   }) async {
     final ocrResult = await uploadFile(
       filePath: filePath,
       bytes: bytes,
       fileName: fileName,
+      cancelToken: cancelToken,
     );
 
-    return analyzeText(ocrResult.rawText);
+    return analyzeText(ocrResult.rawText, cancelToken: cancelToken);
   }
 }

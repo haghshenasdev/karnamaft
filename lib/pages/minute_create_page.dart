@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/models/login_request.dart';
@@ -33,6 +34,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
   final MinuteService _service = const MinuteService();
 
   Uint8List? selectedFileBytes;
+  CancelToken? _processCancelToken;
 
   //--------------------------------------------------
   // Controllers
@@ -212,7 +214,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
 
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
-
                   borderRadius: BorderRadius.circular(14),
                 ),
 
@@ -220,25 +221,22 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
                   children: [
                     const SizedBox(
                       width: 24,
-
                       height: 24,
-
                       child: CircularProgressIndicator(strokeWidth: 3),
                     ),
 
                     const SizedBox(width: 16),
 
-                    Expanded(
-                      child: Text(
-                        processingMessage,
+                    Expanded(child: Text(processingMessage)),
 
-                        style: const TextStyle(fontSize: 15),
-                      ),
+                    IconButton(
+                      tooltip: "لغو پردازش",
+                      icon: const Icon(Icons.cancel, color: Colors.red),
+                      onPressed: cancelProcessing,
                     ),
                   ],
                 ),
               ),
-
             const SizedBox(height: 20),
 
             //--------------------------------------------------
@@ -486,36 +484,63 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
   }
 
   Future<void> processSelectedFile() async {
+    _processCancelToken = CancelToken();
+
     setState(() {
       processingFile = true;
       processingMessage = "در حال خواندن متن فایل...";
+      error = null;
     });
 
     try {
       final result = await _psService.processFile(
         filePath: selectedFile,
+
         bytes: selectedFileBytes,
+
         fileName: selectedFile,
+
+        cancelToken: _processCancelToken,
       );
 
       if (!mounted) return;
 
       setState(() {
         titleController.text = result.title;
+
         textController.text = result.text;
+
         processingMessage = "پردازش فایل با موفقیت انجام شد";
+      });
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) {
+        setState(() {
+          processingMessage = "پردازش لغو شد";
+        });
+
+        return;
+      }
+
+      setState(() {
+        processingMessage = "خطا در پردازش فایل";
+
+        error = e.toString();
       });
     } catch (e) {
       setState(() {
         processingMessage = "خطا در پردازش فایل";
+
         error = e.toString();
       });
     } finally {
+      _processCancelToken = null;
+
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
 
         setState(() {
           processingFile = false;
+
           processingMessage = "";
         });
       });
@@ -593,6 +618,16 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
           selectedGroups.add(MinutesGroupModel(id: item.id, name: item.title));
         }
       }
+    });
+  }
+
+  void cancelProcessing() {
+    _processCancelToken?.cancel("User cancelled");
+
+    setState(() {
+      processingFile = false;
+
+      processingMessage = "پردازش لغو شد";
     });
   }
 }
