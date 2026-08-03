@@ -155,24 +155,34 @@ class MinuteService implements RecordService<MinuteModel> {
     String? uploadFile,
   }) async {
     try {
-      final formData = FormData.fromMap({
-        "_method": "PUT",
+      final formData = FormData();
 
-        "title": model.title,
+      formData.fields.addAll([
+        MapEntry("_method", "PUT"),
 
-        "text": model.text ?? "",
+        MapEntry("title", model.title),
 
-        "file": model.file ?? "none",
+        MapEntry("text", model.text ?? ""),
 
-        "date": model.date!.toIso8601String(),
+        MapEntry("file", model.file ?? "none"),
 
-        "typer_id": model.typer_id,
+        MapEntry("date", model.date!.toIso8601String()),
 
-        "task_id": model.task_id,
+        MapEntry("typer_id", model.typer_id.toString()),
 
-        if (uploadFile != null)
-          "upload_file": await MultipartFile.fromFile(uploadFile),
-      });
+        MapEntry("task_id", model.task_id.toString()),
+      ]);
+
+      // اضافه کردن آرایه امضا کنندگان
+      for (final organ in model.organs ?? []) {
+        formData.fields.add(MapEntry("organ_ids[]", organ.id.toString()));
+      }
+
+      if (uploadFile != null) {
+        formData.files.add(
+          MapEntry("upload_file", await MultipartFile.fromFile(uploadFile)),
+        );
+      }
 
       final response = await ApiClient.dio.post(
         "$rootPath/$id",

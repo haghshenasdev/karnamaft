@@ -18,7 +18,7 @@ class MinuteModel {
 
   final TaskCreator? taskCreator;
 
-  final List<OrganModel> organs;
+  final List<OrganModel>? organs;
 
   final List<GroupModel> group;
 
@@ -117,6 +117,7 @@ class MinuteModel {
     int? task_id,
     DateTime? created_at,
     DateTime? updated_at,
+    List<OrganModel>? organs,
   }) {
     return MinuteModel(
       id: id ?? this.id,

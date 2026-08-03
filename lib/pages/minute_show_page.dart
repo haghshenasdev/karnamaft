@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/minute_model.dart';
+import 'package:karnamaft/models/minute_relation.dart';
+import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/select_dialog_config.dart';
+import 'package:karnamaft/models/task_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/services/organ_service.dart';
+import 'package:karnamaft/services/task_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
 import 'package:karnamaft/widgets/record_chip_list.dart';
+import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +35,8 @@ class MinuteShowPage extends StatefulWidget {
 
 class _MinuteShowPageState extends State<MinuteShowPage> {
   UserController get user => context.read<UserController>();
+  List<OrganModel> selectedOrgans = [];
+  TaskCreator? selectedTask;
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
@@ -90,11 +99,13 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         selectedFile = result.file;
         titleController = TextEditingController(text: result.title);
         textController = TextEditingController(text: result.text);
+        selectedTask = result.taskCreator;
         dateController = TextEditingController(
           text: result.date != null
               ? DateFormat("yyyy-MM-dd").format(result.date!)
               : "",
         );
+        selectedOrgans = List.from(result.organs!);
         loading = false;
       });
     } catch (e) {
@@ -299,13 +310,94 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             value: DateHelper.toDate(item.date),
                           ),
 
-                  if (item.taskCreator != null)
+                  if (editing)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "جلسه",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+
+                            const Spacer(),
+
+                            IconButton(
+                              icon: const Icon(Icons.search),
+
+                              onPressed: selectTask,
+                            ),
+                          ],
+                        ),
+
+                        if (selectedTask != null)
+                          Chip(
+                            label: Text(selectedTask!.name),
+
+                            deleteIcon: const Icon(Icons.close, size: 18),
+
+                            onDeleted: () {
+                              setState(() {
+                                selectedTask = null;
+                              });
+                            },
+                          ),
+                      ],
+                    )
+                  else if (item.taskCreator != null)
                     RecordField(title: "جلسه", value: item.taskCreator!.name),
-                  if (item.organs.isNotEmpty)
+                  if (editing)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              "امضا کنندگان",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+
+                            const Spacer(),
+
+                            IconButton(
+                              icon: const Icon(Icons.add_circle),
+
+                              onPressed: selectSigner,
+                            ),
+                          ],
+                        ),
+
+                        Wrap(
+                          spacing: 8,
+
+                          runSpacing: 8,
+
+                          children: selectedOrgans.map((e) {
+                            return Chip(
+                              label: Text(e.name),
+
+                              deleteIcon: const Icon(Icons.close, size: 18),
+
+                              onDeleted: () {
+                                setState(() {
+                                  selectedOrgans.removeWhere(
+                                    (x) => x.id == e.id,
+                                  );
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    )
+                  else
                     RecordChipList(
                       title: "امضا کنندگان",
                       icon: Icons.business,
-                      items: item.organs.map((e) => e.name).toList(),
+                      items: item.organs!.map((e) => e.name).toList(),
                     ),
                   if (item.group.isNotEmpty)
                     RecordChipList(
@@ -470,6 +562,8 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
           ? DateTime.parse(dateController.text)
           : null,
       file: minute!.file,
+      organs: selectedOrgans,
+      task_id: selectedTask?.id,
     );
 
     // print(model.toUpdateJson());
@@ -520,6 +614,66 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
     setState(() {
       dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+    });
+  }
+
+  Future<void> selectSigner() async {
+    final result = await showDialog(
+      context: context,
+
+      builder: (_) => SelectRecordDialog(
+        service: const OrganService(),
+
+        config: const SelectDialogConfig(
+          title: "انتخاب امضا کنندگان",
+
+          multiSelect: true,
+
+          historyKey: "minute_signers",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final List<RecordItem> items = result as List<RecordItem>;
+
+    setState(() {
+      for (final item in items) {
+        final exists = selectedOrgans.any((e) => e.id == item.id);
+
+        if (!exists) {
+          selectedOrgans.add(OrganModel(id: item.id, name: item.title));
+        }
+      }
+    });
+  }
+
+  Future<void> selectTask() async {
+    final result = await showDialog(
+      context: context,
+
+      builder: (_) => SelectRecordDialog(
+        service: const TaskService(),
+
+        config: const SelectDialogConfig(
+          title: "انتخاب جلسه",
+
+          multiSelect: false,
+
+          historyKey: "minute_tasks",
+        ),
+      ),
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    final RecordItem item = result as RecordItem;
+
+    setState(() {
+      selectedTask = TaskCreator(id: item.id, name: item.title);
     });
   }
 }
