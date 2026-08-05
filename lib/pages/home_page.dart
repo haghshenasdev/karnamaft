@@ -1,67 +1,109 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:karnamaft/widgets/note_editor.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/drawing_controller.dart';
+import '../models/note_page.dart';
 import '../widgets/category_picker/category_picker.dart';
 import '../widgets/drawing_canvas.dart';
+import '../widgets/note_editor.dart';
 
-class HomePage extends StatelessWidget {
-  HomePage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  //--------------------------------------------------
+  // Controllers
+  //--------------------------------------------------
 
   final TextEditingController _titleController = TextEditingController();
+
+  final ScrollController _scrollController = ScrollController();
+
   //--------------------------------------------------
-  // Note Text
+  // Page Size
   //--------------------------------------------------
+
   static const double _paperRatio = 210 / 297;
+
+  static const double _writingHeight = 2400;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+
+    _scrollController.dispose();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       backgroundColor: const Color(0xfff5f6fa),
 
+      //--------------------------------------------------
+      // APP BAR
+      //--------------------------------------------------
       appBar: AppBar(
         elevation: 0,
+
         scrolledUnderElevation: 0,
+
         backgroundColor: colors.surface,
 
         title: TextField(
           controller: _titleController,
+
           textAlign: TextAlign.right,
+
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+
           decoration: const InputDecoration(
-            hintText: "عنوان یاداشت ...",
+            hintText: "عنوان یادداشت ...",
+
             border: InputBorder.none,
+
             hintStyle: TextStyle(
-              fontWeight: FontWeight.normal,
               color: Colors.grey,
+
+              fontWeight: FontWeight.normal,
             ),
           ),
         ),
+
         actions: [
           IconButton(
             tooltip: "ذخیره",
+
             onPressed: () {},
+
             icon: const Icon(Icons.cloud_done_outlined),
           ),
+
           IconButton(
-            tooltip: "جدید",
+            tooltip: "یادداشت جدید",
+
             onPressed: () {},
-            icon: const Icon(Icons.difference_outlined),
+
+            icon: const Icon(Icons.note_add_outlined),
           ),
+
           IconButton(
             tooltip: "تاریخچه",
+
             onPressed: () {},
+
             icon: const Icon(Icons.history),
           ),
 
           PopupMenuButton(
-            itemBuilder: (_) => [
+            itemBuilder: (context) => [
               const PopupMenuItem(value: "clear", child: Text("پاک کردن صفحه")),
 
               const PopupMenuItem(value: "pdf", child: Text("خروجی PDF")),
@@ -69,271 +111,561 @@ class HomePage extends StatelessWidget {
               const PopupMenuItem(value: "setting", child: Text("تنظیمات")),
             ],
 
-            onSelected: (v) {
-              switch (v) {
-                case "clear":
-                  _confirmClearPage(context);
-                  break;
+            onSelected: (value) {
+              if (value == "clear") {
+                _confirmClearPage(context);
               }
             },
           ),
         ],
       ),
 
+      //--------------------------------------------------
+      // BODY
+      //--------------------------------------------------
       body: SafeArea(
-        child: Column(
-          children: [
-            //--------------------------------------------------
-            // Header
-            //--------------------------------------------------
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-              child: Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final typeWidth = (constraints.maxWidth * 0.34).clamp(
-                        120.0,
-                        160.0,
-                      );
+        child: Consumer<DrawingController>(
+          builder: (context, controller, _) {
+            return Column(
+              children: [
+                //--------------------------------------------------
+                // Header : Type + Category
+                //--------------------------------------------------
+                if (!controller.writingMode)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
 
-                      return Row(
-                        children: [
-                          //--------------------------------------------------
-                          // نوع
-                          //--------------------------------------------------
-                          SizedBox(
-                            width: typeWidth,
-                            child: DropdownMenu<NoteType>(
-                              width: typeWidth,
-                              label: const Text("نوع"),
-                              initialSelection: NoteType.note,
-                              menuHeight: 400,
-                              dropdownMenuEntries: noteTypes.map((item) {
-                                return DropdownMenuEntry<NoteType>(
-                                  value: item.type,
-                                  label: item.title,
-                                  leadingIcon: Icon(item.icon),
-                                );
-                              }).toList(),
-                              onSelected: (value) {
-                                // TODO
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          //--------------------------------------------------
-                          // دسته بندی
-                          //--------------------------------------------------
-                          Expanded(
-                            child: CategoryPicker(
-                              selectedItems: const [],
-                              onChanged: (items) {},
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            //--------------------------------------------------
-            // کاغذ
-            //--------------------------------------------------
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  double maxWidth = constraints.maxWidth - 40;
-
-                  double maxHeight = constraints.maxHeight - 24;
-
-                  double width = maxWidth;
-
-                  double height = width / _paperRatio;
-
-                  if (height > maxHeight) {
-                    height = maxHeight;
-                    width = height * _paperRatio;
-                  }
-
-                  return Center(
                     child: Card(
-                      elevation: 5,
-                      color: Colors.white,
-                      clipBehavior: Clip.antiAlias,
+                      elevation: 0,
 
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
 
-                      child: SizedBox(
-                        width: width,
-                        height: height,
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
 
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            //--------------------------------------------
-                            // Text Layer
-                            //--------------------------------------------
-                            Consumer<DrawingController>(
-                              builder: (_, controller, __) {
-                                return NoteEditor(
-                                  controller: controller.noteController,
-                                  enabled: controller.textMode,
-                                );
-                              },
-                            ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final typeWidth = (constraints.maxWidth * .34)
+                                .clamp(120.0, 160.0);
 
-                            //--------------------------------------------
-                            // Drawing Layer
-                            //--------------------------------------------
-                            DrawingCanvas(
-                              controller: context.read<DrawingController>(),
-                            ),
-                          ],
+                            return Row(
+                              children: [
+                                //--------------------------------------------------
+                                // Note Type
+                                //--------------------------------------------------
+                                SizedBox(
+                                  width: typeWidth,
+
+                                  child: DropdownMenu<NoteType>(
+                                    width: typeWidth,
+
+                                    label: const Text("نوع"),
+
+                                    initialSelection: NoteType.note,
+
+                                    dropdownMenuEntries: noteTypes.map((item) {
+                                      return DropdownMenuEntry<NoteType>(
+                                        value: item.type,
+
+                                        label: item.title,
+
+                                        leadingIcon: Icon(item.icon),
+                                      );
+                                    }).toList(),
+
+                                    onSelected: (value) {},
+                                  ),
+                                ),
+
+                                const SizedBox(width: 12),
+
+                                //--------------------------------------------------
+                                // Category
+                                //--------------------------------------------------
+                                Expanded(
+                                  child: CategoryPicker(
+                                    selectedItems: const [],
+
+                                    onChanged: (items) {},
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
 
-            //--------------------------------------------------
-            // Toolbar
-            //--------------------------------------------------
-            Consumer<DrawingController>(
-              builder: (_, controller, __) {
-                return Container(
+                //--------------------------------------------------
+                // PAPER
+                //--------------------------------------------------
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final availableWidth = constraints.maxWidth - 40;
+
+                      final availableHeight = constraints.maxHeight - 24;
+
+                      double pageWidth;
+
+                      double pageHeight;
+
+                      //--------------------------------------------------
+                      // Writing Mode
+                      //--------------------------------------------------
+
+                      if (controller.writingMode) {
+                        pageWidth = availableWidth;
+
+                        // چند صفحه A4 پشت سر هم
+
+                        pageHeight = (pageWidth / _paperRatio) * 5;
+                      }
+                      //--------------------------------------------------
+                      // Normal A4 Mode
+                      //--------------------------------------------------
+                      else {
+                        pageWidth = availableWidth;
+
+                        pageHeight = pageWidth / _paperRatio;
+
+                        if (pageHeight > availableHeight) {
+                          pageHeight = availableHeight;
+
+                          pageWidth = pageHeight * _paperRatio;
+                        }
+                      }
+
+                      return Align(
+                        alignment: Alignment.topCenter,
+
+                        child: Card(
+                          elevation: 5,
+
+                          color: Colors.white,
+
+                          clipBehavior: Clip.antiAlias,
+
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+
+                          child: SizedBox(
+                            width: pageWidth,
+
+                            height: controller.writingMode
+                                ? availableHeight
+                                : pageHeight,
+
+                            child: SingleChildScrollView(
+                              controller: _scrollController,
+
+                              physics: const NeverScrollableScrollPhysics(),
+
+                              child: SizedBox(
+                                width: pageWidth,
+
+                                height: pageHeight,
+
+                                child: Stack(
+                                  fit: StackFit.expand,
+
+                                  children: [
+                                    //--------------------------------------------------
+                                    // Text Layer
+                                    //--------------------------------------------------
+                                    Consumer<DrawingController>(
+                                      builder: (context, controller, _) {
+                                        return NoteEditor(
+                                          controller: controller.noteController,
+
+                                          enabled: controller.textMode,
+                                        );
+                                      },
+                                    ),
+
+                                    //--------------------------------------------------
+                                    // Drawing Layer
+                                    //--------------------------------------------------
+                                    DrawingCanvas(controller: controller),
+
+                                    //--------------------------------------------------
+                                    // Writing Mode Scroll Buttons
+                                    //--------------------------------------------------
+                                    if (controller.writingMode)
+                                      Positioned(
+                                        right: 20,
+
+                                        bottom: 20,
+
+                                        child: Column(
+                                          children: [
+                                            FloatingActionButton.small(
+                                              heroTag: "page_up",
+
+                                              tooltip: "بالا",
+
+                                              onPressed: () {
+                                                if (_scrollController
+                                                    .hasClients) {
+                                                  final current =
+                                                      _scrollController.offset;
+
+                                                  _scrollController.animateTo(
+                                                    (current - 300).clamp(
+                                                      0,
+                                                      _scrollController
+                                                          .position
+                                                          .maxScrollExtent,
+                                                    ),
+
+                                                    duration: const Duration(
+                                                      milliseconds: 300,
+                                                    ),
+
+                                                    curve: Curves.ease,
+                                                  );
+                                                }
+                                              },
+
+                                              child: const Icon(
+                                                Icons.keyboard_arrow_up,
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 12),
+
+                                            FloatingActionButton.small(
+                                              heroTag: "page_down",
+
+                                              tooltip: "پایین",
+
+                                              onPressed: () {
+                                                if (_scrollController
+                                                    .hasClients) {
+                                                  final current =
+                                                      _scrollController.offset;
+
+                                                  _scrollController.animateTo(
+                                                    (current + 300).clamp(
+                                                      0,
+                                                      _scrollController
+                                                          .position
+                                                          .maxScrollExtent,
+                                                    ),
+
+                                                    duration: const Duration(
+                                                      milliseconds: 300,
+                                                    ),
+
+                                                    curve: Curves.ease,
+                                                  );
+                                                }
+                                              },
+
+                                              child: const Icon(
+                                                Icons.keyboard_arrow_down,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // --------------------------------------------------
+                // Toolbar
+                // --------------------------------------------------
+                Container(
                   height: 54,
+
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
 
                   decoration: BoxDecoration(
-                    color: colors.surface,
+                    color: Theme.of(context).colorScheme.surface,
+
                     borderRadius: BorderRadius.circular(18),
+
                     boxShadow: [
                       BoxShadow(
                         blurRadius: 12,
+
                         offset: const Offset(0, 3),
+
                         color: Colors.black.withOpacity(.08),
                       ),
                     ],
                   ),
 
-                  child: Consumer<DrawingController>(
-                    builder: (_, controller, __) {
-                      return Row(
-                        children: [
-                          const SizedBox(width: 6),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 6),
 
-                          IconButton.filledTonal(
-                            icon: const Icon(Icons.undo),
-                            onPressed: controller.canUndo
-                                ? controller.undo
-                                : null,
-                          ),
+                      //--------------------------------------------------
+                      // Undo
+                      //--------------------------------------------------
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.undo),
 
-                          const SizedBox(width: 4),
+                        onPressed: controller.canUndo ? controller.undo : null,
+                      ),
 
-                          IconButton.filledTonal(
-                            icon: const Icon(Icons.redo),
-                            onPressed: controller.canRedo
-                                ? controller.redo
-                                : null,
-                          ),
+                      //--------------------------------------------------
+                      // Redo
+                      //--------------------------------------------------
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.redo),
 
-                          const Spacer(),
+                        onPressed: controller.canRedo ? controller.redo : null,
+                      ),
 
-                          IconButton.filledTonal(
-                            onPressed: () {
-                              _showPenDialog(context, controller);
-                            },
+                      const Spacer(),
 
-                            icon: Icon(switch (controller.selectedTool) {
-                              ToolType.pen => Icons.edit,
+                      //--------------------------------------------------
+                      // Pen Settings
+                      //--------------------------------------------------
+                      IconButton.filledTonal(
+                        tooltip: "ابزار قلم",
 
-                              ToolType.highlighter => Icons.draw,
+                        onPressed: () {
+                          _showPenDialog(context, controller);
+                        },
 
-                              ToolType.eraser => Icons.auto_fix_off,
-                            }, color: controller.penColor),
-                          ),
+                        icon: Icon(switch (controller.selectedTool) {
+                          ToolType.pen => Icons.edit,
 
-                          const SizedBox(width: 6),
+                          ToolType.highlighter => Icons.draw,
 
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(24),
+                          ToolType.eraser => Icons.auto_fix_off,
+                        }, color: controller.penColor),
+                      ),
+
+                      const SizedBox(width: 6),
+
+                      //--------------------------------------------------
+                      // Writing Mode Button
+                      //--------------------------------------------------
+                      IconButton.filledTonal(
+                        tooltip: controller.writingMode
+                            ? "خروج از حالت نوشتن"
+                            : "حالت نوشتن",
+
+                        icon: Icon(
+                          controller.writingMode
+                              ? Icons.fullscreen_exit
+                              : Icons.fullscreen,
+                        ),
+
+                        onPressed: controller.toggleWritingMode,
+                      ),
+
+                      const SizedBox(width: 6),
+
+                      //--------------------------------------------------
+                      // Pages
+                      //--------------------------------------------------
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+
+                        child: Row(
+                          children: [
+                            IconButton(
+                              tooltip: "صفحه قبل",
+
+                              onPressed: controller.canPrevious
+                                  ? controller.previousPage
+                                  : null,
+
+                              icon: const Icon(Icons.chevron_left),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  tooltip: "صفحه قبل",
-                                  onPressed: controller.canPrevious
-                                      ? controller.previousPage
-                                      : null,
-                                  icon: const Icon(Icons.chevron_left),
+
+                            InkWell(
+                              onTap: () {
+                                _showPages(context, controller);
+                              },
+
+                              borderRadius: BorderRadius.circular(18),
+
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 8,
                                 ),
 
-                                InkWell(
-                                  borderRadius: BorderRadius.circular(18),
-                                  onTap: () => _showPages(context, controller),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 8,
-                                    ),
-                                    child: Text(
-                                      "${controller.currentPage + 1} / ${controller.pageCount}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
+                                child: Text(
+                                  "${controller.currentPage + 1} / ${controller.pageCount}",
+
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-
-                                IconButton(
-                                  tooltip: "صفحه بعد",
-                                  onPressed: controller.nextPage,
-                                  icon: const Icon(Icons.chevron_right),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
 
-                          const SizedBox(width: 6),
+                            IconButton(
+                              tooltip: "صفحه بعد",
 
-                          IconButton.filled(
-                            onPressed: () {},
+                              onPressed: controller.nextPage,
 
-                            icon: const Icon(Icons.send),
-                          ),
+                              icon: const Icon(Icons.chevron_right),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                          const SizedBox(width: 6),
-                        ],
-                      );
-                    },
+                      const SizedBox(width: 6),
+
+                      //--------------------------------------------------
+                      // Send
+                      //--------------------------------------------------
+                      IconButton.filled(
+                        tooltip: "ارسال",
+
+                        onPressed: () {},
+
+                        icon: const Icon(Icons.send),
+                      ),
+
+                      const SizedBox(width: 6),
+                    ],
                   ),
-                );
-              },
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
+  }
+
+  Future<void> _confirmClearPage(BuildContext context) async {
+    final controller = context.read<DrawingController>();
+
+    final result = await showDialog<bool>(
+      context: context,
+
+      builder: (context) => AlertDialog(
+        title: const Text("پاک کردن صفحه"),
+
+        content: const Text("تمام نوشته‌های این صفحه پاک شود؟"),
+
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+
+            child: const Text("انصراف"),
+          ),
+
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+
+            child: const Text("پاک کن"),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      controller.clear();
+    }
+  }
+
+  void _showPages(BuildContext context, DrawingController controller) {
+    showModalBottomSheet(
+      context: context,
+
+      showDragHandle: true,
+
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.note_add_outlined),
+
+                title: const Text("صفحه جدید"),
+
+                onTap: () {
+                  Navigator.pop(context);
+
+                  controller.nextPage();
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+
+                title: const Text("حذف صفحه"),
+
+                onTap: () {
+                  Navigator.pop(context);
+
+                  showDeletePageDialog(context, controller);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> showDeletePageDialog(
+    BuildContext context,
+    DrawingController controller,
+  ) async {
+    final result = await showDialog<bool>(
+      context: context,
+
+      builder: (context) => AlertDialog(
+        title: const Text("حذف صفحه"),
+
+        content: const Text("آیا از حذف صفحه مطمئن هستید؟"),
+
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+
+            child: const Text("انصراف"),
+          ),
+
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+
+            child: const Text("حذف"),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      controller.removeCurrentPage();
+    }
   }
 
   void _showPenDialog(BuildContext context, DrawingController controller) {
@@ -356,10 +688,15 @@ class HomePage extends StatelessWidget {
                 children: [
                   const Text(
                     "ابزار",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 16),
+
+                  //--------------------------------------------------
+                  // Drawing / Text Mode
+                  //--------------------------------------------------
                   ToggleButtons(
                     borderRadius: BorderRadius.circular(14),
 
@@ -371,14 +708,17 @@ class HomePage extends StatelessWidget {
                       } else {
                         controller.enableTextMode();
                       }
+
                       setState(() {});
                     },
 
                     children: const [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 14),
+
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
+
                           children: [
                             Icon(Icons.draw),
 
@@ -391,8 +731,10 @@ class HomePage extends StatelessWidget {
 
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 14),
+
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
+
                           children: [
                             Icon(Icons.keyboard),
 
@@ -405,7 +747,18 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
+
+                  //--------------------------------------------------
+                  // Tools
+                  //--------------------------------------------------
+                  const Text(
+                    "ابزار قلم",
+
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  const SizedBox(height: 10),
 
                   Wrap(
                     spacing: 10,
@@ -450,10 +803,14 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
+                  //--------------------------------------------------
+                  // Colors
+                  //--------------------------------------------------
                   const Text(
                     "رنگ",
+
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
 
@@ -465,11 +822,17 @@ class HomePage extends StatelessWidget {
                     children: [
                       for (final color in [
                         Colors.black,
+
                         Colors.red,
+
                         Colors.green,
+
                         Colors.blue,
+
                         Colors.orange,
+
                         Colors.purple,
+
                         Colors.brown,
                       ])
                         InkWell(
@@ -489,7 +852,9 @@ class HomePage extends StatelessWidget {
                             child: controller.penColor == color
                                 ? const Icon(
                                     Icons.check,
+
                                     size: 16,
+
                                     color: Colors.white,
                                   )
                                 : null,
@@ -498,10 +863,14 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
+                  //--------------------------------------------------
+                  // Width
+                  //--------------------------------------------------
                   const Text(
                     "ضخامت",
+
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
 
@@ -516,8 +885,8 @@ class HomePage extends StatelessWidget {
 
                     label: controller.penWidth.round().toString(),
 
-                    onChanged: (v) {
-                      controller.setWidth(v);
+                    onChanged: (value) {
+                      controller.setWidth(value);
 
                       setState(() {});
                     },
@@ -532,117 +901,28 @@ class HomePage extends StatelessWidget {
       },
     );
   }
-
-  Future<void> showDeletePageDialog(
-    BuildContext context,
-    DrawingController controller,
-  ) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          icon: const Icon(Icons.delete_outline, size: 36, color: Colors.red),
-          title: const Text("حذف صفحه"),
-          content: const Text(
-            "آیا از حذف این صفحه مطمئن هستید؟\nاین عمل قابل بازگشت نیست.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("انصراف"),
-            ),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true),
-              icon: const Icon(Icons.delete),
-              label: const Text("حذف"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result == true) {
-      controller.removeCurrentPage();
-    }
-  }
-
-  void _showPages(BuildContext context, DrawingController controller) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.note_add_outlined),
-                title: const Text("صفحه جدید"),
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.nextPage();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline),
-                title: const Text("حذف صفحه"),
-                onTap: () {
-                  Navigator.pop(context);
-                  showDeletePageDialog(context, controller);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _confirmClearPage(BuildContext context) async {
-    final controller = context.read<DrawingController>();
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("پاک کردن صفحه"),
-        content: const Text(
-          "آیا از پاک کردن تمام نوشته‌های این صفحه مطمئن هستید؟",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("انصراف"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("پاک کن"),
-          ),
-        ],
-      ),
-    );
-
-    if (result == true) {
-      controller.clear();
-    }
-  }
 }
 
 enum NoteType { note, meeting, letter, task }
 
 class NoteTypeItem {
   final NoteType type;
+
   final String title;
+
   final IconData icon;
 
   const NoteTypeItem({
     required this.type,
+
     required this.title,
+
     required this.icon,
   });
 }
 
 const noteTypes = [
   NoteTypeItem(type: NoteType.note, title: "یادداشت", icon: Icons.edit_note),
+
   NoteTypeItem(type: NoteType.meeting, title: "صورت جلسه", icon: Icons.groups),
 ];

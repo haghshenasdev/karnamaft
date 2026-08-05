@@ -6,6 +6,19 @@ import '../models/stroke.dart';
 
 class DrawingController extends ChangeNotifier {
   final List<NotePage> pages = [NotePage()];
+  bool _writingMode = false;
+
+  bool get writingMode => _writingMode;
+
+  void toggleWritingMode() {
+    _writingMode = !_writingMode;
+
+    if (_writingMode) {
+      _textMode = true;
+    }
+
+    notifyListeners();
+  }
 
   int get pageCount => pages.length;
 
