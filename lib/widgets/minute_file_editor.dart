@@ -40,9 +40,23 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
-    if (state != AppLifecycleState.resumed) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("بررسی فایل های اسکن شده")));
 
-    if (!waitingForScan) return;
+    if (state != AppLifecycleState.resumed) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("از چرخه اسکن خارج شد")));
+      return;
+    }
+
+    if (!waitingForScan) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("حالت اسکن فعال نیست")));
+      return;
+    }
 
     waitingForScan = false;
 
@@ -54,6 +68,10 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("فایلی پیدا نشد")));
     }
   }
 
