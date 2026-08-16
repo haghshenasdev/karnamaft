@@ -33,6 +33,11 @@ class _HomePageState extends State<HomePage> {
   static const double _paperRatio = 210 / 297;
 
   static const double _writingHeight = 2400;
+  double _zoom = 1.0;
+
+  static const double _minZoom = 0.7;
+  static const double _maxZoom = 1.5;
+  static const double _zoomStep = 0.1;
 
   @override
   void dispose() {
@@ -223,7 +228,7 @@ class _HomePageState extends State<HomePage> {
                         // ولی بیشتر از این مقدار نمی‌شود.
                         final double paperWidth = availableWidth.clamp(
                           760.0,
-                          _maxWritingPageWidth,
+                          _maxWritingPageWidth * _zoom,
                         );
 
                         // نسبت عمودی A4
@@ -382,6 +387,58 @@ class _HomePageState extends State<HomePage> {
                                       child: const Icon(
                                         Icons.keyboard_arrow_down,
                                       ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Positioned(
+                                left: 24,
+                                bottom: 24,
+
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+
+                                  children: [
+                                    //--------------------------------------------------
+                                    // ZOOM IN
+                                    //--------------------------------------------------
+                                    FloatingActionButton.small(
+                                      heroTag: 'zoom_in',
+
+                                      tooltip: 'بزرگ‌نمایی',
+
+                                      onPressed: () {
+                                        setState(() {
+                                          _zoom = (_zoom + _zoomStep).clamp(
+                                            _minZoom,
+                                            _maxZoom,
+                                          );
+                                        });
+                                      },
+
+                                      child: const Icon(Icons.add),
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    //--------------------------------------------------
+                                    // ZOOM OUT
+                                    //--------------------------------------------------
+                                    FloatingActionButton.small(
+                                      heroTag: 'zoom_out',
+
+                                      tooltip: 'کوچک‌نمایی',
+
+                                      onPressed: () {
+                                        setState(() {
+                                          _zoom = (_zoom - _zoomStep).clamp(
+                                            _minZoom,
+                                            _maxZoom,
+                                          );
+                                        });
+                                      },
+
+                                      child: const Icon(Icons.remove),
                                     ),
                                   ],
                                 ),
