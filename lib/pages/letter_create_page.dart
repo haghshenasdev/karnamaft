@@ -3,10 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/models/letter_model.dart';
+import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/scan_service.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
+import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 class LetterCreatePage extends StatefulWidget {
@@ -29,11 +33,8 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   //--------------------------------------------------
 
   final subjectController = TextEditingController();
-
   final descriptionController = TextEditingController();
-
   final summaryController = TextEditingController();
-
   final dateController = TextEditingController();
 
   //--------------------------------------------------
@@ -41,28 +42,31 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   //--------------------------------------------------
 
   String? selectedFile;
-
   Uint8List? selectedFileBytes;
+
+  //--------------------------------------------------
+  // Selected information
+  //--------------------------------------------------
+
+  DateTime selectedDate = DateTime.now();
+
+  int selectedStatus = 4;
+
+  int selectedKind = 0;
+
+  LetterOrgan? selectedCustomer;
+
+  LetterDaftar? selectedDaftar;
 
   //--------------------------------------------------
   // State
   //--------------------------------------------------
-
-  DateTime selectedDate = DateTime.now();
 
   bool saving = false;
 
   bool waitingForScan = false;
 
   String? error;
-
-  //--------------------------------------------------
-  // Letter data
-  //--------------------------------------------------
-
-  int selectedStatus = 4;
-
-  int selectedKind = 0;
 
   //--------------------------------------------------
   // Init
@@ -76,6 +80,10 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
     dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
   }
+
+  //--------------------------------------------------
+  // Dispose
+  //--------------------------------------------------
 
   @override
   void dispose() {
@@ -130,7 +138,6 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
       setState(() {
         selectedFile = file;
-
         selectedFileBytes = null;
       });
 
@@ -194,6 +201,63 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   }
 
   //--------------------------------------------------
+  // Select Customer / Organ
+  //--------------------------------------------------
+
+  Future<void> selectCustomer() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) {
+        return SelectRecordDialog(
+          service: const OrganService(),
+          config: const SelectDialogConfig(
+            title: "انتخاب گیرنده",
+            multiSelect: false,
+            historyKey: "letter_owner",
+          ),
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    setState(() {
+      selectedCustomer = LetterOrgan(id: result.id, name: result.title);
+    });
+  }
+
+  //--------------------------------------------------
+  // Select Daftar
+  //--------------------------------------------------
+
+  Future<void> selectDaftar() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) {
+        return SelectRecordDialog(
+          service: const OrganService(),
+          config: const SelectDialogConfig(
+            title: "انتخاب دفتر",
+            multiSelect: false,
+            historyKey: "letter_daftar",
+          ),
+          initialFilters: {"organ_type_id": "20"},
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    setState(() {
+      selectedDaftar = LetterDaftar(id: result.id, name: result.title);
+    });
+  }
+
+  //--------------------------------------------------
   // Save
   //--------------------------------------------------
 
@@ -216,7 +280,6 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
     setState(() {
       saving = true;
-
       error = null;
     });
 
@@ -244,9 +307,15 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
         type: null,
 
-        organ: null,
+        //--------------------------------------------------
+        // گیرنده
+        //--------------------------------------------------
+        organ: selectedCustomer,
 
-        daftar: null,
+        //--------------------------------------------------
+        // دفتر
+        //--------------------------------------------------
+        daftar: selectedDaftar,
 
         customers: const [],
 
@@ -326,7 +395,6 @@ class _LetterCreatePageState extends State<LetterCreatePage>
               onChanged: (value) {
                 setState(() {
                   selectedFile = value;
-
                   selectedFileBytes = null;
                 });
               },
@@ -509,6 +577,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
                     ? const SizedBox(
                         width: 22,
                         height: 22,
+
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
@@ -548,6 +617,16 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
         children: [
           //--------------------------------------------------
+          // Title
+          //--------------------------------------------------
+          const Text(
+            "اطلاعات نامه",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+
+          const SizedBox(height: 16),
+
+          //--------------------------------------------------
           // Date
           //--------------------------------------------------
           TextField(
@@ -564,8 +643,10 @@ class _LetterCreatePageState extends State<LetterCreatePage>
                 borderRadius: BorderRadius.circular(12),
               ),
 
+              prefixIcon: const Icon(Icons.calendar_month),
+
               suffixIcon: IconButton(
-                icon: const Icon(Icons.calendar_month),
+                icon: const Icon(Icons.edit_calendar),
 
                 onPressed: selectDate,
               ),
@@ -592,14 +673,20 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
             items: const [
               DropdownMenuItem(value: 0, child: Text("بایگانی")),
+
               DropdownMenuItem(value: 1, child: Text("اتمام")),
+
               DropdownMenuItem(value: 2, child: Text("در حال پیگیری")),
+
               DropdownMenuItem(value: 3, child: Text("غیرقابل پیگیری")),
+
               DropdownMenuItem(value: 4, child: Text("جدید")),
             ],
 
             onChanged: (value) {
-              if (value == null) return;
+              if (value == null) {
+                return;
+              }
 
               setState(() {
                 selectedStatus = value;
@@ -640,6 +727,94 @@ class _LetterCreatePageState extends State<LetterCreatePage>
                 selectedKind = value;
               });
             },
+          ),
+
+          const SizedBox(height: 16),
+
+          //--------------------------------------------------
+          // Customer / Receiver
+          //--------------------------------------------------
+          InkWell(
+            onTap: selectCustomer,
+
+            borderRadius: BorderRadius.circular(12),
+
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: "گیرنده",
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                prefixIcon: const Icon(Icons.business_outlined),
+
+                suffixIcon: selectedCustomer == null
+                    ? const Icon(Icons.arrow_drop_down)
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+
+                        onPressed: () {
+                          setState(() {
+                            selectedCustomer = null;
+                          });
+                        },
+                      ),
+              ),
+
+              child: Text(
+                selectedCustomer?.name ?? "انتخاب گیرنده",
+
+                style: TextStyle(
+                  color: selectedCustomer == null
+                      ? Colors.grey
+                      : Colors.black87,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          //--------------------------------------------------
+          // Daftar
+          //--------------------------------------------------
+          InkWell(
+            onTap: selectDaftar,
+
+            borderRadius: BorderRadius.circular(12),
+
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: "دفتر",
+
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                prefixIcon: const Icon(Icons.account_balance_outlined),
+
+                suffixIcon: selectedDaftar == null
+                    ? const Icon(Icons.arrow_drop_down)
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+
+                        onPressed: () {
+                          setState(() {
+                            selectedDaftar = null;
+                          });
+                        },
+                      ),
+              ),
+
+              child: Text(
+                selectedDaftar?.name ?? "انتخاب دفتر",
+
+                style: TextStyle(
+                  color: selectedDaftar == null ? Colors.grey : Colors.black87,
+                ),
+              ),
+            ),
           ),
         ],
       ),

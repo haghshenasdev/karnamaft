@@ -161,6 +161,8 @@ class LetterService implements RecordService<LetterModel> {
         MapEntry("status", model.status?.toString() ?? ""),
 
         MapEntry("kind", model.kind?.toString() ?? ""),
+        MapEntry("daftar_id", model.daftar?.id.toString() ?? ""),
+        MapEntry("organ_id", model.organ?.id.toString() ?? ""),
 
         MapEntry("created_at", model.created_at?.toIso8601String() ?? ""),
       ]);
