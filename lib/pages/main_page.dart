@@ -2,7 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/home_page.dart';
+import 'package:karnamaft/pages/letter_create_page.dart';
 import 'package:karnamaft/pages/letter_show_page.dart';
+import 'package:karnamaft/pages/minute_create_page.dart';
 import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/pages/profile_page.dart';
 import 'package:karnamaft/pages/project_show_page.dart';
@@ -58,6 +60,11 @@ class MainPage extends StatelessWidget {
           service: const MinuteService(),
 
           showPageBuilder: (id, title) => MinuteShowPage(id: id, title: title),
+          createPageBuilder: () {
+            return const MinuteCreatePage();
+          },
+
+          createSuccessMessage: "صورتجلسه با موفقیت ایجاد شد",
         ),
       ),
 
@@ -71,6 +78,11 @@ class MainPage extends StatelessWidget {
           service: const LetterService(),
 
           showPageBuilder: (id, title) => LetterShowPage(id: id, title: title),
+          createPageBuilder: () {
+            return const LetterCreatePage();
+          },
+
+          createSuccessMessage: "نامه با موفقیت ایجاد شد",
         ),
       ),
 

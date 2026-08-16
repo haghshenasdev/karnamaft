@@ -54,19 +54,7 @@ class LetterModel {
   });
 
   RecordStatus get recordStatus {
-    switch (status) {
-      case 1:
-        return RecordStatus.newRecord;
-
-      case 2:
-        return RecordStatus.pending;
-
-      case 3:
-        return RecordStatus.referred;
-
-      default:
-        return RecordStatus.archived;
-    }
+    return RecordStatusExtension.fromValue(status);
   }
 
   String? get kindTitle {
@@ -169,6 +157,7 @@ class LetterModel {
     String? file,
     int? status,
     int? kind,
+    LetterDaftar? daftar,
     DateTime? created_at,
     DateTime? updated_at,
   }) {

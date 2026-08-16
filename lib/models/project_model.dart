@@ -52,19 +52,7 @@ class ProjectModel {
   });
 
   RecordStatus get recordStatus {
-    switch (status) {
-      case 1:
-        return RecordStatus.newRecord;
-
-      case 2:
-        return RecordStatus.pending;
-
-      case 3:
-        return RecordStatus.referred;
-
-      default:
-        return RecordStatus.archived;
-    }
+    return RecordStatusExtension.fromValue(status);
   }
 
   String get statusTitle {

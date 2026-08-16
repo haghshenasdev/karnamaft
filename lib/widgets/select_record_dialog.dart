@@ -12,11 +12,13 @@ class SelectRecordDialog extends StatefulWidget {
   final RecordService service;
 
   final SelectDialogConfig config;
+  final Map<String, String> initialFilters;
 
   const SelectRecordDialog({
     super.key,
     required this.service,
     required this.config,
+    this.initialFilters = const {},
   });
 
   @override
@@ -51,6 +53,7 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
   @override
   void initState() {
     super.initState();
+    filters.addAll(widget.initialFilters);
 
     loadHistory();
 

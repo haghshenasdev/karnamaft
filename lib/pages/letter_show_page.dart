@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
+import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:karnamaft/widgets/user_chip_list.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +54,11 @@ class _LetterShowPageState extends State<LetterShowPage> {
   String? selectedFile;
   String? newUploadFile;
 
+  int? selectedStatus;
+  int? selectedKind;
+  LetterOrgan? selectedCustomer;
+  LetterDaftar? selecteddaftar;
+
   late TextEditingController subjectController;
   late TextEditingController descriptionController;
   late TextEditingController summaryController;
@@ -88,6 +96,12 @@ class _LetterShowPageState extends State<LetterShowPage> {
         selectedFile = result.file;
 
         subjectController = TextEditingController(text: result.subject);
+
+        selectedStatus = result.status;
+        selectedKind = result.kind;
+
+        selectedCustomer = result.organ;
+        selecteddaftar = result.daftar;
 
         descriptionController = TextEditingController(text: result.description);
 
@@ -301,14 +315,114 @@ class _LetterShowPageState extends State<LetterShowPage> {
                             value: DateHelper.toDate(item.created_at),
                           ),
 
-                  RecordField(title: "وضعیت", value: item.recordStatus.title),
+                  //--------------------------------------------------
+                  // وضعیت
+                  //--------------------------------------------------
+                  const SizedBox(height: 12),
+                  if (editing)
+                    DropdownButtonFormField<int>(
+                      value: selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: "وضعیت",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.flag_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text("بایگانی")),
+                        DropdownMenuItem(value: 1, child: Text("اتمام")),
+                        DropdownMenuItem(
+                          value: 2,
+                          child: Text("در حال پیگیری"),
+                        ),
+                        DropdownMenuItem(
+                          value: 3,
+                          child: Text("غیرقابل پیگیری"),
+                        ),
+                        DropdownMenuItem(value: 4, child: Text("جدید")),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedStatus = value;
+                        });
+                      },
+                    )
+                  else
+                    RecordField(title: "وضعیت", value: item.recordStatus.title),
 
-                  RecordField(title: "نوع", value: item.kindTitle ?? "-"),
+                  const SizedBox(height: 12),
 
-                  if (item.organ != null)
+                  //--------------------------------------------------
+                  // نوع نامه
+                  //--------------------------------------------------
+                  if (editing)
+                    DropdownButtonFormField<int>(
+                      value: selectedKind,
+                      decoration: const InputDecoration(
+                        labelText: "نوع نامه",
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.mail_outline),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text("وارده")),
+                        DropdownMenuItem(value: 1, child: Text("صادره")),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedKind = value;
+                        });
+                      },
+                    )
+                  else
+                    RecordField(title: "نوع", value: item.kindTitle ?? "-"),
+
+                  const SizedBox(height: 12),
+
+                  if (editing)
+                    InkWell(
+                      onTap: selectCustomer,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: "گیرنده",
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.arrow_drop_down),
+                        ),
+                        child: Text(
+                          selectedCustomer?.name ?? "انتخاب گیرنده",
+                          style: TextStyle(
+                            color: selectedCustomer == null
+                                ? Colors.grey
+                                : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (item.organ != null)
                     RecordField(title: "گیرنده", value: item.organ!.name),
 
-                  if (item.daftar != null)
+                  const SizedBox(height: 12),
+                  
+                  if (editing)
+                    InkWell(
+                      onTap: selectdaftar,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: "دفتر",
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.arrow_drop_down),
+                        ),
+                        child: Text(
+                          selecteddaftar?.name ?? "انتخاب دفتر",
+                          style: TextStyle(
+                            color: selecteddaftar == null
+                                ? Colors.grey
+                                : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (item.daftar != null)
                     RecordField(title: "دفتر", value: item.daftar!.name),
                 ],
               ),
@@ -489,6 +603,9 @@ class _LetterShowPageState extends State<LetterShowPage> {
       description: descriptionController.text.trim(),
       summary: summaryController.text.trim(),
       file: letter!.file,
+      status: selectedStatus,
+      kind: selectedKind,
+      daftar: selecteddaftar,
     );
 
     setState(() {
@@ -508,6 +625,9 @@ class _LetterShowPageState extends State<LetterShowPage> {
         letter = result;
 
         selectedFile = result.file;
+
+        selectedStatus = result.status;
+        selectedKind = result.kind;
 
         editing = false;
 
@@ -546,6 +666,51 @@ class _LetterShowPageState extends State<LetterShowPage> {
 
     setState(() {
       dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+    });
+  }
+
+  Future<void> selectCustomer() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) {
+        return SelectRecordDialog(
+          service: const OrganService(),
+          config: const SelectDialogConfig(
+            title: "انتخاب گیرنده",
+            multiSelect: false,
+            historyKey: "letter_owner",
+          ),
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    setState(() {
+      selectedCustomer = LetterOrgan(id: result.id, name: result.title);
+    });
+  }
+
+  Future<void> selectdaftar() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) {
+        return SelectRecordDialog(
+          service: const OrganService(),
+          config: const SelectDialogConfig(
+            title: "انتخاب دفتر",
+            multiSelect: false,
+            historyKey: "letter_daftar",
+          ),
+          initialFilters: {"organ_type_id": "20"},
+        );
+      },
+    );
+
+    if (result == null) return;
+
+    setState(() {
+      selecteddaftar = LetterDaftar(id: result.id, name: result.title);
     });
   }
 }

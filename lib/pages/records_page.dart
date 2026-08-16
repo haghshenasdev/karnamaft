@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
-import 'package:karnamaft/pages/minute_create_page.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 
@@ -13,11 +12,17 @@ class RecordsPage extends StatefulWidget {
   final RecordService service;
   final Widget Function(int id, String title) showPageBuilder;
 
+  /// صفحه ایجاد رکورد
+  final Widget Function()? createPageBuilder;
+  final String? createSuccessMessage;
+
   const RecordsPage({
     super.key,
     required this.title,
     required this.service,
     required this.showPageBuilder,
+    this.createPageBuilder,
+    this.createSuccessMessage,
   });
 
   @override
@@ -348,26 +353,34 @@ class _RecordsPageState extends State<RecordsPage> {
         ),
       ),
 
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
+      floatingActionButton: widget.createPageBuilder == null
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => widget.createPageBuilder!(),
+                  ),
+                );
 
-            MaterialPageRoute(builder: (_) => const MinuteCreatePage()),
-          );
+                if (!mounted || result == null) {
+                  return;
+                }
 
-          if (result != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("صورتجلسه با موفقیت ایجاد شد")),
-            );
-            loadData();
-          }
-        },
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      widget.createSuccessMessage ?? "رکورد با موفقیت ایجاد شد",
+                    ),
+                  ),
+                );
 
-        icon: const Icon(Icons.add),
-
-        label: const Text("جدید"),
-      ),
+                await loadData();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text("جدید"),
+            ),
     );
   }
 

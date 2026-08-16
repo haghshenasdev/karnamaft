@@ -147,6 +147,51 @@ class LetterService implements RecordService<LetterModel> {
     }
   }
 
+  Future<LetterModel> create(LetterModel model, {String? uploadFile}) async {
+    try {
+      final formData = FormData();
+
+      formData.fields.addAll([
+        MapEntry("subject", model.subject),
+
+        MapEntry("description", model.description ?? ""),
+
+        MapEntry("summary", model.summary ?? ""),
+
+        MapEntry("status", model.status?.toString() ?? ""),
+
+        MapEntry("kind", model.kind?.toString() ?? ""),
+
+        MapEntry("created_at", model.created_at?.toIso8601String() ?? ""),
+      ]);
+
+      if (uploadFile != null) {
+        formData.files.add(
+          MapEntry("upload_file", await MultipartFile.fromFile(uploadFile)),
+        );
+      }
+
+      final response = await ApiClient.dio.post(
+        rootPath,
+        data: formData,
+        options: Options(
+          contentType: "multipart/form-data",
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
+      );
+
+      return LetterModel.fromJson(response.data["data"]);
+    } catch (e) {
+      if (e is DioException) {
+        print("CREATE LETTER ERROR:");
+        print(e.response?.data);
+      }
+
+      throw ApiErrorHandler.handle(e);
+    }
+  }
+
   @override
   List<RecordFilter> get filters => [
     RecordFilter(
