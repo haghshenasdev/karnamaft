@@ -12,6 +12,7 @@ import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/minute_ps_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
+import 'package:karnamaft/services/scan_service.dart';
 import 'package:karnamaft/services/task_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
@@ -30,7 +31,8 @@ class MinuteCreatePage extends StatefulWidget {
   State<MinuteCreatePage> createState() => _MinuteCreatePageState();
 }
 
-class _MinuteCreatePageState extends State<MinuteCreatePage> {
+class _MinuteCreatePageState extends State<MinuteCreatePage>
+    with WidgetsBindingObserver {
   final MinuteService _service = const MinuteService();
 
   Uint8List? selectedFileBytes;
@@ -57,6 +59,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
   String processingMessage = "";
 
   bool saving = false;
+  bool waitingForScan = false;
 
   DateTime selectedDate = DateTime.now();
 
@@ -70,6 +73,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     titleController.dispose();
 
     textController.dispose();
@@ -82,8 +86,80 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
   @override
   void initState() {
     super.initState();
-
+    WidgetsBinding.instance.addObserver(this);
     dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+
+    if (!waitingForScan) {
+      return;
+    }
+
+    waitingForScan = false;
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("در حال یافتن فایل اسکن شده...")),
+    );
+
+    try {
+      final file = await ScanService.processReturnedScan();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (file == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("فایلی از اسکن پیدا نشد")));
+
+        return;
+      }
+
+      // فایل اسکن شده را در صفحه قرار می‌دهیم
+      setState(() {
+        selectedFile = file;
+        selectedFileBytes = null;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
+
+      // تحلیل فایل اسکن شده
+      await processSelectedFile();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("خطا در دریافت فایل اسکن شده\n$e")),
+      );
+    }
+  }
+
+  Future<void> startScan() async {
+    try {
+      waitingForScan = true;
+
+      await ScanService.startScan();
+    } catch (e) {
+      waitingForScan = false;
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("خطا در باز کردن اسکنر\n$e")));
+    }
   }
 
   //--------------------------------------------------
@@ -184,10 +260,10 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
               onChanged: (value) {
                 setState(() {
                   selectedFile = value;
+                  selectedFileBytes = null;
                 });
 
-                if (value != null && selectedFileBytes == null) {
-                  // اندروید و ویندوز
+                if (value != null) {
                   Future.microtask(() {
                     processSelectedFile();
                   });
@@ -197,13 +273,14 @@ class _MinuteCreatePageState extends State<MinuteCreatePage> {
               onBytesChanged: (bytes) {
                 selectedFileBytes = bytes;
 
-                // وب
                 if (bytes != null) {
                   Future.microtask(() {
                     processSelectedFile();
                   });
                 }
               },
+
+              onScan: startScan,
             ),
 
             const SizedBox(height: 12),

@@ -9,78 +9,25 @@ class MinuteFileEditor extends StatefulWidget {
   final ValueChanged<String?> onChanged;
 
   final ValueChanged<Uint8List?>? onBytesChanged;
+  final VoidCallback? onScan;
 
   const MinuteFileEditor({
     super.key,
     required this.file,
     required this.onChanged,
     this.onBytesChanged,
+    this.onScan,
   });
 
   @override
   State<MinuteFileEditor> createState() => _MinuteFileEditorState();
 }
 
-class _MinuteFileEditorState extends State<MinuteFileEditor>
-    with WidgetsBindingObserver {
-  bool waitingForScan = false;
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) async {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("بررسی فایل های اسکن شده")));
-
-    if (state != AppLifecycleState.resumed) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("از چرخه اسکن خارج شد")));
-      return;
-    }
-
-    if (!waitingForScan) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("حالت اسکن فعال نیست")));
-      return;
-    }
-
-    waitingForScan = false;
-
-    final file = await ScanService.processReturnedScan();
-
-    if (file != null && mounted) {
-      widget.onChanged(file);
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("فایلی پیدا نشد")));
-    }
-  }
-
+class _MinuteFileEditorState extends State<MinuteFileEditor> {
   Future<void> pickFile(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-
       allowedExtensions: ["pdf", "jpg", "jpeg", "png", "doc", "docx"],
-
       withData: kIsWeb,
     );
 
@@ -113,25 +60,18 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-
       decoration: BoxDecoration(
         color: Colors.white,
-
         borderRadius: BorderRadius.circular(18),
-
         border: Border.all(color: const Color(0xffe4e8f0)),
       ),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-
         children: [
           Row(
             children: [
               const Icon(Icons.attach_file),
-
               const SizedBox(width: 8),
-
               Text(
                 "فایل پیوست",
                 style: Theme.of(
@@ -149,12 +89,10 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
 
               leading: Container(
                 padding: const EdgeInsets.all(10),
-
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(12),
                 ),
-
                 child: const Icon(Icons.description, color: Colors.blue),
               ),
 
@@ -166,7 +104,6 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
 
               trailing: IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
-
                 onPressed: () {
                   widget.onChanged(null);
                 },
@@ -185,9 +122,7 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
               Expanded(
                 child: FilledButton.icon(
                   icon: const Icon(Icons.folder_open),
-
                   label: const Text("انتخاب فایل"),
-
                   onPressed: () {
                     pickFile(context);
                   },
@@ -199,10 +134,8 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
               Expanded(
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.document_scanner),
-
                   label: const Text("اسکن"),
-
-                  onPressed: scanFile,
+                  onPressed: widget.onScan,
                 ),
               ),
             ],
@@ -214,11 +147,9 @@ class _MinuteFileEditorState extends State<MinuteFileEditor>
 
   Future<void> scanFile() async {
     try {
-      waitingForScan = true;
-
       await ScanService.startScan();
     } catch (e) {
-      waitingForScan = false;
+      if (!mounted) return;
 
       ScaffoldMessenger.of(
         context,
