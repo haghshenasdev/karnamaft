@@ -23,6 +23,9 @@ class _HomePageState extends State<HomePage> {
 
   final ScrollController _scrollController = ScrollController();
 
+  // حداکثر عرض واقعی کاغذ
+  static const double _maxWritingPageWidth = 1000;
+
   //--------------------------------------------------
   // Page Size
   //--------------------------------------------------
@@ -206,37 +209,200 @@ class _HomePageState extends State<HomePage> {
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final availableWidth = constraints.maxWidth - 40;
-
                       final availableHeight = constraints.maxHeight - 24;
 
-                      double pageWidth;
-
-                      double pageHeight;
-
                       //--------------------------------------------------
-                      // Writing Mode
+                      // WRITING MODE
                       //--------------------------------------------------
-
                       if (controller.writingMode) {
-                        pageWidth = availableWidth;
+                        //--------------------------------------------------
+                        // اندازه کاغذ
+                        //--------------------------------------------------
 
-                        // چند صفحه A4 پشت سر هم
+                        // کاغذ در صفحه‌های بزرگ بزرگ‌تر می‌شود،
+                        // ولی بیشتر از این مقدار نمی‌شود.
+                        final double paperWidth = availableWidth.clamp(
+                          760.0,
+                          _maxWritingPageWidth,
+                        );
 
-                        pageHeight = (pageWidth / _paperRatio) * 5;
+                        // نسبت عمودی A4
+                        final double paperHeight = paperWidth / _paperRatio;
+
+                        //--------------------------------------------------
+                        // VIEWPORT
+                        //--------------------------------------------------
+
+                        return SizedBox(
+                          width: double.infinity,
+                          height: availableHeight,
+
+                          child: Stack(
+                            children: [
+                              //--------------------------------------------------
+                              // SCROLL AREA
+                              //--------------------------------------------------
+                              Positioned.fill(
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+
+                                  physics: const ClampingScrollPhysics(),
+
+                                  child: Center(
+                                    child: Card(
+                                      elevation: 5,
+
+                                      color: Colors.white,
+
+                                      clipBehavior: Clip.antiAlias,
+
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+
+                                      child: SizedBox(
+                                        width: paperWidth,
+
+                                        height: paperHeight,
+
+                                        child: Stack(
+                                          fit: StackFit.expand,
+
+                                          children: [
+                                            //--------------------------------------------------
+                                            // TEXT
+                                            //--------------------------------------------------
+                                            Consumer<DrawingController>(
+                                              builder:
+                                                  (context, controller, _) {
+                                                    return NoteEditor(
+                                                      controller: controller
+                                                          .noteController,
+
+                                                      enabled:
+                                                          controller.textMode,
+                                                    );
+                                                  },
+                                            ),
+
+                                            //--------------------------------------------------
+                                            // DRAWING
+                                            //--------------------------------------------------
+                                            DrawingCanvas(
+                                              controller: controller,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              //--------------------------------------------------
+                              // FLOATING SCROLL BUTTONS
+                              //--------------------------------------------------
+                              Positioned(
+                                right: 24,
+                                bottom: 24,
+
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+
+                                  children: [
+                                    //--------------------------------------------------
+                                    // UP
+                                    //--------------------------------------------------
+                                    FloatingActionButton.small(
+                                      heroTag: 'writing_scroll_up',
+
+                                      tooltip: 'بالا',
+
+                                      onPressed: () {
+                                        if (!_scrollController.hasClients) {
+                                          return;
+                                        }
+
+                                        final position =
+                                            _scrollController.position;
+
+                                        _scrollController.animateTo(
+                                          (_scrollController.offset - 500)
+                                              .clamp(
+                                                0.0,
+                                                position.maxScrollExtent,
+                                              ),
+
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+
+                                          curve: Curves.easeOut,
+                                        );
+                                      },
+
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_up,
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    //--------------------------------------------------
+                                    // DOWN
+                                    //--------------------------------------------------
+                                    FloatingActionButton.small(
+                                      heroTag: 'writing_scroll_down',
+
+                                      tooltip: 'پایین',
+
+                                      onPressed: () {
+                                        if (!_scrollController.hasClients) {
+                                          return;
+                                        }
+
+                                        final position =
+                                            _scrollController.position;
+
+                                        _scrollController.animateTo(
+                                          (_scrollController.offset + 500)
+                                              .clamp(
+                                                0.0,
+                                                position.maxScrollExtent,
+                                              ),
+
+                                          duration: const Duration(
+                                            milliseconds: 300,
+                                          ),
+
+                                          curve: Curves.easeOut,
+                                        );
+                                      },
+
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_down,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                       }
+
                       //--------------------------------------------------
-                      // Normal A4 Mode
+                      // NORMAL MODE
                       //--------------------------------------------------
-                      else {
-                        pageWidth = availableWidth;
 
-                        pageHeight = pageWidth / _paperRatio;
+                      double pageWidth = availableWidth;
 
-                        if (pageHeight > availableHeight) {
-                          pageHeight = availableHeight;
+                      double pageHeight = pageWidth / _paperRatio;
 
-                          pageWidth = pageHeight * _paperRatio;
-                        }
+                      if (pageHeight > availableHeight) {
+                        pageHeight = availableHeight;
+
+                        pageWidth = pageHeight * _paperRatio;
                       }
 
                       return Align(
@@ -255,127 +421,24 @@ class _HomePageState extends State<HomePage> {
 
                           child: SizedBox(
                             width: pageWidth,
+                            height: pageHeight,
 
-                            height: controller.writingMode
-                                ? availableHeight
-                                : pageHeight,
+                            child: Stack(
+                              fit: StackFit.expand,
 
-                            child: SingleChildScrollView(
-                              controller: _scrollController,
+                              children: [
+                                Consumer<DrawingController>(
+                                  builder: (context, controller, _) {
+                                    return NoteEditor(
+                                      controller: controller.noteController,
 
-                              physics: const NeverScrollableScrollPhysics(),
-
-                              child: SizedBox(
-                                width: pageWidth,
-
-                                height: pageHeight,
-
-                                child: Stack(
-                                  fit: StackFit.expand,
-
-                                  children: [
-                                    //--------------------------------------------------
-                                    // Text Layer
-                                    //--------------------------------------------------
-                                    Consumer<DrawingController>(
-                                      builder: (context, controller, _) {
-                                        return NoteEditor(
-                                          controller: controller.noteController,
-
-                                          enabled: controller.textMode,
-                                        );
-                                      },
-                                    ),
-
-                                    //--------------------------------------------------
-                                    // Drawing Layer
-                                    //--------------------------------------------------
-                                    DrawingCanvas(controller: controller),
-
-                                    //--------------------------------------------------
-                                    // Writing Mode Scroll Buttons
-                                    //--------------------------------------------------
-                                    if (controller.writingMode)
-                                      Positioned(
-                                        right: 20,
-
-                                        bottom: 20,
-
-                                        child: Column(
-                                          children: [
-                                            FloatingActionButton.small(
-                                              heroTag: "page_up",
-
-                                              tooltip: "بالا",
-
-                                              onPressed: () {
-                                                if (_scrollController
-                                                    .hasClients) {
-                                                  final current =
-                                                      _scrollController.offset;
-
-                                                  _scrollController.animateTo(
-                                                    (current - 300).clamp(
-                                                      0,
-                                                      _scrollController
-                                                          .position
-                                                          .maxScrollExtent,
-                                                    ),
-
-                                                    duration: const Duration(
-                                                      milliseconds: 300,
-                                                    ),
-
-                                                    curve: Curves.ease,
-                                                  );
-                                                }
-                                              },
-
-                                              child: const Icon(
-                                                Icons.keyboard_arrow_up,
-                                              ),
-                                            ),
-
-                                            const SizedBox(height: 12),
-
-                                            FloatingActionButton.small(
-                                              heroTag: "page_down",
-
-                                              tooltip: "پایین",
-
-                                              onPressed: () {
-                                                if (_scrollController
-                                                    .hasClients) {
-                                                  final current =
-                                                      _scrollController.offset;
-
-                                                  _scrollController.animateTo(
-                                                    (current + 300).clamp(
-                                                      0,
-                                                      _scrollController
-                                                          .position
-                                                          .maxScrollExtent,
-                                                    ),
-
-                                                    duration: const Duration(
-                                                      milliseconds: 300,
-                                                    ),
-
-                                                    curve: Curves.ease,
-                                                  );
-                                                }
-                                              },
-
-                                              child: const Icon(
-                                                Icons.keyboard_arrow_down,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
+                                      enabled: controller.textMode,
+                                    );
+                                  },
                                 ),
-                              ),
+
+                                DrawingCanvas(controller: controller),
+                              ],
                             ),
                           ),
                         ),
@@ -383,7 +446,6 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                 ),
-
                 // --------------------------------------------------
                 // Toolbar
                 // --------------------------------------------------
