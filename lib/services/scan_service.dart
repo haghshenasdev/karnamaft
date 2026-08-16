@@ -153,9 +153,9 @@ class ScanService {
     }
 
     // محدودیت زمانی کلی عملیات اسکن
-    if (DateTime.now().difference(_scanStartTime!).inMinutes > 10) {
-      return [];
-    }
+    // if (DateTime.now().difference(_scanStartTime!).inMinutes > 10) {
+    //   return [];
+    // }
 
     return result;
   }
@@ -190,6 +190,4 @@ class ScanService {
   //------------------------------------------------------------
   // پاک کردن فایل قدیمی هم نام
   //------------------------------------------------------------
-
-  
 }

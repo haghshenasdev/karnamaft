@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/login_page.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
+import 'package:karnamaft/widgets/app_settings_card.dart';
 import 'package:karnamaft/widgets/profile/about_card.dart';
 import 'package:karnamaft/widgets/profile/account_card.dart';
 import 'package:karnamaft/widgets/profile/logout_card.dart';
@@ -109,6 +110,8 @@ class _ProfilePageState extends State<ProfilePage> {
             AccountCard(profile: profile),
 
             const SizedBox(height: 16),
+
+            const AppSettingsCard(),
 
             //----------------------------------
             // Sessions

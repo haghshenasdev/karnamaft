@@ -251,7 +251,7 @@ class _HomePageState extends State<HomePage> {
                                 child: SingleChildScrollView(
                                   controller: _scrollController,
 
-                                  physics: const ClampingScrollPhysics(),
+                                  physics: const NeverScrollableScrollPhysics(),
 
                                   child: Center(
                                     child: Card(
