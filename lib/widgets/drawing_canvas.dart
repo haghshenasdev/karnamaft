@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../controllers/drawing_controller.dart';
@@ -7,8 +5,15 @@ import '../painters/drawing_painter.dart';
 
 class DrawingCanvas extends StatelessWidget {
   final DrawingController controller;
+  final double zoom;
 
-  const DrawingCanvas({super.key, required this.controller});
+  const DrawingCanvas({super.key, required this.controller, this.zoom = 1.0});
+
+  Offset _toPaperPosition(Offset position, Size size) {
+    final scale = size.width / DrawingPainter.basePageWidth;
+
+    return Offset(position.dx / scale, position.dy / scale);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,35 +21,45 @@ class DrawingCanvas extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         return IgnorePointer(
-          //---------------------------------------
-          // وقتی حالت متن فعال است،
-          // Canvas هیچ رویدادی دریافت نمی‌کند.
-          //---------------------------------------
           ignoring: controller.textMode,
 
-          child: Listener(
-            behavior: HitTestBehavior.opaque,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = Size(constraints.maxWidth, constraints.maxHeight);
 
-            onPointerDown: (event) {
-              controller.start(event.localPosition);
+              return Listener(
+                behavior: HitTestBehavior.opaque,
+
+                onPointerDown: (event) {
+                  controller.start(_toPaperPosition(event.localPosition, size));
+                },
+
+                onPointerMove: (event) {
+                  controller.update(
+                    _toPaperPosition(event.localPosition, size),
+                  );
+                },
+
+                onPointerUp: (_) {
+                  controller.end();
+                },
+
+                onPointerCancel: (_) {
+                  controller.end();
+                },
+
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: DrawingPainter(controller, zoom: zoom),
+
+                    isComplex: true,
+                    willChange: true,
+
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              );
             },
-
-            onPointerMove: (event) {
-              controller.update(event.localPosition);
-            },
-
-            onPointerUp: (_) {
-              controller.end();
-            },
-
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: DrawingPainter(controller),
-                size: Size.infinite,
-                isComplex: true,
-                willChange: true,
-              ),
-            ),
           ),
         );
       },

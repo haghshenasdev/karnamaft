@@ -14,7 +14,8 @@ class DrawingController extends ChangeNotifier {
     _writingMode = !_writingMode;
 
     if (_writingMode) {
-      _textMode = true;
+      _textMode = false;
+      selectedTool = ToolType.pen;
     }
 
     notifyListeners();

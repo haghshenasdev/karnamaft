@@ -220,20 +220,17 @@ class _HomePageState extends State<HomePage> {
                       // WRITING MODE
                       //--------------------------------------------------
                       if (controller.writingMode) {
-                        //--------------------------------------------------
-                        // اندازه کاغذ
-                        //--------------------------------------------------
+                        final availableWidth = constraints.maxWidth - 40;
+                        final availableHeight = constraints.maxHeight - 24;
 
-                        // کاغذ در صفحه‌های بزرگ بزرگ‌تر می‌شود،
-                        // ولی بیشتر از این مقدار نمی‌شود.
-                        final double paperWidth = availableWidth.clamp(
-                          760.0,
-                          _maxWritingPageWidth * _zoom,
-                        );
+                        // حداکثر عرض کاغذ بر اساس فضای واقعی صفحه
+                        final double maxWritingPageWidth = availableWidth;
 
-                        // نسبت عمودی A4
+                        // اعمال Zoom
+                        final double paperWidth = maxWritingPageWidth * _zoom;
+
+                        // نسبت A4
                         final double paperHeight = paperWidth / _paperRatio;
-
                         //--------------------------------------------------
                         // VIEWPORT
                         //--------------------------------------------------
@@ -295,6 +292,7 @@ class _HomePageState extends State<HomePage> {
                                             //--------------------------------------------------
                                             DrawingCanvas(
                                               controller: controller,
+                                              zoom: _zoom,
                                             ),
                                           ],
                                         ),
