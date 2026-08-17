@@ -96,7 +96,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
       return;
     }
 
-    if (!waitingForScan) {
+    if (!waitingForScan || !ScanService.isWaitingForScan) {
       return;
     }
 
@@ -112,6 +112,10 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
 
     try {
       final file = await ScanService.processReturnedScan();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('۳ - نتیجه: $file')));
+    
 
       if (!mounted) {
         return;
@@ -125,7 +129,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
         return;
       }
 
-      // فایل اسکن شده را در صفحه قرار می‌دهیم
       setState(() {
         selectedFile = file;
         selectedFileBytes = null;
@@ -135,7 +138,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
         context,
       ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
 
-      // تحلیل فایل اسکن شده
       await processSelectedFile();
     } catch (e) {
       if (!mounted) return;
@@ -153,6 +155,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
       await ScanService.startScan();
     } catch (e) {
       waitingForScan = false;
+      ScanService.cancel();
 
       if (!mounted) return;
 
