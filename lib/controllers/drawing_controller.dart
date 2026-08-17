@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/note_page.dart';
 import '../models/stroke.dart';
@@ -10,12 +11,21 @@ class DrawingController extends ChangeNotifier {
 
   bool get writingMode => _writingMode;
 
-  void toggleWritingMode() {
+  Future<void> toggleWritingMode() async {
     _writingMode = !_writingMode;
 
     if (_writingMode) {
       _textMode = false;
       selectedTool = ToolType.pen;
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
     }
 
     notifyListeners();

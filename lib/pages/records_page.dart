@@ -210,7 +210,6 @@ class _RecordsPageState extends State<RecordsPage> {
 
                 onClear: clearSearch,
 
-                onVoice: () {},
               ),
             ),
 

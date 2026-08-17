@@ -301,7 +301,6 @@ class _SearchPageState extends State<SearchPage> {
                     hint: "جستجو در همه اطلاعات...",
                     onChanged: (_) => _search(),
                     onClear: _search,
-                    onVoice: () {},
                     backBtn: true,
                     autofocus: true,
                   ),
