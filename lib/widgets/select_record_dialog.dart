@@ -7,6 +7,7 @@ import '../models/record_item.dart';
 import '../models/select_dialog_config.dart';
 import '../services/RecordService.dart';
 import 'search/search_bar_widget.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class SelectRecordDialog extends StatefulWidget {
   final RecordService service;
@@ -50,6 +51,10 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
 
   Set<int> selectedIds = {};
 
+  final stt.SpeechToText speech = stt.SpeechToText();
+
+  bool isListening = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,8 +65,11 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
     loadData();
 
     scrollController.addListener(() {
-      if (scrollController.position.pixels >
-          scrollController.position.maxScrollExtent - 200) {
+      if (!scrollController.hasClients) return;
+
+      final position = scrollController.position;
+
+      if (position.pixels >= position.maxScrollExtent - 200) {
         loadMore();
       }
     });
@@ -76,60 +84,72 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
   Future<void> loadData() async {
     setState(() {
       loading = true;
+      loadingMore = false;
+      page = 1;
+      hasMore = true;
       records.clear();
     });
 
-    final result = await widget.service.list(
-      page: 1,
-      sort: sort,
-      filters: filters,
-    );
+    try {
+      final result = await widget.service.list(
+        page: 1,
+        sort: sort,
+        filters: Map<String, String>.from(filters),
+      );
 
-    records = result.data;
+      if (!mounted) return;
 
-    page = result.currentPage;
+      setState(() {
+        records = result.data;
+        page = result.currentPage;
+        hasMore = result.hasNextPage;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
 
-    hasMore = result.hasNextPage;
+      setState(() {
+        loading = false;
+      });
 
-    setState(() {
-      loading = false;
-    });
+      debugPrint('loadData error: $e');
+    }
   }
 
   Future<void> loadMore() async {
     if (loadingMore || !hasMore) return;
 
-    loadingMore = true;
-
-    final result = await widget.service.list(
-      page: page + 1,
-      sort: sort,
-      filters: filters,
-    );
-
-    records.addAll(result.data);
-
-    page = result.currentPage;
-
-    hasMore = result.hasNextPage;
-
-    loadingMore = false;
-
-    setState(() {});
-  }
-
-  void search(String value) {
-    debounce?.cancel();
-
-    debounce = Timer(const Duration(milliseconds: 500), () {
-      if (value.trim().isEmpty) {
-        filters.remove("search");
-      } else {
-        filters["search"] = value.trim();
-      }
-
-      loadData();
+    setState(() {
+      loadingMore = true;
     });
+
+    try {
+      final result = await widget.service.list(
+        page: page + 1,
+        sort: sort,
+        filters: filters,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        records.addAll(result.data);
+
+        page = result.currentPage;
+
+        hasMore = result.hasNextPage;
+
+        loadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        loadingMore = false;
+      });
+
+      debugPrint('Load more error: $e');
+    }
   }
 
   void toggle(RecordItem item) {
@@ -158,6 +178,24 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
           ? records.where((e) => selectedIds.contains(e.id)).toList()
           : records.firstWhere((e) => e.id == selectedIds.first),
     );
+  }
+
+  void search(String value) {
+    debounce?.cancel();
+
+    final query = value.trim();
+
+    debounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+
+      if (query.isEmpty) {
+        filters.remove('search');
+      } else {
+        filters['search'] = query;
+      }
+
+      loadData();
+    });
   }
 
   @override
@@ -197,7 +235,7 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
                   loadData();
                 },
 
-                onVoice: () {},
+                onVoice: toggleVoiceSearch,
               ),
             ),
 
@@ -248,20 +286,17 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
             ),
 
             const Divider(),
-
             Expanded(
               child: loading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
                       controller: scrollController,
-
                       itemCount: records.length + (loadingMore ? 1 : 0),
-
                       itemBuilder: (context, index) {
                         if (index == records.length) {
                           return const Padding(
-                            padding: EdgeInsets.all(20),
-                            child: CircularProgressIndicator(),
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(child: CircularProgressIndicator()),
                           );
                         }
 
@@ -271,9 +306,7 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
 
                         return ListTile(
                           title: Text(item.title),
-
-                          subtitle: Text(item.description!),
-
+                          subtitle: Text(item.description ?? ''),
                           trailing: widget.config.multiSelect
                               ? Checkbox(
                                   value: selected,
@@ -284,13 +317,11 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
                                   groupValue: selectedIds.firstOrNull,
                                   onChanged: (_) => toggle(item),
                                 ),
-
                           onTap: () => toggle(item),
                         );
                       },
                     ),
             ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
 
@@ -328,5 +359,80 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
         ),
       ),
     );
+  }
+
+  Future<void> toggleVoiceSearch() async {
+    if (isListening) {
+      await stopVoiceSearch();
+    } else {
+      await startVoiceSearch();
+    }
+  }
+
+  Future<void> startVoiceSearch() async {
+    final available = await speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+
+        if (status == 'done' || status == 'notListening') {
+          setState(() {
+            isListening = false;
+          });
+
+          final text = searchController.text.trim();
+
+          if (text.isNotEmpty) {
+            filters['search'] = text;
+            loadData();
+          }
+        } else {
+          setState(() {
+            isListening = status == 'listening';
+          });
+        }
+      },
+      onError: (error) {
+        if (!mounted) return;
+
+        setState(() {
+          isListening = false;
+        });
+
+        debugPrint('Speech error: ${error.errorMsg}');
+      },
+    );
+
+    if (!available) return;
+
+    setState(() {
+      isListening = true;
+    });
+
+    await speech.listen(
+      localeId: 'fa_IR',
+      partialResults: true,
+      listenMode: stt.ListenMode.search,
+      onResult: (result) {
+        if (!mounted) return;
+
+        setState(() {
+          searchController.text = result.recognizedWords;
+
+          searchController.selection = TextSelection.collapsed(
+            offset: searchController.text.length,
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> stopVoiceSearch() async {
+    await speech.stop();
+
+    if (!mounted) return;
+
+    setState(() {
+      isListening = false;
+    });
   }
 }
