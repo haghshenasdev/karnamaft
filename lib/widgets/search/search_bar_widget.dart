@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/utils/persian_text.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -31,68 +32,133 @@ class SearchBarWidget extends StatefulWidget {
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
 }
 
-class _SearchBarWidgetState extends State<SearchBarWidget> {
-  final SpeechToText _speechToText = SpeechToText();
+class _SearchBarWidgetState extends State<SearchBarWidget>
+    with SingleTickerProviderStateMixin {
+  final SpeechToText _speech = SpeechToText();
 
   bool _speechEnabled = false;
+  bool _isListening = false;
+
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
 
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+      lowerBound: 0.8,
+      upperBound: 1.15,
+    );
+
     _initSpeech();
   }
 
-  /// فقط یک بار در طول عمر این Widget
   Future<void> _initSpeech() async {
     try {
-      final enabled = await _speechToText.initialize(
-        onError: (error) {
-          debugPrint('Speech error: ${error.errorMsg}');
-        },
-        onStatus: (status) {
-          debugPrint('Speech status: $status');
-
-          if (mounted) {
-            setState(() {});
-          }
-        },
+      final available = await _speech.initialize(
+        onStatus: _onSpeechStatus,
+        onError: _onSpeechError,
       );
 
       if (!mounted) return;
 
       setState(() {
-        _speechEnabled = enabled;
+        _speechEnabled = available;
       });
     } catch (e) {
       debugPrint('Speech initialize error: $e');
     }
   }
 
-  /// شروع تایپ صوتی
+  void _onSpeechStatus(String status) {
+    debugPrint('Speech status: $status');
+
+    if (!mounted) return;
+
+    if (status == 'listening') {
+      setState(() {
+        _isListening = true;
+      });
+
+      _pulseController.repeat(reverse: true);
+    }
+
+    if (status == 'done' || status == 'notListening') {
+      setState(() {
+        _isListening = false;
+      });
+
+      _pulseController.stop();
+      _pulseController.value = 1;
+    }
+  }
+
+  void _onSpeechError(SpeechRecognitionError error) {
+    debugPrint('Speech error: ${error.errorMsg}');
+
+    if (!mounted) return;
+
+    setState(() {
+      _isListening = false;
+    });
+
+    _pulseController.stop();
+    _pulseController.value = 1;
+  }
+
+  Future<void> _toggleVoice() async {
+    if (_isListening) {
+      await _stopListening();
+    } else {
+      await _startListening();
+    }
+  }
+
   Future<void> _startListening() async {
+    if (!_speechEnabled) {
+      await _initSpeech();
+    }
+
     if (!_speechEnabled) {
       debugPrint('Speech recognition is not available');
       return;
     }
 
-    await _speechToText.listen(onResult: _onSpeechResult);
+    // اگر متن قبلی وجود دارد، می‌توانی این قسمت را حذف کنی
+    // تا متن جدید به متن قبلی اضافه شود.
+    widget.controller.clear();
 
     if (!mounted) return;
 
-    setState(() {});
+    setState(() {
+      _isListening = true;
+    });
+
+    _pulseController.repeat(reverse: true);
+
+    await _speech.listen(
+      localeId: 'fa_IR',
+      partialResults: true,
+      listenMode: ListenMode.search,
+      onResult: _onSpeechResult,
+    );
   }
 
-  /// توقف تایپ صوتی
   Future<void> _stopListening() async {
-    await _speechToText.stop();
+    await _speech.stop();
 
     if (!mounted) return;
 
-    setState(() {});
+    setState(() {
+      _isListening = false;
+    });
+
+    _pulseController.stop();
+    _pulseController.value = 1;
   }
 
-  /// نتیجه تشخیص صدا
   void _onSpeechResult(SpeechRecognitionResult result) {
     if (!mounted) return;
 
@@ -103,31 +169,20 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       selection: TextSelection.collapsed(offset: text.length),
     );
 
+    // همان رفتار تایپ معمولی
     widget.onChanged?.call(text);
-
-    setState(() {});
-  }
-
-  /// دکمه میکروفون
-  Future<void> _toggleListening() async {
-    if (_speechToText.isListening) {
-      await _stopListening();
-    } else {
-      await _startListening();
-    }
   }
 
   @override
   void dispose() {
-    _speechToText.stop();
+    _speech.stop();
+    _pulseController.dispose();
 
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bool isListening = _speechToText.isListening;
-
     return Material(
       elevation: 2,
       color: Colors.white,
@@ -159,9 +214,11 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             Expanded(
               child: TextField(
                 controller: widget.controller,
+
                 autofocus: widget.autofocus,
 
                 textDirection: TextDirection.rtl,
+
                 textAlign: TextAlign.right,
 
                 onChanged: (value) {
@@ -183,7 +240,9 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
 
                 decoration: InputDecoration(
                   hintText: widget.hint,
+
                   border: InputBorder.none,
+
                   isDense: true,
 
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -219,16 +278,27 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             //-------------------------------------
             // Voice
             //-------------------------------------
-            IconButton(
-              tooltip: !_speechEnabled
-                  ? "تایپ صوتی در دسترس نیست"
-                  : isListening
-                  ? "توقف تایپ صوتی"
-                  : "تایپ صوتی",
+            AnimatedBuilder(
+              animation: _pulseController,
 
-              onPressed: _speechEnabled ? _toggleListening : null,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _isListening ? _pulseController.value : 1.0,
 
-              icon: Icon(isListening ? Icons.mic : Icons.mic_none),
+                  child: IconButton(
+                    tooltip: _isListening
+                        ? "در حال گوش دادن..."
+                        : "جستجوی صوتی",
+
+                    onPressed: _speechEnabled ? _toggleVoice : null,
+
+                    icon: Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.red : null,
+                    ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(width: 4),
