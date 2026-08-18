@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:karnamaft/services/note_autosave_service.dart';
 
 import '../models/note_page.dart';
 import '../models/stroke.dart';
@@ -11,6 +13,26 @@ class DrawingController extends ChangeNotifier {
   bool _writingMode = false;
 
   bool get writingMode => _writingMode;
+
+  final NoteAutoSaveService _autoSaveService = NoteAutoSaveService();
+
+  Timer? _autoSaveTimer;
+
+  String? _noteId;
+
+  String _title = '';
+
+  bool _isAutoSaving = false;
+
+  bool get isAutoSaving => _isAutoSaving;
+
+  bool get hasAutoSave => _noteId != null;
+
+  String get title => _title;
+
+  bool _autoSaveSaved = false;
+
+  bool get autoSaveSaved => _autoSaveSaved;
 
   //--------------------------------------------------
   // Page
@@ -54,6 +76,8 @@ class DrawingController extends ChangeNotifier {
   /// ذخیره مستقیم متن یک صفحه
   void savePageText(String value) {
     pages[currentPage].text = value;
+
+    requestAutoSave();
   }
   //--------------------------------------------------
   // Writing Mode
@@ -194,6 +218,8 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.clear();
 
+    requestAutoSave();
+
     notifyListeners();
   }
 
@@ -221,6 +247,8 @@ class DrawingController extends ChangeNotifier {
     loadCurrentPageText();
 
     redoStack.clear();
+
+    requestAutoSave();
 
     notifyListeners();
   }
@@ -266,6 +294,8 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.clear();
 
+    requestAutoSave();
+
     notifyListeners();
   }
 
@@ -300,7 +330,10 @@ class DrawingController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _autoSaveTimer?.cancel();
+
     noteController.dispose();
+
     super.dispose();
   }
 
@@ -321,7 +354,165 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.clear();
 
+    requestAutoSave();
+
     notifyListeners();
+  }
+
+  void setTitle(String value) {
+    _title = value;
+
+    requestAutoSave();
+
+    notifyListeners();
+  }
+
+  void requestAutoSave() {
+    _autoSaveTimer?.cancel();
+
+    _autoSaveTimer = Timer(const Duration(seconds: 1), () {
+      autoSave();
+    });
+  }
+
+  Future<void> autoSave() async {
+    final hasContent = pages.any(
+      (page) => page.text.trim().isNotEmpty || page.strokes.isNotEmpty,
+    );
+
+    if (!hasContent && _noteId == null) {
+      return;
+    }
+
+    _isAutoSaving = true;
+    _autoSaveSaved = false;
+    notifyListeners();
+
+    try {
+      _noteId ??= DateTime.now().microsecondsSinceEpoch.toString();
+
+      saveCurrentPageText();
+
+      final stopwatch = Stopwatch()..start();
+
+      await _autoSaveService.save(
+        id: _noteId!,
+        title: _title,
+        pages: pages,
+        currentPage: currentPage,
+      );
+
+      stopwatch.stop();
+
+      // حداقل 700 میلی‌ثانیه حالت نارنجی نمایش داده شود
+      final remaining = 700 - stopwatch.elapsedMilliseconds;
+
+      if (remaining > 0) {
+        await Future.delayed(Duration(milliseconds: remaining));
+      }
+
+      _autoSaveSaved = true;
+    } catch (e) {
+      debugPrint('AutoSave error: $e');
+
+      _autoSaveSaved = false;
+    } finally {
+      _isAutoSaving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> restoreLatestAutoSave() async {
+    try {
+      final data = await _autoSaveService.loadLatest();
+
+      if (data == null) {
+        return false;
+      }
+
+      pages
+        ..clear()
+        ..addAll(data.pages);
+
+      if (pages.isEmpty) {
+        pages.add(NotePage());
+      }
+
+      _noteId = data.id;
+
+      _title = data.title;
+
+      currentPage = data.currentPage.clamp(0, pages.length - 1);
+
+      loadCurrentPageText();
+
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      debugPrint('Restore AutoSave error: $e');
+
+      return false;
+    }
+  }
+
+  void createNewNote() {
+    _autoSaveTimer?.cancel();
+
+    _noteId = null;
+
+    _title = '';
+
+    pages
+      ..clear()
+      ..add(NotePage());
+
+    currentPage = 0;
+
+    noteController.clear();
+
+    redoStack.clear();
+
+    notifyListeners();
+  }
+
+  void loadAutoSaveData(AutoSaveData data) {
+    pages
+      ..clear()
+      ..addAll(data.pages);
+
+    if (pages.isEmpty) {
+      pages.add(NotePage());
+    }
+
+    _noteId = data.id;
+
+    _title = data.title;
+
+    currentPage = data.currentPage.clamp(0, pages.length - 1);
+
+    loadCurrentPageText();
+
+    redoStack.clear();
+
+    notifyListeners();
+  }
+
+  Future<void> removeCurrentAutoSave() async {
+    if (_noteId == null) {
+      return;
+    }
+
+    try {
+      await _autoSaveService.delete(_noteId!);
+
+      _noteId = null;
+      _autoSaveSaved = false;
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Delete AutoSave error: $e');
+    }
   }
 }
 

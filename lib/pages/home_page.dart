@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:karnamaft/pages/minute_create_page.dart';
+import 'package:karnamaft/services/note_autosave_service.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -27,7 +29,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  final NoteAutoSaveService _autoSaveService = NoteAutoSaveService();
   //--------------------------------------------------
   // Controllers
   //--------------------------------------------------
@@ -54,8 +57,54 @@ class _HomePageState extends State<HomePage> {
   static const double _maxZoom = 1.5;
   static const double _zoomStep = 0.1;
 
+  bool _noteSavedToMinute = false;
+
+  Future<void> _setOrientation() async {
+    final controller = context.read<DrawingController>();
+
+    if (controller.writingMode) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _setOrientation();
+
+      if (!mounted) return;
+
+      final controller = context.read<DrawingController>();
+
+      final restored = await controller.restoreLatestAutoSave();
+
+      if (restored && mounted) {
+        _titleController.text = controller.title;
+      }
+    });
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     _titleController.dispose();
 
     _scrollController.dispose();
@@ -68,6 +117,7 @@ class _HomePageState extends State<HomePage> {
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xfff5f6fa),
 
       //--------------------------------------------------
@@ -82,6 +132,15 @@ class _HomePageState extends State<HomePage> {
 
         title: TextField(
           controller: _titleController,
+          onChanged: (value) {
+            context.read<DrawingController>().setTitle(value);
+
+            if (_noteSavedToMinute) {
+              setState(() {
+                _noteSavedToMinute = false;
+              });
+            }
+          },
 
           textAlign: TextAlign.right,
 
@@ -101,16 +160,51 @@ class _HomePageState extends State<HomePage> {
         ),
 
         actions: [
-          IconButton(
-            tooltip: "ذخیره",
-            onPressed: _saveNote,
-            icon: const Icon(Icons.cloud_done_outlined),
+          Consumer<DrawingController>(
+            builder: (context, controller, _) {
+              Color? iconColor;
+              IconData icon;
+              String tooltip;
+
+              if (controller.isAutoSaving) {
+                // در حال Auto Save
+                iconColor = Colors.orange;
+                icon = Icons.cloud_upload_outlined;
+                tooltip = 'در حال ذخیره خودکار...';
+              } else if (_noteSavedToMinute) {
+                // صورتجلسه با موفقیت ساخته شده
+                iconColor = Colors.green;
+                icon = Icons.cloud_done;
+                tooltip = 'صورتجلسه با موفقیت ذخیره شد';
+              } else {
+                // حالت عادی
+                iconColor = null;
+                icon = Icons.cloud_outlined;
+                tooltip = 'ذخیره';
+              }
+
+              return IconButton(
+                tooltip: tooltip,
+                onPressed: _saveNote,
+                icon: Icon(icon, color: iconColor),
+              );
+            },
           ),
 
           IconButton(
             tooltip: "یادداشت جدید",
 
-            onPressed: () {},
+            onPressed: () {
+              final controller = context.read<DrawingController>();
+
+              controller.createNewNote();
+
+              _titleController.clear();
+
+              setState(() {
+                _noteSavedToMinute = false;
+              });
+            },
 
             icon: const Icon(Icons.note_add_outlined),
           ),
@@ -118,7 +212,9 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: "تاریخچه",
 
-            onPressed: () {},
+            onPressed: () {
+              _showAutoSaveHistory();
+            },
 
             icon: const Icon(Icons.history),
           ),
@@ -156,7 +252,8 @@ class _HomePageState extends State<HomePage> {
                 //--------------------------------------------------
                 // Header : Type + Category
                 //--------------------------------------------------
-                if (!controller.writingMode)
+                // if (!controller.writingMode)
+                if (false)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
 
@@ -590,7 +687,21 @@ class _HomePageState extends State<HomePage> {
                               : Icons.fullscreen,
                         ),
 
-                        onPressed: controller.toggleWritingMode,
+                        onPressed: () async {
+                          controller.toggleWritingMode();
+
+                          if (controller.writingMode) {
+                            await SystemChrome.setPreferredOrientations([
+                              DeviceOrientation.landscapeLeft,
+                              DeviceOrientation.landscapeRight,
+                            ]);
+                          } else {
+                            await SystemChrome.setPreferredOrientations([
+                              DeviceOrientation.portraitUp,
+                              DeviceOrientation.portraitDown,
+                            ]);
+                          }
+                        },
                       ),
 
                       const SizedBox(width: 6),
@@ -651,19 +762,6 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      //--------------------------------------------------
-                      // Send
-                      //--------------------------------------------------
-                      IconButton.filled(
-                        tooltip: "ارسال",
-
-                        onPressed: () {},
-
-                        icon: const Icon(Icons.send),
                       ),
 
                       const SizedBox(width: 6),
@@ -1150,7 +1248,12 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
-      Navigator.push(
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => MinuteCreatePage(
@@ -1159,6 +1262,29 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       );
+
+      if (!mounted) return;
+
+      if (result != null) {
+        // صورتجلسه با موفقیت ایجاد شده
+        setState(() {
+          _noteSavedToMinute = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Row(
+              children: [
+                Icon(Icons.cloud_done, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(child: Text("صورتجلسه با موفقیت ذخیره شد")),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -1257,6 +1383,116 @@ class _HomePageState extends State<HomePage> {
         context,
       ).showSnackBar(SnackBar(content: Text('خطا در خروجی PDF\n$e')));
     }
+  }
+
+  Future<void> _showAutoSaveHistory() async {
+    final history = await _autoSaveService.getHistory();
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+
+      showDragHandle: true,
+
+      isScrollControlled: true,
+
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+
+              children: [
+                const Text(
+                  'تاریخچه یادداشت‌ها',
+
+                  textAlign: TextAlign.right,
+
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 12),
+
+                if (history.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(30),
+                    child: Center(child: Text('هنوز یادداشتی ذخیره نشده است.')),
+                  ),
+
+                ...history.map((item) {
+                  return Card(
+                    elevation: 0,
+
+                    child: ListTile(
+                      leading: const Icon(Icons.description_outlined),
+
+                      title: Text(
+                        item.title.isEmpty ? 'بدون عنوان' : item.title,
+                      ),
+
+                      subtitle: Text(
+                        '${item.fileName}\n'
+                        '${_formatDateTime(item.updatedAt)}',
+                      ),
+
+                      isThreeLine: true,
+
+                      trailing: const Icon(Icons.chevron_left),
+
+                      onTap: () async {
+                        Navigator.pop(context);
+
+                        await _restoreHistoryItem(item.id);
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDateTime(DateTime date) {
+    final d = date.toLocal();
+
+    String two(int value) => value.toString().padLeft(2, '0');
+
+    return '${d.year}/${two(d.month)}/${two(d.day)} '
+        '${two(d.hour)}:${two(d.minute)}';
+  }
+
+  Future<void> _restoreHistoryItem(String id) async {
+    final controller = context.read<DrawingController>();
+
+    final data = await _autoSaveService.load(id);
+
+    if (data == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('فایل یادداشت پیدا نشد.')));
+
+      return;
+    }
+
+    controller.loadAutoSaveData(data);
+
+    _titleController.text = controller.title;
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('یادداشت بازیابی شد.')));
   }
 }
 

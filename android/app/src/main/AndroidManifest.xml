@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <application
-        android:label="karnamaft"
+        android:label="کارنما"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
