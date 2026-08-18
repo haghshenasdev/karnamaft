@@ -7,9 +7,57 @@ import '../models/stroke.dart';
 
 class DrawingController extends ChangeNotifier {
   final List<NotePage> pages = [NotePage()];
+
   bool _writingMode = false;
 
   bool get writingMode => _writingMode;
+
+  //--------------------------------------------------
+  // Page
+  //--------------------------------------------------
+
+  int currentPage = 0;
+
+  int get pageCount => pages.length;
+
+  List<StrokeModel> get strokes => pages[currentPage].strokes;
+
+  bool get canPrevious => currentPage > 0;
+
+  bool get canNext => true;
+
+  //--------------------------------------------------
+  // Text
+  //--------------------------------------------------
+
+  //--------------------------------------------------
+  // Text
+  //--------------------------------------------------
+
+  final TextEditingController noteController = TextEditingController();
+
+  /// ذخیره متن فعلی در صفحه فعلی
+  void saveCurrentPageText() {
+    pages[currentPage].text = noteController.text;
+  }
+
+  /// بارگذاری متن صفحه فعلی
+  void loadCurrentPageText() {
+    final text = pages[currentPage].text;
+
+    noteController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  /// ذخیره مستقیم متن یک صفحه
+  void savePageText(String value) {
+    pages[currentPage].text = value;
+  }
+  //--------------------------------------------------
+  // Writing Mode
+  //--------------------------------------------------
 
   Future<void> toggleWritingMode() async {
     _writingMode = !_writingMode;
@@ -17,6 +65,7 @@ class DrawingController extends ChangeNotifier {
     if (_writingMode) {
       _textMode = false;
       selectedTool = ToolType.pen;
+
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -31,53 +80,13 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  int get pageCount => pages.length;
-
-  bool get canUndo => strokes.isNotEmpty;
-
-  bool get canRedo => redoStack.isNotEmpty;
-
-  bool get canPrevious => currentPage > 0;
-
-  bool get canNext => true;
-
-  int currentPage = 0;
-
-  List<StrokeModel> get strokes => pages[currentPage].strokes;
-
-  final List<StrokeModel> redoStack = [];
-
-  Color penColor = Colors.black;
-
-  double penWidth = 3;
-
-  StrokeModel? currentStroke;
-
-  ToolType selectedTool = ToolType.pen;
-
   //--------------------------------------------------
-  // Text Mode
+  // Drawing / Text Mode
   //--------------------------------------------------
 
   bool _textMode = false;
 
   bool get textMode => _textMode;
-  final noteController = TextEditingController();
-
-  void setTool(ToolType tool) {
-    selectedTool = tool;
-    notifyListeners();
-  }
-
-  //--------------------------------------------------
-  // Text Mode
-  //--------------------------------------------------
-
-  @override
-  void dispose() {
-    noteController.dispose();
-    super.dispose();
-  }
 
   void setTextMode(bool value) {
     if (_textMode == value) {
@@ -109,8 +118,42 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
+  //--------------------------------------------------
+  // Pen
+  //--------------------------------------------------
+
+  final List<StrokeModel> redoStack = [];
+
+  Color penColor = Colors.black;
+
+  double penWidth = 3;
+
+  StrokeModel? currentStroke;
+
+  ToolType selectedTool = ToolType.pen;
+
+  void setTool(ToolType tool) {
+    selectedTool = tool;
+    notifyListeners();
+  }
+
+  void setColor(Color color) {
+    penColor = color;
+    notifyListeners();
+  }
+
+  void setWidth(double width) {
+    penWidth = width;
+    notifyListeners();
+  }
+
+  //--------------------------------------------------
+  // Drawing
+  //--------------------------------------------------
+
   void start(Offset point) {
     if (_textMode) return;
+
     currentStroke = StrokeModel(
       points: [point],
       color: penColor,
@@ -146,6 +189,7 @@ class DrawingController extends ChangeNotifier {
 
   void end() {
     if (_textMode) return;
+
     currentStroke = null;
 
     redoStack.clear();
@@ -153,34 +197,46 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  //-------------------------------------------------
+  //--------------------------------------------------
+  // Pages
+  //--------------------------------------------------
 
   void previousPage() {
-    if (currentPage == 0) return;
+    if (!canPrevious) {
+      return;
+    }
 
-    currentPage--;
-
-    redoStack.clear();
-
-    notifyListeners();
+    goToPage(currentPage - 1);
   }
 
   void nextPage() {
+    saveCurrentPageText();
+
     if (currentPage == pages.length - 1) {
       pages.add(NotePage());
     }
 
     currentPage++;
 
+    loadCurrentPageText();
+
     redoStack.clear();
 
     notifyListeners();
   }
 
-  //-------------------------------------------------
+  //--------------------------------------------------
+  // Undo / Redo
+  //--------------------------------------------------
+
+  bool get canUndo => strokes.isNotEmpty;
+
+  bool get canRedo => redoStack.isNotEmpty;
 
   void undo() {
-    if (strokes.isEmpty) return;
+    if (strokes.isEmpty) {
+      return;
+    }
 
     redoStack.add(strokes.removeLast());
 
@@ -188,35 +244,38 @@ class DrawingController extends ChangeNotifier {
   }
 
   void redo() {
-    if (redoStack.isEmpty) return;
+    if (redoStack.isEmpty) {
+      return;
+    }
 
     strokes.add(redoStack.removeLast());
 
     notifyListeners();
   }
 
+  //--------------------------------------------------
+  // Clear
+  //--------------------------------------------------
+
   void clear() {
     strokes.clear();
+
+    pages[currentPage].text = '';
+
+    noteController.clear();
 
     redoStack.clear();
 
     notifyListeners();
   }
 
-  void setColor(Color color) {
-    penColor = color;
-
-    notifyListeners();
-  }
-
-  void setWidth(double width) {
-    penWidth = width;
-
-    notifyListeners();
-  }
+  //--------------------------------------------------
+  // Delete Page
+  //--------------------------------------------------
 
   void removeCurrentPage() {
-    // اگر فقط یک صفحه وجود دارد، فقط محتوایش پاک شود.
+    // اگر فقط یک صفحه داریم،
+    // خود صفحه حذف نمی‌شود؛ فقط محتوایش پاک می‌شود.
     if (pages.length == 1) {
       clear();
       return;
@@ -224,10 +283,41 @@ class DrawingController extends ChangeNotifier {
 
     pages.removeAt(currentPage);
 
-    // اگر صفحه آخر حذف شده بود
     if (currentPage >= pages.length) {
       currentPage = pages.length - 1;
     }
+
+    loadCurrentPageText();
+
+    redoStack.clear();
+
+    notifyListeners();
+  }
+
+  //--------------------------------------------------
+  // Dispose
+  //--------------------------------------------------
+
+  @override
+  void dispose() {
+    noteController.dispose();
+    super.dispose();
+  }
+
+  void goToPage(int index) {
+    if (index < 0 || index >= pages.length) {
+      return;
+    }
+
+    if (index == currentPage) {
+      return;
+    }
+
+    saveCurrentPageText();
+
+    currentPage = index;
+
+    loadCurrentPageText();
 
     redoStack.clear();
 

@@ -25,7 +25,14 @@ import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import '../models/minute_model.dart';
 
 class MinuteCreatePage extends StatefulWidget {
-  const MinuteCreatePage({super.key});
+  final Uint8List? initialFileBytes;
+  final String? initialFileName;
+
+  const MinuteCreatePage({
+    super.key,
+    this.initialFileBytes,
+    this.initialFileName,
+  });
 
   @override
   State<MinuteCreatePage> createState() => _MinuteCreatePageState();
@@ -84,10 +91,24 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
   }
 
   @override
+  @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addObserver(this);
+
     dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
+
+    if (widget.initialFileBytes != null) {
+      selectedFileBytes = widget.initialFileBytes;
+      selectedFile = widget.initialFileName;
+
+      Future.microtask(() {
+        if (mounted) {
+          processSelectedFile();
+        }
+      });
+    }
   }
 
   @override
@@ -115,7 +136,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('۳ - نتیجه: $file')));
-    
 
       if (!mounted) {
         return;
@@ -224,7 +244,12 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
         group: selectedGroups,
       );
 
-      final result = await _service.create(model, uploadFile: selectedFile);
+      final result = await _service.create(
+        model,
+        uploadFile: selectedFile,
+        uploadBytes: selectedFileBytes,
+        uploadFileName: widget.initialFileName,
+      );
 
       if (!mounted) return;
 
@@ -575,11 +600,8 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     try {
       final result = await _psService.processFile(
         filePath: selectedFile,
-
         bytes: selectedFileBytes,
-
-        fileName: selectedFile,
-
+        fileName: widget.initialFileName ?? "note.png",
         cancelToken: _processCancelToken,
       );
 

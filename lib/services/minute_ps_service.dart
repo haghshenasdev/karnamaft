@@ -47,27 +47,26 @@ class MinutePsService {
     try {
       MultipartFile file;
 
-      if (kIsWeb) {
+      if (bytes != null) {
         file = MultipartFile.fromBytes(
-          bytes!,
-          filename: fileName ?? "upload.jpg",
+          bytes,
+          filename: fileName ?? "upload.png",
         );
-      } else {
+      } else if (filePath != null) {
         file = await MultipartFile.fromFile(
-          filePath!,
+          filePath,
           filename: filePath.split("/").last,
         );
+      } else {
+        throw Exception("فایلی برای ارسال وجود ندارد");
       }
 
       final formData = FormData.fromMap({"file": file});
 
       final response = await ApiClient.dio.post(
         "/minute_ps",
-
         data: formData,
-
         options: Options(contentType: "multipart/form-data"),
-
         cancelToken: cancelToken,
       );
 

@@ -13,12 +13,16 @@ import 'package:karnamaft/widgets/date_record_filter.dart';
 
 import '../api/api_client.dart';
 
-
 class MinuteService implements RecordService<MinuteModel> {
   const MinuteService();
   final rootPath = "/admin/minutes";
 
-  Future<MinuteModel> create(MinuteModel model, {String? uploadFile}) async {
+  Future<MinuteModel> create(
+    MinuteModel model, {
+    String? uploadFile,
+    Uint8List? uploadBytes,
+    String? uploadFileName,
+  }) async {
     try {
       final formData = FormData();
 
@@ -47,9 +51,25 @@ class MinuteService implements RecordService<MinuteModel> {
       }
 
       // فایل
-      if (uploadFile != null) {
+      if (uploadBytes != null) {
         formData.files.add(
-          MapEntry("upload_file", await MultipartFile.fromFile(uploadFile)),
+          MapEntry(
+            "upload_file",
+            MultipartFile.fromBytes(
+              uploadBytes,
+              filename: uploadFileName ?? "note.png",
+            ),
+          ),
+        );
+      } else if (uploadFile != null) {
+        formData.files.add(
+          MapEntry(
+            "upload_file",
+            await MultipartFile.fromFile(
+              uploadFile,
+              filename: uploadFile.split('/').last,
+            ),
+          ),
         );
       }
 

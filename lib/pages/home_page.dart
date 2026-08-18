@@ -1,4 +1,9 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:karnamaft/pages/minute_create_page.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/drawing_controller.dart';
@@ -6,6 +11,14 @@ import '../models/note_page.dart';
 import '../widgets/category_picker/category_picker.dart';
 import '../widgets/drawing_canvas.dart';
 import '../widgets/note_editor.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+
+import '../models/note_export_result.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,6 +38,8 @@ class _HomePageState extends State<HomePage> {
 
   // حداکثر عرض واقعی کاغذ
   static const double _maxWritingPageWidth = 1000;
+
+  final GlobalKey _paperKey = GlobalKey();
 
   //--------------------------------------------------
   // Page Size
@@ -88,9 +103,7 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             tooltip: "ذخیره",
-
-            onPressed: () {},
-
+            onPressed: _saveNote,
             icon: const Icon(Icons.cloud_done_outlined),
           ),
 
@@ -122,6 +135,10 @@ class _HomePageState extends State<HomePage> {
             onSelected: (value) {
               if (value == "clear") {
                 _confirmClearPage(context);
+              }
+
+              if (value == "pdf") {
+                _exportPdf();
               }
             },
           ),
@@ -253,48 +270,40 @@ class _HomePageState extends State<HomePage> {
                                   child: Center(
                                     child: Card(
                                       elevation: 5,
-
                                       color: Colors.white,
-
                                       clipBehavior: Clip.antiAlias,
-
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(20),
                                       ),
+                                      child: RepaintBoundary(
+                                        key: _paperKey,
+                                        child: Container(
+                                          width: paperWidth,
+                                          height: paperHeight,
+                                          color: Colors.white,
+                                          child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              Consumer<DrawingController>(
+                                                builder:
+                                                    (context, controller, _) {
+                                                      return NoteEditor(
+                                                        controller: controller
+                                                            .noteController,
+                                                        enabled:
+                                                            controller.textMode,
+                                                        onChanged: controller
+                                                            .savePageText,
+                                                      );
+                                                    },
+                                              ),
 
-                                      child: SizedBox(
-                                        width: paperWidth,
-
-                                        height: paperHeight,
-
-                                        child: Stack(
-                                          fit: StackFit.expand,
-
-                                          children: [
-                                            //--------------------------------------------------
-                                            // TEXT
-                                            //--------------------------------------------------
-                                            Consumer<DrawingController>(
-                                              builder:
-                                                  (context, controller, _) {
-                                                    return NoteEditor(
-                                                      controller: controller
-                                                          .noteController,
-
-                                                      enabled:
-                                                          controller.textMode,
-                                                    );
-                                                  },
-                                            ),
-
-                                            //--------------------------------------------------
-                                            // DRAWING
-                                            //--------------------------------------------------
-                                            DrawingCanvas(
-                                              controller: controller,
-                                              zoom: _zoom,
-                                            ),
-                                          ],
+                                              DrawingCanvas(
+                                                controller: controller,
+                                                zoom: _zoom,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -462,38 +471,35 @@ class _HomePageState extends State<HomePage> {
 
                       return Align(
                         alignment: Alignment.topCenter,
-
                         child: Card(
                           elevation: 5,
-
                           color: Colors.white,
-
                           clipBehavior: Clip.antiAlias,
-
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
+                          child: RepaintBoundary(
+                            key: _paperKey,
+                            child: Container(
+                              width: pageWidth,
+                              height: pageHeight,
+                              color: Colors.white,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Consumer<DrawingController>(
+                                    builder: (context, controller, _) {
+                                      return NoteEditor(
+                                        controller: controller.noteController,
+                                        enabled: controller.textMode,
+                                        onChanged: controller.savePageText,
+                                      );
+                                    },
+                                  ),
 
-                          child: SizedBox(
-                            width: pageWidth,
-                            height: pageHeight,
-
-                            child: Stack(
-                              fit: StackFit.expand,
-
-                              children: [
-                                Consumer<DrawingController>(
-                                  builder: (context, controller, _) {
-                                    return NoteEditor(
-                                      controller: controller.noteController,
-
-                                      enabled: controller.textMode,
-                                    );
-                                  },
-                                ),
-
-                                DrawingCanvas(controller: controller),
-                              ],
+                                  DrawingCanvas(controller: controller),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1017,6 +1023,240 @@ class _HomePageState extends State<HomePage> {
         );
       },
     );
+  }
+
+  Future<Uint8List?> _captureCurrentPage() async {
+    try {
+      final boundary =
+          _paperKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+
+      if (boundary == null) {
+        return null;
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (byteData == null) {
+        return null;
+      }
+
+      return byteData.buffer.asUint8List();
+    } catch (e) {
+      debugPrint('Capture page error: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveNote() async {
+    final controller = context.read<DrawingController>();
+
+    try {
+      // آخرین متن صفحه فعلی ذخیره شود
+      controller.saveCurrentPageText();
+
+      // صفحه فعلی را نگه می‌داریم
+      final oldPage = controller.currentPage;
+
+      Uint8List fileBytes;
+      String fileName;
+
+      final now = Jalali.now();
+
+      final dateTime =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_'
+          '${DateTime.now().hour.toString().padLeft(2, '0')}-'
+          '${DateTime.now().minute.toString().padLeft(2, '0')}-'
+          '${DateTime.now().second.toString().padLeft(2, '0')}';
+
+      // =====================================================
+      // یک صفحه → JPG
+      // =====================================================
+      if (controller.pageCount == 1) {
+        final bytes = await _captureCurrentPage();
+
+        if (bytes == null) {
+          throw Exception('تصویر صفحه ایجاد نشد');
+        }
+
+        fileBytes = bytes;
+
+        final title = _titleController.text.trim();
+
+        fileName = '${title.isEmpty ? "note" : title}_$dateTime.png';
+      }
+      // =====================================================
+      // چند صفحه → PDF
+      // =====================================================
+      else {
+        final pdf = pw.Document();
+
+        for (int i = 0; i < controller.pageCount; i++) {
+          // رفتن به صفحه
+          controller.currentPage = i;
+
+          // بارگذاری متن همان صفحه
+          controller.loadCurrentPageText();
+
+          controller.notifyListeners();
+
+          // فرصت برای Render
+          await Future.delayed(const Duration(milliseconds: 100));
+
+          final bytes = await _captureCurrentPage();
+
+          if (bytes == null) {
+            throw Exception('تصویر صفحه ${i + 1} ایجاد نشد');
+          }
+
+          final image = pw.MemoryImage(bytes);
+
+          pdf.addPage(
+            pw.Page(
+              pageFormat: PdfPageFormat.a4,
+              margin: pw.EdgeInsets.zero,
+              build: (context) {
+                return pw.SizedBox(
+                  width: PdfPageFormat.a4.width,
+                  height: PdfPageFormat.a4.height,
+                  child: pw.Image(image, fit: pw.BoxFit.fill),
+                );
+              },
+            ),
+          );
+        }
+
+        // بازگرداندن صفحه‌ای که کاربر روی آن بود
+        controller.currentPage = oldPage;
+
+        controller.loadCurrentPageText();
+
+        controller.notifyListeners();
+
+        final pdfBytes = await pdf.save();
+
+        fileBytes = Uint8List.fromList(pdfBytes);
+
+        final title = _titleController.text.trim();
+
+        fileName = '${title.isEmpty ? "note" : title}_$dateTime.pdf';
+      }
+
+      // =====================================================
+      // ارسال فایل به صفحه ایجاد صورتجلسه
+      // =====================================================
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MinuteCreatePage(
+            initialFileBytes: fileBytes,
+            initialFileName: fileName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در ذخیره یادداشت\n$e')));
+    }
+  }
+
+  Future<String?> _pickSavePath({
+    required String fileName,
+    required String extension,
+  }) async {
+    return await FilePicker.platform.saveFile(
+      dialogTitle: 'ذخیره خروجی',
+      fileName: fileName,
+      type: FileType.custom,
+      allowedExtensions: [extension],
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    final controller = context.read<DrawingController>();
+
+    try {
+      controller.saveCurrentPageText();
+
+      final pdf = pw.Document();
+
+      final oldPage = controller.currentPage;
+
+      for (int i = 0; i < controller.pageCount; i++) {
+        controller.goToPage(i);
+
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        final bytes = await _captureCurrentPage();
+
+        if (bytes == null) {
+          throw Exception('تصویر صفحه ${i + 1} ایجاد نشد');
+        }
+
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            margin: pw.EdgeInsets.zero,
+            build: (context) {
+              return pw.SizedBox(
+                width: PdfPageFormat.a4.width,
+                height: PdfPageFormat.a4.height,
+                child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.fill),
+              );
+            },
+          ),
+        );
+      }
+
+      controller.goToPage(oldPage);
+
+      final pdfBytes = await pdf.save();
+
+      // انتخاب پوشه
+      final directory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'انتخاب محل ذخیره PDF',
+      );
+
+      if (directory == null) {
+        return;
+      }
+
+      final now = Jalali.now();
+
+      final dateTime =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_'
+          '${DateTime.now().hour.toString().padLeft(2, '0')}-'
+          '${DateTime.now().minute.toString().padLeft(2, '0')}-'
+          '${DateTime.now().second.toString().padLeft(2, '0')}';
+
+      final title = _titleController.text.trim();
+
+      final fileName = '${title.isEmpty ? "note" : title}_$dateTime.pdf';
+
+      final file = File('$directory${Platform.pathSeparator}$fileName');
+
+      await file.writeAsBytes(pdfBytes, flush: true);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF با موفقیت ذخیره شد\n${file.path}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('خطا در خروجی PDF\n$e')));
+    }
   }
 }
 

@@ -2,21 +2,18 @@ import 'package:flutter/material.dart';
 
 class NoteEditor extends StatefulWidget {
   final TextEditingController controller;
-
   final bool enabled;
-
   final EdgeInsets padding;
+
+  /// هر بار متن تغییر کرد
+  final ValueChanged<String>? onChanged;
 
   const NoteEditor({
     super.key,
     required this.controller,
     required this.enabled,
-    this.padding = const EdgeInsets.fromLTRB(
-      28,
-      24,
-      28,
-      24,
-    ),
+    this.onChanged,
+    this.padding = const EdgeInsets.fromLTRB(28, 24, 28, 24),
   });
 
   @override
@@ -29,17 +26,12 @@ class _NoteEditorState extends State<NoteEditor> {
   @override
   void initState() {
     super.initState();
-
     _focusNode = FocusNode();
   }
 
   @override
   void didUpdateWidget(covariant NoteEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    //------------------------------------------
-    // ورود به حالت تایپ
-    //------------------------------------------
 
     if (widget.enabled && !oldWidget.enabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -49,10 +41,6 @@ class _NoteEditorState extends State<NoteEditor> {
       });
     }
 
-    //------------------------------------------
-    // خروج از حالت تایپ
-    //------------------------------------------
-
     if (!widget.enabled && oldWidget.enabled) {
       _focusNode.unfocus();
     }
@@ -61,7 +49,6 @@ class _NoteEditorState extends State<NoteEditor> {
   @override
   void dispose() {
     _focusNode.dispose();
-
     super.dispose();
   }
 
@@ -82,24 +69,20 @@ class _NoteEditorState extends State<NoteEditor> {
           autofocus: false,
 
           expands: true,
-
           maxLines: null,
-
           minLines: null,
 
           keyboardType: TextInputType.multiline,
-
           textInputAction: TextInputAction.newline,
 
           textDirection: TextDirection.rtl,
-
           textAlign: TextAlign.right,
-
           textAlignVertical: TextAlignVertical.top,
 
           cursorWidth: 2,
-
           cursorRadius: const Radius.circular(2),
+
+          onChanged: widget.onChanged,
 
           style: const TextStyle(
             fontSize: 18,
@@ -109,23 +92,15 @@ class _NoteEditorState extends State<NoteEditor> {
 
           decoration: InputDecoration(
             border: InputBorder.none,
-
             enabledBorder: InputBorder.none,
-
             focusedBorder: InputBorder.none,
-
             disabledBorder: InputBorder.none,
 
             contentPadding: widget.padding,
 
-            hintText: widget.enabled
-                ? "شروع به نوشتن کنید..."
-                : null,
+            hintText: widget.enabled ? "شروع به نوشتن کنید..." : null,
 
-            hintStyle: const TextStyle(
-              color: Colors.grey,
-              fontSize: 18,
-            ),
+            hintStyle: const TextStyle(color: Colors.grey, fontSize: 18),
           ),
         ),
       ),
