@@ -43,22 +43,6 @@ class _SearchPageState extends State<SearchPage> {
 
   static const String searchHistoryKey = "search_history";
 
-  //------------------------------------------------
-  //
-  // Suggestions
-  //
-  //------------------------------------------------
-
-  final List<String> suggestions = [
-    "نامه",
-    "صورت جلسه",
-    "یادداشت",
-    "فعالیت",
-    "بودجه",
-    "دانشگاه",
-    "هیئت علمی",
-  ];
-
   //--------------------------------------------------
   // Result
   //--------------------------------------------------
@@ -378,46 +362,6 @@ class _SearchPageState extends State<SearchPage> {
                             },
                           );
                         }),
-
-                        const SizedBox(height: 22),
-
-                        //----------------------------------------
-                        // Suggestion
-                        //----------------------------------------
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
-
-                          child: Text(
-                            "پیشنهادها",
-
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-
-                          child: Wrap(
-                            spacing: 10,
-
-                            runSpacing: 10,
-
-                            children: suggestions.map((text) {
-                              return ActionChip(
-                                avatar: const Icon(Icons.search, size: 18),
-
-                                label: Text(text),
-
-                                onPressed: () {
-                                  _searchByText(text);
-                                },
-                              );
-                            }).toList(),
-                          ),
-                        ),
                       ],
                     )
                   : loading
