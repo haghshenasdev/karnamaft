@@ -181,7 +181,7 @@ class _RecordsPageState extends State<RecordsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xfff5f6fa),
+      backgroundColor: theme.colorScheme.surface,
 
       appBar: AppBar(
         title: Text(widget.title),
@@ -217,7 +217,7 @@ class _RecordsPageState extends State<RecordsPage> {
             // Filter Bar
             //--------------------------------------------------
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
                 children: [
                   FilledButton.tonalIcon(
@@ -241,8 +241,30 @@ class _RecordsPageState extends State<RecordsPage> {
               ),
             ),
 
-            const SizedBox(height: 12),
+            if (filters.entries.where((e) => e.value.isNotEmpty && e.key != 'search').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: filters.entries
+                        .where((e) => e.value.isNotEmpty && e.key != 'search')
+                        .map((e) => Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: InputChip(
+                                label: Text('${e.key}: ${e.value}'),
+                                onDeleted: () {
+                                  setState(() => filters.remove(e.key));
+                                  loadData();
+                                },
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
 
+            const SizedBox(height: 4),
             const Divider(height: 1),
 
             //--------------------------------------------------

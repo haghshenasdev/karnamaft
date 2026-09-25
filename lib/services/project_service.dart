@@ -16,7 +16,7 @@ import 'package:karnamaft/widgets/date_record_filter.dart';
 class ProjectService implements RecordService<ProjectModel> {
   const ProjectService();
 
-  final String rootPath = "/admin/projects";
+  final String rootPath = "/mobile/v1/projects";
 
   @override
   Future<PageResult<RecordItem>> list({

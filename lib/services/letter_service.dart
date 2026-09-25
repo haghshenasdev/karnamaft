@@ -15,7 +15,7 @@ import 'package:karnamaft/widgets/date_record_filter.dart';
 class LetterService implements RecordService<LetterModel> {
   const LetterService();
 
-  final String rootPath = "/admin/letters";
+  final String rootPath = "/mobile/v1/letters";
 
   @override
   Future<PageResult<RecordItem>> list({
@@ -147,7 +147,17 @@ class LetterService implements RecordService<LetterModel> {
     }
   }
 
-  Future<LetterModel> create(LetterModel model, {String? uploadFile}) async {
+  Future<LetterModel> create(
+    LetterModel model, {
+    String? uploadFile,
+    int? typeId,
+    String? mokatebe,
+    int? peiroowLetterId,
+    List<int> customerIds = const [],
+    List<int> organOwnerIds = const [],
+    List<int> projectIds = const [],
+    List<int> cartableUserIds = const [],
+  }) async {
     try {
       final formData = FormData();
 
@@ -163,9 +173,24 @@ class LetterService implements RecordService<LetterModel> {
         MapEntry("kind", model.kind?.toString() ?? ""),
         MapEntry("daftar_id", model.daftar?.id.toString() ?? ""),
         MapEntry("organ_id", model.organ?.id.toString() ?? ""),
-
+        if (typeId != null) MapEntry("type_id", typeId.toString()),
+        if (mokatebe != null) MapEntry("mokatebe", mokatebe),
+        if (peiroowLetterId != null) MapEntry("peiroow_letter_id", peiroowLetterId.toString()),
         MapEntry("created_at", model.created_at?.toIso8601String() ?? ""),
       ]);
+
+      for (final id in customerIds) {
+        formData.fields.add(MapEntry("customer_ids[]", id.toString()));
+      }
+      for (final id in organOwnerIds) {
+        formData.fields.add(MapEntry("organ_owner_ids[]", id.toString()));
+      }
+      for (final id in projectIds) {
+        formData.fields.add(MapEntry("project_ids[]", id.toString()));
+      }
+      for (final id in cartableUserIds) {
+        formData.fields.add(MapEntry("cartable_user_ids[]", id.toString()));
+      }
 
       if (uploadFile != null) {
         formData.files.add(
@@ -197,47 +222,37 @@ class LetterService implements RecordService<LetterModel> {
   @override
   List<RecordFilter> get filters => [
     RecordFilter(
-      key: "date",
-
-      field: "created_at",
-
-      title: "تاریخ ثبت",
-
+      key: "date", field: "created_at", title: "تاریخ ثبت",
       icon: Icons.calendar_today,
-
-      builder: (context, values, refresh, field) {
-        return DateRecordFilter(
-          values: values,
-
-          field: field,
-
-          onChanged: refresh,
-        );
-      },
+      builder: (context, values, refresh, field) => DateRecordFilter(
+        values: values, field: field, onChanged: refresh,
+      ),
     ),
-
-    // RecordFilter(
-    //   key: "status",
-    //   title: "وضعیت",
-    //   icon: Icons.flag,
-
-    //   builder: (context, values, refresh) {
-    //     return DropdownButtonFormField<String>(
-    //       value: values["status"],
-
-    //       items: [
-    //         "فعال",
-    //         "مختومه",
-    //       ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-
-    //       onChanged: (v) {
-    //         if (v != null) {
-    //           values["status"] = v;
-    //           refresh();
-    //         }
-    //       },
-    //     );
-    //   },
-    // ),
+    RecordFilter(
+      key: "status", field: "status", title: "وضعیت", icon: Icons.flag_outlined,
+      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
+        value: values[field],
+        decoration: const InputDecoration(labelText: "وضعیت"),
+        items: const [
+          DropdownMenuItem(value: "0", child: Text("جدید")),
+          DropdownMenuItem(value: "1", child: Text("اتمام")),
+          DropdownMenuItem(value: "2", child: Text("در حال پیگیری")),
+          DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
+        ],
+        onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
+    ),
+    RecordFilter(
+      key: "kind", field: "kind", title: "نوع نامه", icon: Icons.mail_outline,
+      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
+        value: values[field],
+        decoration: const InputDecoration(labelText: "نوع نامه"),
+        items: const [
+          DropdownMenuItem(value: "0", child: Text("وارده")),
+          DropdownMenuItem(value: "1", child: Text("صادره")),
+        ],
+        onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
+    ),
   ];
 }

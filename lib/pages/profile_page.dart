@@ -7,6 +7,8 @@ import 'package:karnamaft/widgets/profile/about_card.dart';
 import 'package:karnamaft/widgets/profile/account_card.dart';
 import 'package:karnamaft/widgets/profile/logout_card.dart';
 import 'package:karnamaft/widgets/profile/password_card.dart';
+import 'package:karnamaft/widgets/profile/permissions_card.dart';
+import 'package:karnamaft/services/auth_service.dart';
 import 'package:karnamaft/widgets/profile/profile_header.dart';
 import 'package:provider/provider.dart';
 
@@ -61,7 +63,15 @@ class _ProfilePageState extends State<ProfilePage> {
     String currentPassword,
     String newPassword,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    await const AuthService().changePassword(
+      currentPassword: currentPassword,
+      password: newPassword,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('رمز عبور با موفقیت تغییر کرد.')),
+      );
+    }
   }
 
   //--------------------------------------
@@ -69,10 +79,11 @@ class _ProfilePageState extends State<ProfilePage> {
   //--------------------------------------
 
   Future<void> _logout() async {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("خروج از حساب کاربری")));
+    try {
+      await const AuthService().logout();
+    } catch (_) {}
     await AuthStorage.logout();
+    profile.clear();
 
     if (!mounted) return;
 
@@ -108,6 +119,10 @@ class _ProfilePageState extends State<ProfilePage> {
             // Account
             //----------------------------------
             AccountCard(profile: profile),
+
+            const SizedBox(height: 16),
+
+            PermissionsCard(user: profile),
 
             const SizedBox(height: 16),
 

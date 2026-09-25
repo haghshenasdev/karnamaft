@@ -11,7 +11,7 @@ import 'package:karnamaft/widgets/date_record_filter.dart';
 class OrganService implements RecordService<OrganModel> {
   const OrganService();
 
-  final String rootPath = "/admin/organs";
+  final String rootPath = "/mobile/v1/organs";
 
   /// دریافت لیست سازمان‌ها
   @override
@@ -92,8 +92,12 @@ class OrganService implements RecordService<OrganModel> {
   ];
 
   @override
-  Future<bool> delete(int id) {
-    // TODO: implement delete
-    throw UnimplementedError();
+  Future<bool> delete(int id) async {
+    try {
+      final response = await ApiClient.dio.delete("$rootPath/$id");
+      return response.statusCode == 200;
+    } catch (e) {
+      throw ApiErrorHandler.handle(e);
+    }
   }
 }

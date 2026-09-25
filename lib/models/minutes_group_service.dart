@@ -10,7 +10,7 @@ import '../models/record_item.dart';
 class MinutesGroupService implements RecordService {
   const MinutesGroupService();
 
-  static const String rootPath = "/admin/minutes-groups";
+  static const String rootPath = "/mobile/v1/minutes-groups";
 
   @override
   Future<PageResult<RecordItem>> list({
@@ -75,8 +75,12 @@ class MinutesGroupService implements RecordService {
   List<RecordFilter> get filters => const [];
   
   @override
-  Future<bool> delete(int id) {
-    // TODO: implement delete
-    throw UnimplementedError();
+  Future<bool> delete(int id) async {
+    try {
+      final response = await ApiClient.dio.delete("$rootPath/$id");
+      return response.statusCode == 200;
+    } catch (e) {
+      throw ApiErrorHandler.handle(e);
+    }
   }
 }

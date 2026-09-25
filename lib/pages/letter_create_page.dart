@@ -8,6 +8,7 @@ import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/scan_service.dart';
+import 'package:karnamaft/services/reference_service.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
 import 'package:karnamaft/widgets/select_record_dialog.dart';
@@ -36,6 +37,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   final descriptionController = TextEditingController();
   final summaryController = TextEditingController();
   final dateController = TextEditingController();
+  final mokatebeController = TextEditingController();
 
   //--------------------------------------------------
   // File
@@ -57,6 +59,11 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   LetterOrgan? selectedCustomer;
 
   LetterDaftar? selectedDaftar;
+  int? selectedTypeId;
+  List<int> selectedCustomerIds = [];
+  List<int> selectedOrganOwnerIds = [];
+  List<int> selectedProjectIds = [];
+  List<int> selectedCartableUserIds = [];
 
   //--------------------------------------------------
   // State
@@ -93,6 +100,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
     descriptionController.dispose();
     summaryController.dispose();
     dateController.dispose();
+    mokatebeController.dispose();
 
     super.dispose();
   }
@@ -257,6 +265,33 @@ class _LetterCreatePageState extends State<LetterCreatePage>
     });
   }
 
+  Future<void> selectMany({
+    required String title,
+    required String resource,
+    required String historyKey,
+    required void Function(List<RecordItem>) onSelected,
+  }) async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: ReferenceService(resource),
+        config: SelectDialogConfig(title: title, multiSelect: true, historyKey: historyKey),
+      ),
+    );
+    if (result is List<RecordItem>) onSelected(result);
+  }
+
+  Future<void> selectType() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('types'),
+        config: const SelectDialogConfig(title: 'انتخاب نوع نامه', multiSelect: false, historyKey: 'letter_type'),
+      ),
+    );
+    if (result != null) setState(() => selectedTypeId = result.id);
+  }
+
   //--------------------------------------------------
   // Save
   //--------------------------------------------------
@@ -334,7 +369,16 @@ class _LetterCreatePageState extends State<LetterCreatePage>
       // API
       //--------------------------------------------------
 
-      final result = await _service.create(model, uploadFile: selectedFile);
+      final result = await _service.create(
+        model,
+        uploadFile: selectedFile,
+        typeId: selectedTypeId,
+        mokatebe: mokatebeController.text.trim().isEmpty ? null : mokatebeController.text.trim(),
+        customerIds: selectedCustomerIds,
+        organOwnerIds: selectedOrganOwnerIds,
+        projectIds: selectedProjectIds,
+        cartableUserIds: selectedCartableUserIds,
+      );
 
       if (!mounted) {
         return;
@@ -542,6 +586,60 @@ class _LetterCreatePageState extends State<LetterCreatePage>
             const SizedBox(height: 20),
 
             //--------------------------------------------------
+            // Correspondence number
+            //--------------------------------------------------
+            TextField(
+              controller: mokatebeController,
+              decoration: const InputDecoration(
+                labelText: "شماره مکاتبه",
+                prefixIcon: Icon(Icons.numbers_outlined),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            OutlinedButton.icon(
+              onPressed: selectType,
+              icon: const Icon(Icons.category_outlined),
+              label: Text(selectedTypeId == null ? "انتخاب نوع نامه" : "نوع انتخاب شد (شناسه $selectedTypeId)"),
+            ),
+            const SizedBox(height: 14),
+
+            _selectionTile("صاحب - مراجعه کننده", selectedCustomerIds.length, () {
+              selectMany(
+                title: "انتخاب مراجعه کنندگان",
+                resource: "customers",
+                historyKey: "letter_customers",
+                onSelected: (items) => setState(() => selectedCustomerIds = items.map((e) => e.id).toList()),
+              );
+            }),
+            _selectionTile("صاحب - ارگان", selectedOrganOwnerIds.length, () {
+              selectMany(
+                title: "انتخاب ارگان‌های صاحب",
+                resource: "organs",
+                historyKey: "letter_organ_owners",
+                onSelected: (items) => setState(() => selectedOrganOwnerIds = items.map((e) => e.id).toList()),
+              );
+            }),
+            _selectionTile("دستورکار", selectedProjectIds.length, () {
+              selectMany(
+                title: "انتخاب دستورکارها",
+                resource: "projects",
+                historyKey: "letter_projects",
+                onSelected: (items) => setState(() => selectedProjectIds = items.map((e) => e.id).toList()),
+              );
+            }),
+            _selectionTile("گیرندگان کارپوشه", selectedCartableUserIds.length, () {
+              selectMany(
+                title: "انتخاب کاربران کارپوشه",
+                resource: "users",
+                historyKey: "letter_cartable_users",
+                onSelected: (items) => setState(() => selectedCartableUserIds = items.map((e) => e.id).toList()),
+              );
+            }),
+
+            const SizedBox(height: 8),
+
+            //--------------------------------------------------
             // Information
             //--------------------------------------------------
             _buildInformationCard(),
@@ -592,6 +690,19 @@ class _LetterCreatePageState extends State<LetterCreatePage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _selectionTile(String title, int count, VoidCallback onTap) {
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: ListTile(
+        leading: const Icon(Icons.checklist_outlined),
+        title: Text(title),
+        subtitle: Text(count == 0 ? "انتخاب نشده" : "$count مورد انتخاب شده"),
+        trailing: const Icon(Icons.chevron_left),
+        onTap: onTap,
       ),
     );
   }

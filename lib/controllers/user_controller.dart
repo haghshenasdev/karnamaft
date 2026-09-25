@@ -1,32 +1,25 @@
 import 'package:flutter/material.dart';
-
 import '../models/user_model.dart';
 
 class UserController extends ChangeNotifier {
   UserModel? _user;
   String _token = "";
 
-  //--------------------------------------------------
-  // Getter
-  //--------------------------------------------------
-
   UserModel? get user => _user;
-
   bool get isLoggedIn => _user != null;
-
   String get name => _user?.name ?? "";
-
   String get email => _user?.email ?? "";
-
   String get avatar => _user?.avatar ?? "";
-
   int get id => _user?.id ?? 0;
-
   String get token => _token;
 
-  //--------------------------------------------------
-  // Set User
-  //--------------------------------------------------
+  bool can(String permission) => _user?.can(permission) ?? false;
+  bool get canManageLetters => can("view_any_letter");
+  bool get canManageMinutes => can("view_any_minutes");
+  bool get canManageTasks => can("view_any_task");
+  bool get canManageProjects => can("view_any_project");
+  bool get canManageCartable => can("view_any_cartable");
+  bool get canManageReferrals => can("view_any_referral");
 
   void setUser(UserModel user, String token) {
     _user = user;
@@ -34,46 +27,27 @@ class UserController extends ChangeNotifier {
     notifyListeners();
   }
 
-  //--------------------------------------------------
-  // Clear
-  //--------------------------------------------------
+  void setToken(String token) {
+    _token = token;
+    notifyListeners();
+  }
 
   void clear() {
     _user = null;
+    _token = "";
     notifyListeners();
   }
 
-  //--------------------------------------------------
-  // Update Avatar
-  //--------------------------------------------------
+  void updateUser(UserModel user) {
+    _user = user;
+    notifyListeners();
+  }
 
   void updateAvatar(String avatar) {
-    if (_user == null) return;
-
-    _user = UserModel(
-      id: _user!.id,
-      name: _user!.name,
-      email: _user!.email,
-      avatar: avatar,
-    );
-
-    notifyListeners();
+    if (_user != null) updateUser(_user!.copyWith(avatar: avatar));
   }
 
-  //--------------------------------------------------
-  // Update Name
-  //--------------------------------------------------
-
   void updateName(String name) {
-    if (_user == null) return;
-
-    _user = UserModel(
-      id: _user!.id,
-      name: name,
-      email: _user!.email,
-      avatar: _user!.avatar,
-    );
-
-    notifyListeners();
+    if (_user != null) updateUser(_user!.copyWith(name: name));
   }
 }

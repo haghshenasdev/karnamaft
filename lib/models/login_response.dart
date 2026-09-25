@@ -1,8 +1,6 @@
 class LoginResponse {
   final bool success;
-
   final String message;
-
   final String token;
 
   const LoginResponse({
@@ -11,13 +9,11 @@ class LoginResponse {
     required this.token,
   });
 
-  factory LoginResponse.fromJson(
-    Map<String, dynamic> json,
-  ) {
+  factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
-      success: json["success"] ?? false,
+      success: json["success"] ?? true,
       message: json["message"] ?? "",
-      token: json["token"] ?? "",
+      token: json["token"] ?? json["access_token"] ?? "",
     );
   }
 }

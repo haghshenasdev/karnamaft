@@ -15,7 +15,7 @@ import 'package:karnamaft/widgets/date_record_filter.dart';
 class TaskService implements RecordService<TaskModel> {
   const TaskService();
 
-  final String rootPath = "/admin/tasks";
+  final String rootPath = "/mobile/v1/tasks";
 
   @override
   Future<PageResult<RecordItem>> list({
@@ -165,23 +165,34 @@ class TaskService implements RecordService<TaskModel> {
   @override
   List<RecordFilter> get filters => [
     RecordFilter(
-      key: "date",
-
-      field: "created_at",
-
-      title: "تاریخ ثبت",
-
-      icon: Icons.calendar_today,
-
-      builder: (context, values, refresh, field) {
-        return DateRecordFilter(
-          values: values,
-
-          field: field,
-
-          onChanged: refresh,
-        );
-      },
+      key: "date", field: "created_at", title: "تاریخ ثبت", icon: Icons.calendar_today,
+      builder: (context, values, refresh, field) => DateRecordFilter(values: values, field: field, onChanged: refresh),
+    ),
+    RecordFilter(
+      key: "status", field: "status", title: "وضعیت", icon: Icons.flag_outlined,
+      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
+        value: values[field],
+        decoration: const InputDecoration(labelText: "وضعیت"),
+        items: const [
+          DropdownMenuItem(value: "0", child: Text("جدید")),
+          DropdownMenuItem(value: "1", child: Text("اتمام")),
+          DropdownMenuItem(value: "2", child: Text("در حال پیگیری")),
+          DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
+        ],
+        onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
+    ),
+    RecordFilter(
+      key: "completed", field: "completed", title: "انجام", icon: Icons.task_alt,
+      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
+        value: values[field],
+        decoration: const InputDecoration(labelText: "وضعیت انجام"),
+        items: const [
+          DropdownMenuItem(value: "1", child: Text("انجام شده")),
+          DropdownMenuItem(value: "0", child: Text("انجام نشده")),
+        ],
+        onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
     ),
   ];
 }

@@ -15,7 +15,7 @@ import '../api/api_client.dart';
 
 class MinuteService implements RecordService<MinuteModel> {
   const MinuteService();
-  final rootPath = "/admin/minutes";
+  final rootPath = "/mobile/v1/minutes";
 
   Future<MinuteModel> create(
     MinuteModel model, {
