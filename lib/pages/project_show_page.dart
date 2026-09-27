@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/services/file_service.dart';
+import 'package:karnamaft/widgets/record_share_dialog.dart';
 import 'package:intl/intl.dart';
 
 import 'package:karnamaft/controllers/user_controller.dart';
+import 'package:karnamaft/pages/letter_show_page.dart';
+import 'package:karnamaft/pages/minute_show_page.dart';
+import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/models/project_model.dart';
 import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
@@ -107,6 +112,52 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
     }
   }
 
+  Widget _relatedSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xffe5e9f2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(icon),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold))),
+          ]),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _shareRecord() async {
+    final item = project;
+    if (item == null) return;
+    await showRecordShareDialog(
+      context,
+      title: 'دستورکار',
+      fields: [
+        ShareField(label: 'شناسه', value: '${item.id}'),
+        ShareField(label: 'عنوان', value: item.name),
+        ShareField(label: 'توضیحات', value: item.description ?? ''),
+        ShareField(label: 'وضعیت', value: item.statusTitle),
+        ShareField(label: 'سازمان', value: item.organ?.name ?? ''),
+        ShareField(label: 'شهر', value: item.city?.name ?? ''),
+        ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.createdAt)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -160,6 +211,11 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
         title: Text(widget.title),
 
         actions: [
+          IconButton(
+            tooltip: 'اشتراک‌گذاری',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareRecord(),
+          ),
           IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
 
@@ -272,6 +328,76 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
                   icon: Icons.groups_outlined,
 
                   items: item.groups.map((e) => e.name).toList(),
+                ),
+
+              //--------------------------------------------------
+              // نامه‌های زیرمجموعه
+              //--------------------------------------------------
+              if (item.letters.isNotEmpty)
+                _relatedSection(
+                  title: 'نامه‌های زیرمجموعه',
+                  icon: Icons.mail_outline,
+                  children: item.letters.map((letter) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(child: Icon(Icons.mail_outline)),
+                    title: Text(letter.subject, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    subtitle: Text('شماره ${letter.id}'),
+                    trailing: const Icon(Icons.chevron_left),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LetterShowPage(id: letter.id, title: letter.subject),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+
+              if (item.tasks.isNotEmpty)
+                _relatedSection(
+                  title: 'فعالیت‌ها و صورتجلسه‌های زیرمجموعه',
+                  icon: Icons.account_tree_outlined,
+                  children: item.tasks.map((task) => Column(
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          child: Icon(task.completed ? Icons.check : Icons.task_alt),
+                        ),
+                        title: Text(task.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          task.minutes == null
+                              ? 'فعالیت ${task.id}'
+                              : 'صورتجلسه: ${task.minutes!.title}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: const Icon(Icons.chevron_left),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TaskShowPage(id: task.id, title: task.name),
+                          ),
+                        ),
+                      ),
+                      if (task.minutes != null)
+                        ListTile(
+                          contentPadding: const EdgeInsetsDirectional.only(start: 28),
+                          leading: const Icon(Icons.edit_document),
+                          title: Text(task.minutes!.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          subtitle: Text(DateHelper.toDate(task.minutes!.date)),
+                          trailing: const Icon(Icons.chevron_left),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MinuteShowPage(
+                                id: task.minutes!.id,
+                                title: task.minutes!.title,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  )).toList(),
                 ),
 
               //--------------------------------------------------

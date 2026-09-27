@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/widgets/record_files_card.dart';
+import 'package:karnamaft/services/file_service.dart';
+import 'package:karnamaft/widgets/record_share_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/pages/letter_timeline_page.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
@@ -67,6 +71,14 @@ class _LetterShowPageState extends State<LetterShowPage> {
   @override
   void initState() {
     super.initState();
+
+    // قبل از رسیدن پاسخ API کنترلرها را مقداردهی می‌کنیم
+    // تا در حالت خطا dispose یا build باعث LateInitializationError نشود.
+    subjectController = TextEditingController();
+    descriptionController = TextEditingController();
+    summaryController = TextEditingController();
+    dateController = TextEditingController();
+
     loadData();
   }
 
@@ -75,8 +87,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
     subjectController.dispose();
     descriptionController.dispose();
     summaryController.dispose();
-    super.dispose();
     dateController.dispose();
+    super.dispose();
   }
 
   Future<void> loadData() async {
@@ -95,7 +107,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
 
         selectedFile = result.file;
 
-        subjectController = TextEditingController(text: result.subject);
+        subjectController.text = result.subject;
 
         selectedStatus = result.status;
         selectedKind = result.kind;
@@ -103,14 +115,11 @@ class _LetterShowPageState extends State<LetterShowPage> {
         selectedCustomer = result.organ;
         selecteddaftar = result.daftar;
 
-        descriptionController = TextEditingController(text: result.description);
-
-        summaryController = TextEditingController(text: result.summary);
-        dateController = TextEditingController(
-          text: result.created_at != null
-              ? DateFormat("yyyy-MM-dd").format(result.created_at!)
-              : "",
-        );
+        descriptionController.text = result.description ?? "";
+        summaryController.text = result.summary ?? "";
+        dateController.text = result.created_at != null
+            ? DateHelper.toDate(result.created_at)
+            : "";
 
         loading = false;
       });
@@ -122,6 +131,30 @@ class _LetterShowPageState extends State<LetterShowPage> {
         error = e.toString();
       });
     }
+  }
+
+  Future<void> _shareRecord() async {
+    final item = letter;
+    if (item == null) return;
+    await showRecordShareDialog(
+      context,
+      title: 'نامه',
+      fields: [
+        ShareField(label: 'شناسه', value: '${item.id}'),
+        ShareField(label: 'موضوع', value: item.subject),
+        ShareField(label: 'توضیحات', value: item.description ?? ''),
+        ShareField(label: 'خلاصه', value: item.summary ?? ''),
+        ShareField(label: 'نوع', value: item.kindTitle ?? ''),
+        ShareField(label: 'وضعیت', value: item.status?.toString() ?? ''),
+        ShareField(label: 'گیرنده', value: item.organ?.name ?? ''),
+        ShareField(label: 'دفتر', value: item.daftar?.name ?? ''),
+        ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.created_at)),
+      ],
+      file: item.files.isEmpty ? null : ShareFile(
+        name: item.files.first.fileName,
+        load: () => FileService.download(item.files.first.url),
+      ),
+    );
   }
 
   @override
@@ -184,6 +217,25 @@ class _LetterShowPageState extends State<LetterShowPage> {
 
         actions: [
           IconButton(
+            tooltip: 'تاریخچه و Timeline',
+            icon: const Icon(Icons.timeline_rounded),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LetterTimelinePage(
+                    letterId: item.id,
+                    title: 'تاریخچه ${widget.title}',
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'اشتراک‌گذاری',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareRecord(),
+          ),
+          IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
             onPressed: () {
               setState(() {
@@ -216,6 +268,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
                 getFile: _service.getFile,
               ),
               const SizedBox(height: 20),
+
+              RecordFilesCard(files: item.files),
 
               if (editing)
                 Column(
@@ -665,7 +719,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
     final gregorian = jalali.toDateTime();
 
     setState(() {
-      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+      dateController.text = DateHelper.toDate(gregorian);
     });
   }
 

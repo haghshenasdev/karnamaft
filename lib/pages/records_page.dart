@@ -54,6 +54,7 @@ class _RecordsPageState extends State<RecordsPage> {
   bool hasMore = true;
 
   String search = "";
+  String? loadError;
   Timer? _searchDebounce;
   String sort = "-id";
   final Map<String, String> filters = {};
@@ -87,52 +88,70 @@ class _RecordsPageState extends State<RecordsPage> {
   }
 
   Future<void> loadData() async {
-    setState(() {
-      loading = true;
-      records.clear();
-    });
+    if (mounted) {
+      setState(() {
+        loading = true;
+        loadError = null;
+        records = [];
+      });
+    }
 
-    final result = await widget.service.list(
-      page: 1,
-      sort: sort,
-      filters: filters,
-    );
+    try {
+      final result = await widget.service.list(
+        page: 1,
+        sort: sort,
+        search: search.trim().isEmpty ? null : search.trim(),
+        filters: Map<String, String>.from(filters)..remove("search"),
+      );
 
-    records = result.data;
+      if (!mounted) return;
 
-    totalCount = result.total;
-    currentPage = result.currentPage;
-    hasMore = result.hasNextPage;
+      setState(() {
+        records = result.data;
+        totalCount = result.total;
+        currentPage = result.currentPage;
+        hasMore = result.hasNextPage;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
 
-    setState(() {
-      loading = false;
-    });
+      setState(() {
+        loading = false;
+        loadError = e.toString();
+      });
+    }
   }
 
   Future<void> loadMore() async {
-    if (loadingMore) return;
+    if (loadingMore || !hasMore) return;
 
-    if (!hasMore) return;
+    setState(() => loadingMore = true);
 
-    loadingMore = true;
+    try {
+      final result = await widget.service.list(
+        page: currentPage + 1,
+        sort: sort,
+        search: search.trim().isEmpty ? null : search.trim(),
+        filters: Map<String, String>.from(filters)..remove("search"),
+      );
 
-    setState(() {});
+      if (!mounted) return;
 
-    final result = await widget.service.list(
-      page: currentPage + 1,
-      sort: sort,
-      filters: filters,
-    );
-
-    records.addAll(result.data);
-
-    currentPage = result.currentPage;
-
-    hasMore = result.hasNextPage;
-
-    loadingMore = false;
-
-    setState(() {});
+      setState(() {
+        records.addAll(result.data);
+        currentPage = result.currentPage;
+        hasMore = result.hasNextPage;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => loadingMore = false);
+    }
   }
 
   Future<void> changeSort(String value) async {
@@ -149,11 +168,7 @@ class _RecordsPageState extends State<RecordsPage> {
     _searchDebounce?.cancel();
 
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      if (value.trim().isEmpty) {
-        filters.remove("search");
-      } else {
-        filters["search"] = value.trim();
-      }
+      search = value.trim();
 
       currentPage = 1;
       hasMore = true;
@@ -165,7 +180,7 @@ class _RecordsPageState extends State<RecordsPage> {
   void clearSearch() {
     searchController.clear();
 
-    filters.remove("search");
+    search = "";
 
     currentPage = 1;
     hasMore = true;
@@ -273,7 +288,12 @@ class _RecordsPageState extends State<RecordsPage> {
             Expanded(
               child: loading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
+                  : loadError != null
+                      ? _RecordsErrorView(
+                          message: loadError!,
+                          onRetry: loadData,
+                        )
+                      : ListView.builder(
                       controller: scrollController,
                       padding: const EdgeInsets.only(top: 12, bottom: 100),
                       itemCount: records.length + (loadingMore ? 1 : 0),
@@ -543,5 +563,39 @@ class _RecordsPageState extends State<RecordsPage> {
     );
 
     return result ?? false;
+  }
+}
+
+
+class _RecordsErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _RecordsErrorView({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 58),
+            const SizedBox(height: 14),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('تلاش مجدد'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

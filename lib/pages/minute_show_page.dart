@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/widgets/record_files_card.dart';
+import 'package:karnamaft/services/file_service.dart';
+import 'package:karnamaft/widgets/record_share_dialog.dart';
 import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/minute_model.dart';
@@ -105,7 +108,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         selectedTask = result.taskCreator;
         dateController = TextEditingController(
           text: result.date != null
-              ? DateFormat("yyyy-MM-dd").format(result.date!)
+              ? DateHelper.toDate(result.date)
               : "",
         );
         selectedOrgans = List.from(result.organs!);
@@ -131,12 +134,34 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       return "-";
     }
 
-    return DateFormat("yyyy/MM/dd HH:mm").format(date);
+    return DateHelper.toDateTime(date);
   }
 
   //--------------------------------------------------
   // UI
   //--------------------------------------------------
+
+  Future<void> _shareRecord() async {
+    final item = minute;
+    if (item == null) return;
+    await showRecordShareDialog(
+      context,
+      title: 'صورتجلسه',
+      fields: [
+        ShareField(label: 'شناسه', value: '${item.id}'),
+        ShareField(label: 'عنوان', value: item.title),
+        ShareField(label: 'متن', value: item.text ?? ''),
+        ShareField(label: 'تاریخ', value: DateHelper.toDateTime(item.date)),
+        ShareField(label: 'جلسه', value: item.taskCreator?.name ?? ''),
+        ShareField(label: 'امضاکنندگان', value: item.organs?.map((e) => e.name).join('، ') ?? ''),
+        ShareField(label: 'دسته‌بندی', value: item.group?.map((e) => e.name).join('، ') ?? ''),
+      ],
+      file: item.files.isEmpty ? null : ShareFile(
+        name: item.files.first.fileName,
+        load: () => FileService.download(item.files.first.url),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +223,11 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         centerTitle: false,
         actions: [
           IconButton(
+            tooltip: 'اشتراک‌گذاری',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareRecord(),
+          ),
+          IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
             onPressed: () {
               setState(() {
@@ -229,6 +259,8 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
               ),
 
               const SizedBox(height: 20),
+
+              RecordFilesCard(files: item.files),
 
               if (editing)
                 Column(
@@ -655,7 +687,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     final gregorian = jalali.toDateTime();
 
     setState(() {
-      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+      dateController.text = DateHelper.toDate(gregorian);
     });
   }
 

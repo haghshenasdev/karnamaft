@@ -24,6 +24,8 @@ class ProjectModel {
   final ProjectUser? user;
 
   final List<ProjectGroup> groups;
+  final List<ProjectLetter> letters;
+  final List<ProjectTask> tasks;
 
   const ProjectModel({
     required this.id,
@@ -49,6 +51,8 @@ class ProjectModel {
     this.user,
 
     required this.groups,
+    this.letters = const [],
+    this.tasks = const [],
   });
 
   RecordStatus get recordStatus {
@@ -110,6 +114,12 @@ class ProjectModel {
                 .map((e) => ProjectGroup.fromJson(e))
                 .toList()
           : [],
+      letters: (json["related_letters"] as List? ?? [])
+          .map((e) => ProjectLetter.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      tasks: (json["related_tasks"] as List? ?? [])
+          .map((e) => ProjectTask.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -194,6 +204,8 @@ class ProjectModel {
       user: user,
 
       groups: groups,
+      letters: letters,
+      tasks: tasks,
     );
   }
 }
@@ -252,4 +264,57 @@ class ProjectGroup {
   factory ProjectGroup.fromJson(Map<String, dynamic> json) {
     return ProjectGroup(id: json["id"] ?? 0, name: json["name"] ?? "");
   }
+}
+
+
+class ProjectLetter {
+  final int id;
+  final String subject;
+  final String? description;
+  final String? file;
+  final DateTime? createdAt;
+
+  const ProjectLetter({required this.id, required this.subject, this.description, this.file, this.createdAt});
+
+  factory ProjectLetter.fromJson(Map<String, dynamic> json) => ProjectLetter(
+    id: json['id'] ?? 0,
+    subject: json['subject']?.toString() ?? '',
+    description: json['description']?.toString(),
+    file: json['file']?.toString(),
+    createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
+  );
+}
+
+class ProjectTask {
+  final int id;
+  final String name;
+  final String? description;
+  final bool completed;
+  final int? progress;
+  final ProjectMinute? minutes;
+
+  const ProjectTask({required this.id, required this.name, this.description, this.completed = false, this.progress, this.minutes});
+
+  factory ProjectTask.fromJson(Map<String, dynamic> json) => ProjectTask(
+    id: json['id'] ?? 0,
+    name: json['name']?.toString() ?? '',
+    description: json['description']?.toString(),
+    completed: json['completed'] == true || json['completed'] == 1,
+    progress: json['progress'] is int ? json['progress'] : int.tryParse('${json['progress']}'),
+    minutes: json['minutes'] is Map ? ProjectMinute.fromJson(Map<String, dynamic>.from(json['minutes'])) : null,
+  );
+}
+
+class ProjectMinute {
+  final int id;
+  final String title;
+  final DateTime? date;
+
+  const ProjectMinute({required this.id, required this.title, this.date});
+
+  factory ProjectMinute.fromJson(Map<String, dynamic> json) => ProjectMinute(
+    id: json['id'] ?? 0,
+    title: json['title']?.toString() ?? '',
+    date: json['date'] != null ? DateTime.tryParse(json['date'].toString()) : null,
+  );
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:provider/provider.dart';
 
@@ -34,7 +35,7 @@ class ProfileHeader extends StatelessWidget {
                     backgroundColor: colorScheme.primaryContainer,
                     backgroundImage: profile.avatar.isNotEmpty
                         ? NetworkImage(
-                            "https://hajideligani.ir/api/me/avatar",
+                            "${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar",
                             headers: {
                               "Authorization": "Bearer ${profile.token}",
                             },

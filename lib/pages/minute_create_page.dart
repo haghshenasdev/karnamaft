@@ -97,7 +97,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
 
     WidgetsBinding.instance.addObserver(this);
 
-    dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
+    dateController.text = DateHelper.toDate(selectedDate);
 
     if (widget.initialFileBytes != null) {
       selectedFileBytes = widget.initialFileBytes;
@@ -205,7 +205,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     setState(() {
       selectedDate = gregorian;
 
-      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+      dateController.text = DateHelper.toDate(gregorian);
     });
   }
 
@@ -309,6 +309,16 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
               },
 
               onScan: startScan,
+            ),
+
+            const SizedBox(height: 12),
+
+            OutlinedButton.icon(
+              onPressed: processingFile || (selectedFile == null && selectedFileBytes == null)
+                  ? null
+                  : processSelectedFile,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text("استخراج و تحلیل خودکار متن"),
             ),
 
             const SizedBox(height: 12),
@@ -609,11 +619,32 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
 
       setState(() {
         titleController.text = result.title;
-
         textController.text = result.text;
+
+        if (result.date != null) {
+          selectedDate = result.date!;
+          dateController.text = DateHelper.toDate(selectedDate);
+        }
+
+        if (result.taskId != null) {
+          selectedTask = TaskCreator(
+            id: result.taskId!,
+            name: result.taskName ?? "جلسه تشخیص داده شده (#${result.taskId})",
+          );
+        }
 
         processingMessage = "پردازش فایل با موفقیت انجام شد";
       });
+
+      final suggestions = <String>[
+        if (result.cityName != null) "شهر: ${result.cityName}",
+        if (result.categoryNames.isNotEmpty) "دسته‌بندی‌ها: ${result.categoryNames.join('، ')}",
+      ];
+      if (suggestions.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("تشخیص خودکار: ${suggestions.join(' | ')}")),
+        );
+      }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         setState(() {

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:karnamaft/widgets/record_files_card.dart';
+import 'package:karnamaft/services/file_service.dart';
+import 'package:karnamaft/widgets/record_share_dialog.dart';
 import 'package:intl/intl.dart';
 
 import 'package:karnamaft/controllers/user_controller.dart';
@@ -102,6 +105,30 @@ class _TaskShowPageState extends State<TaskShowPage> {
     }
   }
 
+  Future<void> _shareRecord() async {
+    final item = task;
+    if (item == null) return;
+    await showRecordShareDialog(
+      context,
+      title: 'فعالیت',
+      fields: [
+        ShareField(label: 'شناسه', value: '${item.id}'),
+        ShareField(label: 'عنوان', value: item.name),
+        ShareField(label: 'توضیحات', value: item.description ?? ''),
+        ShareField(label: 'وضعیت', value: item.completed == 1 ? 'تکمیل شده' : 'در حال انجام'),
+        ShareField(label: 'پیشرفت', value: '${item.progress ?? 0}٪'),
+        ShareField(label: 'سازمان', value: item.organ?.name ?? ''),
+        ShareField(label: 'شهر', value: item.city?.name ?? ''),
+        ShareField(label: 'مسئول', value: item.responsible?.name ?? ''),
+        ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.createdAt)),
+      ],
+      file: item.files.isEmpty ? null : ShareFile(
+        name: item.files.first.fileName,
+        load: () => FileService.download(item.files.first.url),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -155,6 +182,11 @@ class _TaskShowPageState extends State<TaskShowPage> {
         title: Text(widget.title),
 
         actions: [
+          IconButton(
+            tooltip: 'اشتراک‌گذاری',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareRecord(),
+          ),
           IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
 
@@ -216,6 +248,8 @@ class _TaskShowPageState extends State<TaskShowPage> {
                   : RecordText(text: item.description),
 
               const SizedBox(height: 20),
+
+              RecordFilesCard(files: item.files),
 
               //--------------------------------------------------
               // اطلاعات اصلی

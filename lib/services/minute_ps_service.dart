@@ -14,8 +14,8 @@ class MinutePsResult {
 
   factory MinutePsResult.fromJson(Map<String, dynamic> json) {
     return MinutePsResult(
-      filename: json["filename"] ?? "",
-      rawText: json["text"] ?? "",
+      filename: json['filename']?.toString() ?? '',
+      rawText: json['text']?.toString() ?? '',
     );
   }
 }
@@ -23,13 +23,53 @@ class MinutePsResult {
 class MinutePsTextResult {
   final String title;
   final String text;
+  final DateTime? date;
+  final int? cityId;
+  final int? taskId;
+  final String? taskName;
+  final int? organId;
+  final String? cityName;
+  final List<String> categoryNames;
+  final List<int> categoryIds;
 
-  MinutePsTextResult({required this.title, required this.text});
+  MinutePsTextResult({
+    required this.title,
+    required this.text,
+    this.date,
+    this.cityId,
+    this.taskId,
+    this.taskName,
+    this.organId,
+    this.cityName,
+    this.categoryNames = const [],
+    this.categoryIds = const [],
+  });
 
   factory MinutePsTextResult.fromJson(Map<String, dynamic> json) {
     return MinutePsTextResult(
-      title: json["title"] ?? "",
-      text: json["text"] ?? "",
+      title: json['title']?.toString() ?? '',
+      text: json['text']?.toString() ?? '',
+      date: json['date'] != null
+          ? DateTime.tryParse(json['date'].toString())
+          : null,
+      cityId: json['city_id'] is int
+          ? json['city_id']
+          : int.tryParse('${json['city_id']}'),
+      taskId: json['task_id'] is int
+          ? json['task_id']
+          : int.tryParse('${json['task_id']}'),
+      taskName: json['task_name']?.toString(),
+      organId: json['organ_id'] is int
+          ? json['organ_id']
+          : int.tryParse('${json['organ_id']}'),
+      cityName: json['city_name']?.toString(),
+      categoryNames: (json['category_names'] as List? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      categoryIds: (json['category_ids'] as List? ?? [])
+          .map((e) => int.tryParse(e.toString()))
+          .whereType<int>()
+          .toList(),
     );
   }
 }
@@ -37,89 +77,89 @@ class MinutePsTextResult {
 class MinutePsService {
   const MinutePsService();
 
-  /// ارسال فایل عکس و دریافت OCR
-  Future<MinutePsResult> uploadFile({
+  /// تحلیل فایل توسط API جدید.
+  ///
+  /// OCR و تحلیل متن در سمت سرور انجام می‌شود.
+  Future<MinutePsTextResult> uploadFile({
     String? filePath,
     Uint8List? bytes,
     String? fileName,
     CancelToken? cancelToken,
   }) async {
     try {
-      MultipartFile file;
+      late MultipartFile file;
 
       if (bytes != null) {
         file = MultipartFile.fromBytes(
           bytes,
-          filename: fileName ?? "upload.png",
+          filename: fileName ?? 'upload.png',
         );
       } else if (filePath != null) {
         file = await MultipartFile.fromFile(
           filePath,
-          filename: filePath.split("/").last,
+          filename: filePath.split('/').last,
         );
       } else {
-        throw Exception("فایلی برای ارسال وجود ندارد");
+        throw Exception('فایلی برای ارسال وجود ندارد');
       }
 
-      final formData = FormData.fromMap({"file": file});
-
       final response = await ApiClient.dio.post(
-        "/minute_ps",
-        data: formData,
-        options: Options(contentType: "multipart/form-data"),
+        '/mobile/v1/ai/minutes',
+        data: FormData.fromMap({'file': file}),
+        options: Options(contentType: 'multipart/form-data'),
         cancelToken: cancelToken,
       );
 
-      if (response.data["success"] == true) {
-        return MinutePsResult.fromJson(response.data["data"]);
-      }
+      final data = response.data is Map<String, dynamic>
+          ? response.data['data']
+          : null;
 
-      throw Exception("OCR انجام نشد");
+      return MinutePsTextResult.fromJson(
+        data is Map<String, dynamic> ? data : {},
+      );
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
-        throw e;
+        rethrow;
       }
 
-      throw ApiErrorHandler.handle(e);
-    } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
   }
 
-  /// ارسال متن OCR برای اصلاح و استخراج عنوان
+  /// تحلیل متنی که قبلاً استخراج شده است.
   Future<MinutePsTextResult> analyzeText(
     String text, {
     CancelToken? cancelToken,
   }) async {
     try {
       final response = await ApiClient.dio.post(
-        "/minute_ps_text",
-
-        data: {"text": text},
-
+        '/mobile/v1/ai/minutes',
+        data: {'text': text},
         cancelToken: cancelToken,
       );
 
-      if (response.data["success"] == true) {
-        return MinutePsTextResult.fromJson(response.data["data"]);
-      }
+      final data = response.data is Map<String, dynamic>
+          ? response.data['data']
+          : null;
 
-      throw Exception("تحلیل متن انجام نشد");
+      return MinutePsTextResult.fromJson(
+        data is Map<String, dynamic> ? data : {},
+      );
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) {
-        throw e;
+        rethrow;
       }
 
-      throw ApiErrorHandler.handle(e);
-    } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
   }
 
-  /// انجام کامل عملیات
-  /// 1- OCR فایل
-  /// 2- اصلاح متن و گرفتن عنوان
-
+  /// انجام کامل عملیات روی فایل:
+  ///
+  /// 1. ارسال فایل به API
+  /// 2. OCR در سرور
+  /// 3. تحلیل متن
+  /// 4. استخراج عنوان، تاریخ، شهر، جلسه و دسته‌بندی
   Future<MinutePsTextResult> processFile({
     String? filePath,
     Uint8List? bytes,
@@ -133,6 +173,6 @@ class MinutePsService {
       cancelToken: cancelToken,
     );
 
-    return analyzeText(ocrResult.rawText, cancelToken: cancelToken);
+    return analyzeText(ocrResult.text, cancelToken: cancelToken);
   }
 }

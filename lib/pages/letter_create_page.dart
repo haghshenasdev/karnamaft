@@ -6,9 +6,11 @@ import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/services/letter_ai_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/scan_service.dart';
 import 'package:karnamaft/services/reference_service.dart';
+import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
 import 'package:karnamaft/widgets/select_record_dialog.dart';
@@ -70,6 +72,9 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   //--------------------------------------------------
 
   bool saving = false;
+  bool analyzing = false;
+  String? detectedCityName;
+  List<String> detectedCategoryNames = const [];
 
   bool waitingForScan = false;
 
@@ -85,7 +90,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
     WidgetsBinding.instance.addObserver(this);
 
-    dateController.text = DateFormat("yyyy-MM-dd").format(selectedDate);
+    dateController.text = DateHelper.toDate(selectedDate);
   }
 
   //--------------------------------------------------
@@ -204,7 +209,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
     setState(() {
       selectedDate = gregorian;
 
-      dateController.text = DateFormat("yyyy-MM-dd").format(gregorian);
+      dateController.text = DateHelper.toDate(gregorian);
     });
   }
 
@@ -295,6 +300,65 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   //--------------------------------------------------
   // Save
   //--------------------------------------------------
+
+  Future<void> _analyzeLetter() async {
+    if (selectedFile == null && selectedFileBytes == null && descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("ابتدا فایل نامه یا متن نامه را وارد کنید.")),
+      );
+      return;
+    }
+
+    setState(() {
+      analyzing = true;
+      error = null;
+    });
+
+    try {
+      final result = selectedFileBytes != null || selectedFile != null
+          ? await const LetterAiService().analyzeFile(
+              filePath: selectedFile,
+              bytes: selectedFileBytes,
+              fileName: selectedFile?.split('/').last,
+            )
+          : await const LetterAiService().analyzeText(descriptionController.text.trim());
+
+      if (!mounted) return;
+
+      setState(() {
+        if (result.subject.isNotEmpty) subjectController.text = result.subject;
+        if (result.description.isNotEmpty) descriptionController.text = result.description;
+        if (result.summary.isNotEmpty) summaryController.text = result.summary;
+        if (result.mokatebe != null) mokatebeController.text = result.mokatebe!;
+        if (result.kind != null) selectedKind = result.kind!;
+        if (result.date != null) {
+          selectedDate = result.date!;
+          dateController.text = DateHelper.toDate(selectedDate);
+        }
+        if (result.organId != null) {
+          selectedCustomer = LetterOrgan(id: result.organId!, name: result.organName ?? "ارگان تشخیص داده شده");
+        }
+        selectedOrganOwnerIds = result.organOwnerIds;
+        selectedCustomerIds = result.customerOwnerIds;
+        detectedCityName = result.cityName;
+        detectedCategoryNames = result.categoryNames;
+      });
+
+      final detected = <String>[
+        if (result.cityName != null) 'شهر: ${result.cityName}',
+        if (result.categoryNames.isNotEmpty) 'دسته‌بندی: ${result.categoryNames.join('، ')}',
+      ];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detected.isEmpty
+            ? "تحلیل نامه با موفقیت انجام شد."
+            : "تحلیل انجام شد؛ ${detected.join(' | ')}")),
+      );
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    } finally {
+      if (mounted) setState(() => analyzing = false);
+    }
+  }
 
   Future<void> save() async {
     //--------------------------------------------------
@@ -451,6 +515,40 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
               onScan: startScan,
             ),
+
+            const SizedBox(height: 12),
+
+            OutlinedButton.icon(
+              onPressed: analyzing ? null : _analyzeLetter,
+              icon: analyzing
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.auto_awesome),
+              label: Text(analyzing ? "در حال استخراج و تحلیل..." : "استخراج و تحلیل خودکار نامه"),
+            ),
+
+            if (detectedCityName != null || detectedCategoryNames.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (detectedCityName != null)
+                        Chip(
+                          avatar: const Icon(Icons.location_on_outlined, size: 18),
+                          label: Text("شهر: $detectedCityName"),
+                        ),
+                      ...detectedCategoryNames.map(
+                        (name) => Chip(
+                          avatar: const Icon(Icons.label_outline, size: 18),
+                          label: Text(name),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 20),
 

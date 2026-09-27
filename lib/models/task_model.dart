@@ -1,4 +1,6 @@
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/record_file.dart';
+import 'package:karnamaft/utils/date_helper.dart';
 
 class TaskModel {
   final int id;
@@ -32,6 +34,7 @@ class TaskModel {
   final List<TaskGroup> taskGroups;
 
   final List<dynamic> appendixOthers;
+  final List<RecordFile> files;
 
   const TaskModel({
     required this.id,
@@ -55,7 +58,56 @@ class TaskModel {
     required this.projects,
     required this.taskGroups,
     required this.appendixOthers,
+    this.files = const [],
   });
+
+  DateTime? get deadline {
+    if (endedAt == null || endedAt!.trim().isEmpty) return null;
+    return DateTime.tryParse(endedAt!);
+  }
+
+  bool get isCompleted => completed == 1 || progress == 100;
+
+  String get deadlineText {
+    final date = deadline;
+    if (date == null) return 'بدون مهلت';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final days = day.difference(today).inDays;
+
+    if (isCompleted) {
+      return 'تکمیل شده • ${DateHelper.longDateTime(date)}';
+    }
+
+    if (days == 0) {
+      if (date.isBefore(now)) {
+        return 'امروز • مهلت گذشته';
+      }
+      return 'امروز • ${DateHelper.toTime(date)}';
+    }
+
+    if (days > 0) {
+      return '$days روز مانده • ${DateHelper.longDate(date)}';
+    }
+
+    return '${days.abs()} روز گذشته • ${DateHelper.longDate(date)}';
+  }
+
+  bool get isOverdue {
+    final date = deadline;
+    return date != null && !isCompleted && date.isBefore(DateTime.now());
+  }
+
+  bool get isDueToday {
+    final date = deadline;
+    if (date == null || isCompleted) return false;
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
     return TaskModel(
@@ -84,11 +136,11 @@ class TaskModel {
       repeat: json["repeat"],
 
       createdAt: json["created_at"] != null
-          ? DateTime.parse(json["created_at"])
+          ? DateTime.tryParse(json["created_at"].toString())
           : null,
 
       updatedAt: json["updated_at"] != null
-          ? DateTime.parse(json["updated_at"])
+          ? DateTime.tryParse(json["updated_at"].toString())
           : null,
 
       organ: json["organ"] != null ? TaskOrgan.fromJson(json["organ"]) : null,
@@ -120,6 +172,9 @@ class TaskModel {
           : [],
 
       appendixOthers: json["appendix_others"] ?? [],
+      files: (json["files"] as List? ?? [])
+          .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -206,6 +261,7 @@ class TaskModel {
       taskGroups: taskGroups,
 
       appendixOthers: appendixOthers,
+      files: files,
     );
   }
 }
@@ -261,7 +317,9 @@ class TaskMinutes {
 
       title: json["title"] ?? "",
 
-      date: json["date"] != null ? DateTime.parse(json["date"]) : null,
+      date: json["date"] != null
+          ? DateTime.tryParse(json["date"].toString())
+          : null,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:karnamaft/models/minute_relation.dart';
 import 'package:karnamaft/models/minutes_group_model.dart';
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/record_file.dart';
 
 class MinuteModel {
   final int id;
@@ -22,6 +23,7 @@ class MinuteModel {
   final List<OrganModel>? organs;
 
   final List<MinutesGroupModel>? group;
+  final List<RecordFile> files;
 
   const MinuteModel({
     required this.id,
@@ -37,6 +39,7 @@ class MinuteModel {
     this.taskCreator,
     required this.organs,
     required this.group,
+    this.files = const [],
   });
 
   factory MinuteModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +70,9 @@ class MinuteModel {
       group: json['group'] != null
           ? (json['group'] as List).map((e) => MinutesGroupModel.fromJson(e)).toList()
           : [],
+      files: (json['files'] as List? ?? [])
+          .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -147,6 +153,7 @@ class MinuteModel {
       organs: organs,
 
       group: group,
+      files: files,
     );
   }
 

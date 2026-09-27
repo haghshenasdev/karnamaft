@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/drawing_controller.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
@@ -5,22 +9,34 @@ import 'package:karnamaft/pages/splash_page.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        //------------------------------------------
-        // Drawing
-        //------------------------------------------
-        ChangeNotifierProvider(create: (_) => DrawingController()),
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FLUTTER ERROR: ${details.exception}');
+    debugPrintStack(stackTrace: details.stack);
+  };
 
-        //------------------------------------------
-        // User
-        //------------------------------------------
-        ChangeNotifierProvider(create: (_) => UserController()),
-      ],
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('UNCAUGHT ASYNC ERROR: $error');
+    debugPrintStack(stackTrace: stack);
+    return true;
+  };
 
-      child: const MyApp(),
-    ),
+  runZonedGuarded(
+    () {
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => DrawingController()),
+            ChangeNotifierProvider(create: (_) => UserController()),
+          ],
+          child: const MyApp(),
+        ),
+      );
+    },
+    (error, stack) {
+      debugPrint('ZONE ERROR: $error');
+      debugPrintStack(stackTrace: stack);
+    },
   );
 }
 
@@ -31,13 +47,44 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
       title: "کارنما",
-
       builder: (context, child) {
-        return Directionality(textDirection: TextDirection.rtl, child: child!);
-      },
+        ErrorWidget.builder = (details) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline_rounded, size: 64),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'این بخش با خطای غیرمنتظره مواجه شد.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'اطلاعات شما از بین نرفته است. صفحه را دوباره باز کنید.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        };
 
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff1769aa)),
@@ -53,7 +100,7 @@ class MyApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(width: 2, color: Color(0xff1769aa)),
+            borderSide: const BorderSide(width: 2, color: Color(0xff1769aa)),
           ),
         ),
         cardTheme: CardThemeData(
@@ -63,7 +110,6 @@ class MyApp extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
       ),
-
       home: const SplashPage(),
     );
   }

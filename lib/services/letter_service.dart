@@ -96,7 +96,7 @@ class LetterService implements RecordService<LetterModel> {
     final token = await AuthStorage.getToken();
 
     final response = await ApiClient.dio.get<List<int>>(
-      "/private-show/$id/$id.$fileName",
+      "/mobile/v1/files/letters/$id/main",
       options: Options(
         responseType: ResponseType.bytes,
         headers: {"Authorization": "Bearer $token"},

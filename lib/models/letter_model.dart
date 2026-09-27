@@ -1,4 +1,5 @@
 import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/record_file.dart';
 
 class LetterModel {
   final int id;
@@ -29,6 +30,7 @@ class LetterModel {
   final List<LetterUser> cartables;
 
   final List<LetterProject> projects;
+  final List<RecordFile> files;
 
   final DateTime? created_at;
   final DateTime? updated_at;
@@ -51,6 +53,7 @@ class LetterModel {
     this.created_at,
     this.updated_at,
     required this.cartables,
+    this.files = const [],
   });
 
   RecordStatus get recordStatus {
@@ -118,6 +121,9 @@ class LetterModel {
                 .map((e) => LetterProject.fromJson(e))
                 .toList()
           : [],
+      files: (json["files"] as List? ?? [])
+          .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -177,6 +183,7 @@ class LetterModel {
       organsOwner: organsOwner,
       cartables: cartables,
       projects: projects,
+      files: files,
       created_at: created_at ?? this.created_at,
 
       updated_at: updated_at ?? this.updated_at,

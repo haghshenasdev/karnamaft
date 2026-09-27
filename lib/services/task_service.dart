@@ -100,7 +100,7 @@ class TaskService implements RecordService<TaskModel> {
     final token = await AuthStorage.getToken();
 
     final response = await ApiClient.dio.get<List<int>>(
-      "/private-show/$id/$id.$fileName",
+      "/mobile/v1/files/tasks/$id/main",
 
       options: Options(
         responseType: ResponseType.bytes,
@@ -158,6 +158,53 @@ class TaskService implements RecordService<TaskModel> {
         print(e.response?.data);
       }
 
+      throw ApiErrorHandler.handle(e);
+    }
+  }
+
+  /// فعالیت‌هایی که مسئول انجام آن‌ها کاربر فعلی است.
+  ///
+  /// `due` یکی از all/overdue/today/upcoming/completed/without_deadline است.
+  Future<PageResult<TaskModel>> myTasks({
+    int page = 1,
+    String? search,
+    String due = 'all',
+  }) async {
+    try {
+      final query = <String, dynamic>{
+        'page': page,
+        'mine': '1',
+      };
+
+      if (search != null && search.trim().isNotEmpty) {
+        query['search'] = search.trim();
+      }
+
+      if (due != 'all') {
+        query['due'] = due;
+      }
+
+      final response = await ApiClient.dio.get(
+        rootPath,
+        queryParameters: query,
+      );
+
+      final json = response.data as Map<String, dynamic>;
+      final items = (json['data'] as List? ?? [])
+          .whereType<Map>()
+          .map((e) => TaskModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      final meta = json['meta'] as Map<String, dynamic>? ?? {};
+
+      return PageResult<TaskModel>(
+        data: items,
+        currentPage: meta['current_page'] ?? 1,
+        lastPage: meta['last_page'] ?? 1,
+        total: meta['total'] ?? items.length,
+        perPage: meta['per_page'] ?? items.length,
+      );
+    } catch (e) {
       throw ApiErrorHandler.handle(e);
     }
   }

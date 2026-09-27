@@ -175,7 +175,7 @@ class MinuteService implements RecordService<MinuteModel> {
     final token = await AuthStorage.getToken();
 
     final response = await ApiClient.dio.get<List<int>>(
-      "/appendix-other-show/minutes/$id/$id.$fileName",
+      "/mobile/v1/files/minutes/$id/main",
       options: Options(
         responseType: ResponseType.bytes,
         headers: {"Authorization": "Bearer $token"},

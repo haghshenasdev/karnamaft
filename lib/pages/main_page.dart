@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/cartable_page.dart';
 import 'package:karnamaft/pages/home_page.dart';
@@ -273,7 +274,7 @@ class _Avatar extends StatelessWidget {
           ? const Icon(Icons.person_outline_rounded)
           : ClipOval(
               child: CachedNetworkImage(
-                imageUrl: 'https://hajideligani.ir/api/me/avatar',
+                imageUrl: '${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar',
                 httpHeaders: {'Authorization': 'Bearer ${user.token}'},
                 width: 36,
                 height: 36,
