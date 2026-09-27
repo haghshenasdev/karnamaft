@@ -23,14 +23,21 @@ class _ProfilePageState extends State<ProfilePage> {
   late UserController profile;
 
   @override
+  @override
   void initState() {
     super.initState();
-
-    //--------------------------------------
-    // فعلاً داده نمونه
-    //--------------------------------------
-
     profile = context.read<UserController>();
+    _refreshProfile();
+  }
+
+  Future<void> _refreshProfile() async {
+    try {
+      final user = await const AuthService().me();
+      if (!mounted) return;
+      profile.updateUser(user);
+    } catch (e) {
+      debugPrint('PROFILE LOAD ERROR: $e');
+    }
   }
 
   //--------------------------------------

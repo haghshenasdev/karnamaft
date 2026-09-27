@@ -11,6 +11,7 @@ import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:karnamaft/widgets/date_record_filter.dart';
+import 'package:karnamaft/widgets/reference_record_filter.dart';
 
 class LetterService implements RecordService<LetterModel> {
   const LetterService();
@@ -240,6 +241,24 @@ class LetterService implements RecordService<LetterModel> {
           DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
         ],
         onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
+    ),
+    RecordFilter(
+      key: "project_id", field: "project_id", title: "دستورکار", icon: Icons.work_outline,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "projects", values: values, field: field, refresh: refresh, label: "دستورکار",
+      ),
+    ),
+    RecordFilter(
+      key: "organ_id", field: "organ_id", title: "سازمان", icon: Icons.business_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "organs", values: values, field: field, refresh: refresh, label: "سازمان",
+      ),
+    ),
+    RecordFilter(
+      key: "type_id", field: "type_id", title: "نوع مکاتبه", icon: Icons.category_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "types", values: values, field: field, refresh: refresh, label: "نوع مکاتبه",
       ),
     ),
     RecordFilter(

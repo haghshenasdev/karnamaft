@@ -7,11 +7,13 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/letter_show_page.dart';
 import 'package:karnamaft/pages/minute_show_page.dart';
 import 'package:karnamaft/pages/task_show_page.dart';
+import 'package:karnamaft/pages/project_report_page.dart';
 import 'package:karnamaft/models/project_model.dart';
 import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 
 import 'package:karnamaft/widgets/record_chip_list.dart';
+import 'package:karnamaft/widgets/project_children_section.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
 import 'package:karnamaft/widgets/show/record_info_card.dart';
 import 'package:karnamaft/widgets/show/record_text.dart';
@@ -42,13 +44,10 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
 
   ProjectModel? project;
 
-  late TextEditingController nameController;
-
-  late TextEditingController descriptionController;
-
-  late TextEditingController requiredAmountController;
-
-  late TextEditingController amountController;
+  late final TextEditingController nameController = TextEditingController();
+  late final TextEditingController descriptionController = TextEditingController();
+  late final TextEditingController requiredAmountController = TextEditingController();
+  late final TextEditingController amountController = TextEditingController();
 
   @override
   void initState() {
@@ -85,20 +84,10 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
       setState(() {
         project = result;
 
-        nameController = TextEditingController(text: result.name);
-
-        descriptionController = TextEditingController(
-          text: result.description ?? "",
-        );
-
-        requiredAmountController = TextEditingController(
-          text: result.requiredAmount?.toString() ?? "",
-        );
-
-        amountController = TextEditingController(
-          text: result.amount?.toString() ?? "",
-        );
-
+        nameController.text = result.name;
+        descriptionController.text = result.description ?? "";
+        requiredAmountController.text = result.requiredAmount?.toString() ?? "";
+        amountController.text = result.amount?.toString() ?? "";
         loading = false;
       });
     } catch (e) {
@@ -217,6 +206,16 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
             onPressed: () => _shareRecord(),
           ),
           IconButton(
+            tooltip: 'گزارش آماری',
+            icon: const Icon(Icons.analytics_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProjectReportPage(id: item.id, title: item.name),
+              ),
+            ),
+          ),
+          IconButton(
             icon: Icon(editing ? Icons.close : Icons.edit),
 
             onPressed: () {
@@ -330,75 +329,7 @@ class _ProjectShowPageState extends State<ProjectShowPage> {
                   items: item.groups.map((e) => e.name).toList(),
                 ),
 
-              //--------------------------------------------------
-              // نامه‌های زیرمجموعه
-              //--------------------------------------------------
-              if (item.letters.isNotEmpty)
-                _relatedSection(
-                  title: 'نامه‌های زیرمجموعه',
-                  icon: Icons.mail_outline,
-                  children: item.letters.map((letter) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(child: Icon(Icons.mail_outline)),
-                    title: Text(letter.subject, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    subtitle: Text('شماره ${letter.id}'),
-                    trailing: const Icon(Icons.chevron_left),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => LetterShowPage(id: letter.id, title: letter.subject),
-                      ),
-                    ),
-                  )).toList(),
-                ),
-
-              if (item.tasks.isNotEmpty)
-                _relatedSection(
-                  title: 'فعالیت‌ها و صورتجلسه‌های زیرمجموعه',
-                  icon: Icons.account_tree_outlined,
-                  children: item.tasks.map((task) => Column(
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          child: Icon(task.completed ? Icons.check : Icons.task_alt),
-                        ),
-                        title: Text(task.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(
-                          task.minutes == null
-                              ? 'فعالیت ${task.id}'
-                              : 'صورتجلسه: ${task.minutes!.title}',
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: const Icon(Icons.chevron_left),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TaskShowPage(id: task.id, title: task.name),
-                          ),
-                        ),
-                      ),
-                      if (task.minutes != null)
-                        ListTile(
-                          contentPadding: const EdgeInsetsDirectional.only(start: 28),
-                          leading: const Icon(Icons.edit_document),
-                          title: Text(task.minutes!.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          subtitle: Text(DateHelper.toDate(task.minutes!.date)),
-                          trailing: const Icon(Icons.chevron_left),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MinuteShowPage(
-                                id: task.minutes!.id,
-                                title: task.minutes!.title,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  )).toList(),
-                ),
+              ProjectChildrenSection(projectId: widget.id),
 
               //--------------------------------------------------
               // کاربر ثبت کننده

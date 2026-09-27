@@ -17,7 +17,8 @@ import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 
 class LetterCreatePage extends StatefulWidget {
-  const LetterCreatePage({super.key});
+  final String? initialFilePath;
+  const LetterCreatePage({super.key, this.initialFilePath});
 
   @override
   State<LetterCreatePage> createState() => _LetterCreatePageState();
@@ -91,6 +92,9 @@ class _LetterCreatePageState extends State<LetterCreatePage>
     WidgetsBinding.instance.addObserver(this);
 
     dateController.text = DateHelper.toDate(selectedDate);
+    if (widget.initialFilePath != null && widget.initialFilePath!.isNotEmpty) {
+      selectedFile = widget.initialFilePath;
+    }
   }
 
   //--------------------------------------------------

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/cartable_page.dart';
+import 'package:karnamaft/pages/reports_page.dart';
+import 'package:karnamaft/pages/calendar_page.dart';
+import 'package:karnamaft/pages/announcements_page.dart';
 import 'package:karnamaft/pages/home_page.dart';
 import 'package:karnamaft/pages/letter_create_page.dart';
 import 'package:karnamaft/pages/letter_show_page.dart';
@@ -123,26 +126,26 @@ class MainPage extends StatelessWidget {
             createSuccessMessage: 'دستورکار با موفقیت ایجاد شد',
           ),
         ),
-      _MenuItem(
+      const _MenuItem(
         title: 'گزارش‌ها',
-        subtitle: 'گزارش‌ها و آمار سامانه',
+        subtitle: 'گزارش‌های نامه، صورتجلسه، فعالیت و دستورکار',
         icon: Icons.analytics_rounded,
         color: Color(0xffdc2626),
-        onTap: () => _comingSoon(context, 'گزارش‌ها'),
+        page: ReportsPage(),
       ),
-      _MenuItem(
+      const _MenuItem(
         title: 'تقویم',
-        subtitle: 'رویدادها و برنامه‌های کاری',
+        subtitle: 'تقویم شمسی فعالیت‌ها و مهلت‌ها',
         icon: Icons.calendar_month_rounded,
         color: Color(0xff0891b2),
-        onTap: () => _comingSoon(context, 'تقویم'),
+        page: CalendarPage(),
       ),
-      _MenuItem(
+      const _MenuItem(
         title: 'اعلانات',
         subtitle: 'اعلان‌ها و پیام‌های سامانه',
         icon: Icons.notifications_active_rounded,
         color: Color(0xff64748b),
-        onTap: () => _comingSoon(context, 'اعلانات'),
+        page: AnnouncementsPage(),
       ),
     ];
     return items;

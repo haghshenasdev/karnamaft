@@ -12,6 +12,7 @@ import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 
 import 'package:karnamaft/widgets/date_record_filter.dart';
+import 'package:karnamaft/widgets/reference_record_filter.dart';
 
 class ProjectService implements RecordService<ProjectModel> {
   const ProjectService();
@@ -153,6 +154,18 @@ class ProjectService implements RecordService<ProjectModel> {
       },
     ),
 
+    RecordFilter(
+      key: "city_id", field: "city_id", title: "شهر", icon: Icons.location_city_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "cities", values: values, field: field, refresh: refresh, label: "شهر",
+      ),
+    ),
+    RecordFilter(
+      key: "organ_id", field: "organ_id", title: "سازمان", icon: Icons.business_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "organs", values: values, field: field, refresh: refresh, label: "سازمان",
+      ),
+    ),
     RecordFilter(
       key: "status",
 

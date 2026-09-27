@@ -30,24 +30,39 @@ class ProfileHeader extends StatelessWidget {
               children: [
                 Hero(
                   tag: "profile_avatar",
-                  child: CircleAvatar(
-                    radius: 52,
-                    backgroundColor: colorScheme.primaryContainer,
-                    backgroundImage: profile.avatar.isNotEmpty
-                        ? NetworkImage(
-                            "${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar",
-                            headers: {
-                              "Authorization": "Bearer ${profile.token}",
-                            },
-                          )
-                        : null,
-                    child: profile.avatar.isEmpty
-                        ? Icon(
-                            Icons.person_rounded,
-                            size: 54,
-                            color: colorScheme.primary,
-                          )
-                        : null,
+                  child: SizedBox(
+                    width: 104,
+                    height: 104,
+                    child: ClipOval(
+                      child: profile.avatar.isNotEmpty
+                          ? Image.network(
+                              profile.avatar.startsWith('http')
+                                  ? profile.avatar
+                                  : '${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar',
+                              headers: {
+                                'Authorization': 'Bearer ${profile.token}',
+                              },
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: colorScheme.primaryContainer,
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  size: 54,
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: colorScheme.primaryContainer,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 54,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
 

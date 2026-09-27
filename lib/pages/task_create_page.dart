@@ -1,25 +1,32 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 
 class TaskCreatePage extends StatefulWidget {
-  const TaskCreatePage({super.key});
+  final String? initialFilePath;
+  const TaskCreatePage({super.key, this.initialFilePath});
   @override State<TaskCreatePage> createState()=>_TaskCreatePageState();
 }
 class _TaskCreatePageState extends State<TaskCreatePage> {
   final form=GlobalKey<FormState>();
+  String? selectedFile;
   final name=TextEditingController(), description=TextEditingController(), progress=TextEditingController(), amount=TextEditingController();
   int status=0; bool completed=false, repeat=false, saving=false;
+  @override void initState(){super.initState(); selectedFile=widget.initialFilePath;}
   @override void dispose(){name.dispose();description.dispose();progress.dispose();amount.dispose();super.dispose();}
   Future<void> save() async {
     if(!form.currentState!.validate())return;
     setState(()=>saving=true);
     try{
-      final r=await ApiClient.dio.post('/mobile/v1/tasks',data:{
+      final formData=FormData.fromMap({
         'name':name.text.trim(),'description':description.text.trim(),
         'status':status,'progress':int.tryParse(progress.text),'amount':double.tryParse(amount.text),
         'completed':completed?1:0,'repeat':repeat?1:0,
+        if(selectedFile!=null) 'upload_file':await MultipartFile.fromFile(selectedFile!,filename:selectedFile!.split(Platform.pathSeparator).last),
       });
+      final r=await ApiClient.dio.post('/mobile/v1/tasks',data:formData,options:Options(contentType:'multipart/form-data'));
       if(mounted)Navigator.pop(context,r.data['data']);
     }catch(e){
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(ApiErrorHandler.handle(e).toString())));
@@ -29,6 +36,8 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
     appBar:AppBar(title:const Text('ایجاد فعالیت')),
     bottomNavigationBar:SafeArea(child:Padding(padding:const EdgeInsets.all(16),child:FilledButton.icon(onPressed:saving?null:save,icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.save_outlined),label:const Text('ذخیره')))),
     body:Form(key:form,child:ListView(padding:const EdgeInsets.fromLTRB(16,12,16,120),children:[
+      if(selectedFile!=null) Card(child:ListTile(leading:const Icon(Icons.attach_file),title:Text(selectedFile!.split(Platform.pathSeparator).last),trailing:IconButton(icon:const Icon(Icons.clear),onPressed:()=>setState(()=>selectedFile=null)))),
+      if(selectedFile!=null) const SizedBox(height:12),
       TextFormField(controller:name,maxLines:2,decoration:const InputDecoration(labelText:'عنوان *',prefixIcon:Icon(Icons.title)),validator:(v)=>v==null||v.trim().isEmpty?'عنوان الزامی است':null),
       const SizedBox(height:14),
       TextFormField(controller:description,minLines:4,maxLines:8,decoration:const InputDecoration(labelText:'توضیحات',prefixIcon:Icon(Icons.notes_outlined))),

@@ -4,6 +4,8 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/login_page.dart';
 import 'package:karnamaft/pages/main_page.dart';
 import 'package:karnamaft/services/auth_service.dart';
+import 'package:karnamaft/services/incoming_share_service.dart';
+import 'package:karnamaft/pages/incoming_share_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../storage/auth_storage.dart';
@@ -55,9 +57,17 @@ class _SplashPageState extends State<SplashPage> {
       final token = await AuthStorage.getToken();
       context.read<UserController>().setUser(user, token!);
 
+      final sharedFile = await IncomingShareService.takeInitialFile();
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => MainPage()),
+        MaterialPageRoute(
+          builder: (_) => sharedFile == null
+              ? const MainPage()
+              : IncomingSharePage(filePath: sharedFile),
+        ),
       );
     } on DioException catch (e) {
       //--------------------------------------

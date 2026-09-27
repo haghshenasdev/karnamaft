@@ -12,6 +12,7 @@ import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:karnamaft/widgets/date_record_filter.dart';
 
 import '../api/api_client.dart';
+import 'package:karnamaft/widgets/reference_record_filter.dart';
 
 class MinuteService implements RecordService<MinuteModel> {
   const MinuteService();
@@ -248,6 +249,24 @@ class MinuteService implements RecordService<MinuteModel> {
 
   @override
   List<RecordFilter> get filters => [
+    RecordFilter(
+      key: "project_id", field: "project_id", title: "دستورکار", icon: Icons.work_outline,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "projects", values: values, field: field, refresh: refresh, label: "دستورکار",
+      ),
+    ),
+    RecordFilter(
+      key: "task_id", field: "task_id", title: "فعالیت", icon: Icons.task_alt,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "tasks", values: values, field: field, refresh: refresh, label: "فعالیت",
+      ),
+    ),
+    RecordFilter(
+      key: "organ_id", field: "organ_id", title: "سازمان", icon: Icons.business_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "organs", values: values, field: field, refresh: refresh, label: "سازمان",
+      ),
+    ),
     RecordFilter(
       key: "date",
 

@@ -11,6 +11,7 @@ import 'package:karnamaft/models/task_model.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:karnamaft/widgets/date_record_filter.dart';
+import 'package:karnamaft/widgets/reference_record_filter.dart';
 
 class TaskService implements RecordService<TaskModel> {
   const TaskService();
@@ -227,6 +228,24 @@ class TaskService implements RecordService<TaskModel> {
           DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
         ],
         onChanged: (v) { values[field] = v ?? ""; refresh(); },
+      ),
+    ),
+    RecordFilter(
+      key: "project_id", field: "project_id", title: "دستورکار", icon: Icons.work_outline,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "projects", values: values, field: field, refresh: refresh, label: "دستورکار",
+      ),
+    ),
+    RecordFilter(
+      key: "city_id", field: "city_id", title: "شهر", icon: Icons.location_city_outlined,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "cities", values: values, field: field, refresh: refresh, label: "شهر",
+      ),
+    ),
+    RecordFilter(
+      key: "Responsible_id", field: "Responsible_id", title: "مسئول", icon: Icons.person_outline,
+      builder: (context, values, refresh, field) => ReferenceRecordFilter(
+        resource: "users", values: values, field: field, refresh: refresh, label: "مسئول",
       ),
     ),
     RecordFilter(
