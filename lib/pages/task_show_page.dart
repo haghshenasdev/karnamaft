@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:karnamaft/widgets/record_files_card.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:karnamaft/widgets/record_share_dialog.dart';
@@ -41,13 +42,15 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
   TaskModel? task;
 
-  String? newUploadFile;
+  final List<String> newUploadFiles = [];
 
-  late TextEditingController nameController;
+  final TextEditingController nameController = TextEditingController();
 
-  late TextEditingController descriptionController;
+  final TextEditingController descriptionController =
+      TextEditingController();
 
-  late TextEditingController progressController;
+  final TextEditingController progressController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -79,19 +82,14 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
       if (!mounted) return;
 
+      nameController.text = result.name;
+      descriptionController.text = result.description ?? "";
+      progressController.text = result.progress?.toString() ?? "";
+
+      if (!mounted) return;
+
       setState(() {
         task = result;
-
-        nameController = TextEditingController(text: result.name);
-
-        descriptionController = TextEditingController(
-          text: result.description ?? "",
-        );
-
-        progressController = TextEditingController(
-          text: result.progress?.toString() ?? "",
-        );
-
         loading = false;
       });
     } catch (e) {
@@ -103,6 +101,56 @@ class _TaskShowPageState extends State<TaskShowPage> {
         error = e.toString();
       });
     }
+  }
+
+  Future<void> _pickAttachments() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowMultiple: true,
+      allowedExtensions: [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'txt',
+      ],
+    );
+
+    if (result == null || !mounted) return;
+
+    final paths = <String>[];
+
+    for (final file in result.files) {
+      final path = file.path;
+
+      if (path == null || path.isEmpty) continue;
+
+      if (file.size > 20 * 1024 * 1024) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'فایل «${file.name}» بیشتر از ۲۰ مگابایت است.',
+            ),
+          ),
+        );
+        continue;
+      }
+
+      if (!newUploadFiles.contains(path)) {
+        paths.add(path);
+      }
+    }
+
+    if (paths.isEmpty) return;
+
+    setState(() {
+      newUploadFiles.addAll(paths);
+    });
   }
 
   Future<void> _shareRecord() async {
@@ -250,6 +298,56 @@ class _TaskShowPageState extends State<TaskShowPage> {
               const SizedBox(height: 20),
 
               RecordFilesCard(files: item.files),
+
+              if (editing)
+                Card(
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'افزودن پیوست',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: _pickAttachments,
+                              icon: const Icon(Icons.attach_file),
+                              label: const Text('انتخاب فایل'),
+                            ),
+                          ],
+                        ),
+                        for (final path in newUploadFiles)
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(
+                              Icons.insert_drive_file_outlined,
+                            ),
+                            title: Text(
+                              path.split(RegExp(r'[/\\]')).last,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  newUploadFiles.remove(path);
+                                });
+                              },
+                              icon: const Icon(Icons.clear),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
 
               //--------------------------------------------------
               // اطلاعات اصلی
@@ -506,7 +604,7 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
         model,
 
-        uploadFile: newUploadFile,
+        uploadFiles: List<String>.from(newUploadFiles),
       );
 
       if (!mounted) {
@@ -515,9 +613,8 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
       setState(() {
         task = result;
-
+        newUploadFiles.clear();
         editing = false;
-
         loading = false;
       });
 

@@ -101,7 +101,7 @@ class _RecordsPageState extends State<RecordsPage> {
         page: 1,
         sort: sort,
         search: search.trim().isEmpty ? null : search.trim(),
-        filters: Map<String, String>.from(filters)..remove("search"),
+        filters: _apiFilters(),
       );
 
       if (!mounted) return;
@@ -133,7 +133,7 @@ class _RecordsPageState extends State<RecordsPage> {
         page: currentPage + 1,
         sort: sort,
         search: search.trim().isEmpty ? null : search.trim(),
-        filters: Map<String, String>.from(filters)..remove("search"),
+        filters: _apiFilters(),
       );
 
       if (!mounted) return;
@@ -152,6 +152,75 @@ class _RecordsPageState extends State<RecordsPage> {
     } finally {
       if (mounted) setState(() => loadingMore = false);
     }
+  }
+
+  Map<String, String> _apiFilters() {
+    final result = <String, String>{};
+
+    filters.forEach((key, value) {
+      if (key == 'search' || key.startsWith('__label__')) {
+        return;
+      }
+
+      if (value.isNotEmpty) {
+        result[key] = value;
+      }
+    });
+
+    return result;
+  }
+
+  String _filterDisplayLabel(String field, String value) {
+    final labels = <String, String>{
+      'status': 'وضعیت',
+      'completed': 'وضعیت انجام',
+      'project_id': 'دستورکار',
+      'city_id': 'شهر',
+      'organ_id': 'دستگاه مربوطه',
+      'Responsible_id': 'مسئول',
+      'type_id': 'نوع نامه',
+      'task_id': 'فعالیت',
+      'created_at': 'تاریخ ثبت',
+      'updated_at': 'تاریخ بروزرسانی',
+      'date': 'تاریخ',
+      'started_at': 'شروع',
+      'ended_at': 'پایان',
+      'completed_at': 'تکمیل',
+    };
+
+    final title = labels[field] ?? 'فیلتر';
+
+    final values = <String, String>{
+      '0': field == 'status' ? 'جدید' : 'انجام نشده',
+      '1': field == 'status' ? 'اتمام' : 'انجام شده',
+      '2': 'در حال پیگیری',
+      '3': 'غیرقابل پیگیری',
+    };
+
+    final labelValue = filters['__label__$field'];
+
+    if (labelValue != null && labelValue.isNotEmpty) {
+      return '$title: $labelValue';
+    }
+
+    if (field == 'completed' && values.containsKey(value)) {
+      return '$title: ${values[value]}';
+    }
+
+    if (field == 'status' && values.containsKey(value)) {
+      return '$title: ${values[value]}';
+    }
+
+    if (field == 'created_at' ||
+        field == 'updated_at' ||
+        field == 'date' ||
+        field == 'started_at' ||
+        field == 'ended_at' ||
+        field == 'completed_at') {
+      return '$title: $value';
+    }
+
+    return '$title: انتخاب‌شده';
   }
 
   Future<void> changeSort(String value) async {
@@ -256,24 +325,41 @@ class _RecordsPageState extends State<RecordsPage> {
               ),
             ),
 
-            if (filters.entries.where((e) => e.value.isNotEmpty && e.key != 'search').isNotEmpty)
+            if (filters.entries
+                .where(
+                  (e) =>
+                      e.value.isNotEmpty &&
+                      e.key != 'search' &&
+                      !e.key.startsWith('__label__'),
+                )
+                .isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: filters.entries
-                        .where((e) => e.value.isNotEmpty && e.key != 'search')
-                        .map((e) => Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: InputChip(
-                                label: Text('${e.key}: ${e.value}'),
-                                onDeleted: () {
-                                  setState(() => filters.remove(e.key));
-                                  loadData();
-                                },
-                              ),
-                            ))
+                        .where(
+                          (e) =>
+                              e.value.isNotEmpty &&
+                              e.key != 'search' &&
+                              !e.key.startsWith('__label__'),
+                        )
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: InputChip(
+                              label: Text(_filterDisplayLabel(e.key, e.value)),
+                              onDeleted: () {
+                                setState(() {
+                                  filters.remove(e.key);
+                                  filters.remove('__label__${e.key}');
+                                });
+                                loadData();
+                              },
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
                 ),

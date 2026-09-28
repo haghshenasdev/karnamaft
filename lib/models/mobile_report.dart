@@ -1,3 +1,14 @@
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _toNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  return int.tryParse(value.toString());
+}
+
 
 class MobileReport {
   final String resource;
@@ -63,11 +74,51 @@ class ProjectReport {
     );
   }
 }
-class ProjectCityStat { final String name; final int total,completed; const ProjectCityStat({required this.name,required this.total,required this.completed}); factory ProjectCityStat.fromJson(Map<String,dynamic> j)=>ProjectCityStat(name:j['label']?.toString()??'',total:j['total']??0,completed:j['completed']??0); }
+class ProjectCityStat { final String name; final int total,completed; const ProjectCityStat({required this.name,required this.total,required this.completed}); factory ProjectCityStat.fromJson(Map<String,dynamic> j)=>ProjectCityStat(name:j['name']?.toString() ?? j['label']?.toString() ?? 'بدون شهر',total:_toInt(j['total']),completed:_toInt(j['completed'])); }
 class CalendarEvent {
-  final int id; final String title; final DateTime? date; final bool completed; final int? progress; final String? city;
-  const CalendarEvent({required this.id,required this.title,this.date,this.completed=false,this.progress,this.city});
-  factory CalendarEvent.fromJson(Map<String,dynamic> j)=>CalendarEvent(id:j['id']??0,title:j['title']?.toString()??'',date:j['date']==null?null:DateTime.tryParse(j['date'].toString()),completed:j['completed']==true||j['completed']==1,progress:j['progress'] is int?j['progress']:int.tryParse('${j['progress']}'),city:j['city']?['name']?.toString());
+  final int id;
+  final String type;
+  final String typeTitle;
+  final String title;
+  final DateTime? date;
+  final bool completed;
+  final int? progress;
+  final String? city;
+
+  const CalendarEvent({
+    required this.id,
+    required this.type,
+    required this.typeTitle,
+    required this.title,
+    this.date,
+    this.completed = false,
+    this.progress,
+    this.city,
+  });
+
+  factory CalendarEvent.fromJson(Map<String, dynamic> json) {
+    final cityValue = json['city'];
+
+    String? cityName;
+    if (cityValue is Map) {
+      cityName = cityValue['name']?.toString();
+    } else if (cityValue != null) {
+      cityName = cityValue.toString();
+    }
+
+    return CalendarEvent(
+      id: _toInt(json['id']),
+      type: json['type']?.toString() ?? 'task',
+      typeTitle: json['type_title']?.toString() ?? 'فعالیت',
+      title: json['title']?.toString() ?? '',
+      date: json['date'] == null
+          ? null
+          : DateTime.tryParse(json['date'].toString()),
+      completed: json['completed'] == true || json['completed'] == 1,
+      progress: _toNullableInt(json['progress']),
+      city: cityName,
+    );
+  }
 }
 
 class ReportCity {

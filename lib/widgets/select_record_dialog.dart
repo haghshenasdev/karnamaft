@@ -76,9 +76,13 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
   }
 
   Future<void> loadHistory() async {
-    history = await HistoryService.get(widget.config.historyKey);
+    final result = await HistoryService.get(widget.config.historyKey);
 
-    setState(() {});
+    if (!mounted) return;
+
+    setState(() {
+      history = result;
+    });
   }
 
   Future<void> loadData() async {
@@ -196,6 +200,15 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
 
       loadData();
     });
+  }
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    searchController.dispose();
+    scrollController.dispose();
+    speech.stop();
+    super.dispose();
   }
 
   @override

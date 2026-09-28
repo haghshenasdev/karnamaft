@@ -121,47 +121,69 @@ class TaskService implements RecordService<TaskModel> {
     int id,
     TaskModel model, {
     String? uploadFile,
+    List<String>? uploadFiles,
   }) async {
     try {
-      final formData = FormData.fromMap({
-        "_method": "PUT",
+      final formData = FormData();
 
-        "name": model.name,
+      formData.fields.addAll([
+        const MapEntry("_method", "PUT"),
+        MapEntry("name", model.name),
+        MapEntry("description", model.description ?? ""),
+        MapEntry("status", model.status?.toString() ?? ""),
+        MapEntry("progress", model.progress?.toString() ?? ""),
+        MapEntry("completed", model.completed?.toString() ?? ""),
+        MapEntry("started_at", model.startedAt ?? ""),
+        MapEntry("ended_at", model.endedAt ?? ""),
+        MapEntry("created_by", model.creator?.id.toString() ?? ""),
+      ]);
 
-        "description": model.description ?? "",
+      final files = <String>[];
 
-        "status": model.status,
+      if (uploadFile != null && uploadFile.isNotEmpty) {
+        files.add(uploadFile);
+      }
 
-        "progress": model.progress,
+      if (uploadFiles != null) {
+        for (final path in uploadFiles) {
+          if (path.isNotEmpty && !files.contains(path)) {
+            files.add(path);
+          }
+        }
+      }
 
-        "completed": model.completed,
-
-        "started_at": model.startedAt,
-
-        "ended_at": model.endedAt,
-        "created_by": model.creator?.id,
-
-        if (uploadFile != null)
-          "upload_file": await MultipartFile.fromFile(uploadFile),
-      });
+      for (final path in files) {
+        formData.files.add(
+          MapEntry(
+            "upload_files[]",
+            await MultipartFile.fromFile(
+              path,
+              filename: path.split(RegExp(r'[/\\]')).last,
+            ),
+          ),
+        );
+      }
 
       final response = await ApiClient.dio.post(
         "$rootPath/$id",
-
         data: formData,
-
-        options: Options(contentType: "multipart/form-data"),
+        options: Options(
+          contentType: "multipart/form-data",
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
       );
 
       return TaskModel.fromJson(response.data["data"]);
     } catch (e) {
       if (e is DioException) {
-        print(e.response?.data);
+        debugPrint(e.response?.data?.toString());
       }
 
       throw ApiErrorHandler.handle(e);
     }
   }
+
 
   /// فعالیت‌هایی که مسئول انجام آن‌ها کاربر فعلی است.
   ///

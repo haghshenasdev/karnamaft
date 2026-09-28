@@ -64,9 +64,9 @@ class _SplashPageState extends State<SplashPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => sharedFile == null
-              ? const MainPage()
-              : IncomingSharePage(filePath: sharedFile),
+          builder: (_) => MainPage(
+            initialSharedFile: sharedFile,
+          ),
         ),
       );
     } on DioException catch (e) {
