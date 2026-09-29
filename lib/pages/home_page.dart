@@ -701,175 +701,179 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ],
                       ),
 
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 6),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            //--------------------------------------------------
+                            // Undo
+                            //--------------------------------------------------
+                            IconButton.filledTonal(
+                              icon: const Icon(Icons.undo),
 
-                          //--------------------------------------------------
-                          // Undo
-                          //--------------------------------------------------
-                          IconButton.filledTonal(
-                            icon: const Icon(Icons.undo),
-
-                            onPressed: controller.canUndo
-                                ? controller.undo
-                                : null,
-                          ),
-
-                          //--------------------------------------------------
-                          // Redo
-                          //--------------------------------------------------
-                          IconButton.filledTonal(
-                            icon: const Icon(Icons.redo),
-
-                            onPressed: controller.canRedo
-                                ? controller.redo
-                                : null,
-                          ),
-
-                          const Spacer(),
-
-                          //--------------------------------------------------
-                          // Pen Settings
-                          //--------------------------------------------------
-                          IconButton.filledTonal(
-                            tooltip: "ابزار قلم",
-
-                            onPressed: () {
-                              _showPenDialog(context, controller);
-                            },
-
-                            icon: Icon(switch (controller.selectedTool) {
-                              ToolType.pen => Icons.edit,
-
-                              ToolType.highlighter => Icons.draw,
-
-                              ToolType.eraser => Icons.auto_fix_off,
-                            }, color: controller.penColor),
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          // Samsung Notes style handwriting magnifier.
-                          IconButton.filledTonal(
-                            tooltip: _smartPenPadOpen
-                                ? 'بستن کادر نوشتن با قلم'
-                                : 'نوشتن با قلم در کادر بزرگ',
-                            onPressed: _smartPenPadOpen
-                                ? () => _closeSmartPenPad(commit: true)
-                                : _openSmartPenPad,
-                            icon: Icon(
-                              _smartPenPadOpen
-                                  ? Icons.picture_in_picture_alt_rounded
-                                  : Icons.edit_note_rounded,
-                            ),
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          //--------------------------------------------------
-                          // Writing Mode Button
-                          //--------------------------------------------------
-                          IconButton.filledTonal(
-                            tooltip: controller.writingMode
-                                ? "خروج از حالت نوشتن"
-                                : "حالت نوشتن",
-
-                            icon: Icon(
-                              controller.writingMode
-                                  ? Icons.fullscreen_exit
-                                  : Icons.fullscreen,
+                              onPressed: controller.canUndo
+                                  ? controller.undo
+                                  : null,
                             ),
 
-                            onPressed: () async {
-                              controller.toggleWritingMode();
+                            //--------------------------------------------------
+                            // Redo
+                            //--------------------------------------------------
+                            IconButton.filledTonal(
+                              icon: const Icon(Icons.redo),
 
-                              if (controller.writingMode) {
-                                await SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.landscapeLeft,
-                                  DeviceOrientation.landscapeRight,
-                                ]);
-                              } else {
-                                await SystemChrome.setPreferredOrientations([
-                                  DeviceOrientation.portraitUp,
-                                  DeviceOrientation.portraitDown,
-                                ]);
-                              }
-                            },
-                          ),
-
-                          const SizedBox(width: 6),
-
-                          //--------------------------------------------------
-                          // Pages
-                          //--------------------------------------------------
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-
-                              borderRadius: BorderRadius.circular(24),
+                              onPressed: controller.canRedo
+                                  ? controller.redo
+                                  : null,
                             ),
 
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  tooltip: "صفحه قبل",
+                            const SizedBox(width: 12),
 
-                                  onPressed: controller.canPrevious
-                                      ? () {
-                                          if (_smartPenPadOpen) {
-                                            _closeSmartPenPad(commit: true);
+                            //--------------------------------------------------
+                            // Pen Settings
+                            //--------------------------------------------------
+                            IconButton.filledTonal(
+                              tooltip: "ابزار قلم",
+
+                              onPressed: () {
+                                _showPenDialog(context, controller);
+                              },
+
+                              icon: Icon(switch (controller.selectedTool) {
+                                ToolType.pen => Icons.edit,
+
+                                ToolType.highlighter => Icons.draw,
+
+                                ToolType.eraser => Icons.auto_fix_off,
+                              }, color: controller.penColor),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            // Samsung Notes style handwriting magnifier.
+                            IconButton.filledTonal(
+                              tooltip: _smartPenPadOpen
+                                  ? 'بستن کادر نوشتن با قلم'
+                                  : 'نوشتن با قلم در کادر بزرگ',
+                              onPressed: _smartPenPadOpen
+                                  ? () => _closeSmartPenPad(commit: true)
+                                  : _openSmartPenPad,
+                              icon: Icon(
+                                _smartPenPadOpen
+                                    ? Icons.picture_in_picture_alt_rounded
+                                    : Icons.edit_note_rounded,
+                              ),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            //--------------------------------------------------
+                            // Writing Mode Button
+                            //--------------------------------------------------
+                            IconButton.filledTonal(
+                              tooltip: controller.writingMode
+                                  ? "خروج از حالت نوشتن"
+                                  : "حالت نوشتن",
+
+                              icon: Icon(
+                                controller.writingMode
+                                    ? Icons.fullscreen_exit
+                                    : Icons.fullscreen,
+                              ),
+
+                              onPressed: () async {
+                                controller.toggleWritingMode();
+
+                                if (controller.writingMode) {
+                                  await SystemChrome.setPreferredOrientations([
+                                    DeviceOrientation.landscapeLeft,
+                                    DeviceOrientation.landscapeRight,
+                                  ]);
+                                } else {
+                                  await SystemChrome.setPreferredOrientations([
+                                    DeviceOrientation.portraitUp,
+                                    DeviceOrientation.portraitDown,
+                                  ]);
+                                }
+                              },
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            //--------------------------------------------------
+                            // Pages
+                            //--------------------------------------------------
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest,
+
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: "صفحه قبل",
+
+                                    onPressed: controller.canPrevious
+                                        ? () {
+                                            if (_smartPenPadOpen) {
+                                              _closeSmartPenPad(commit: true);
+                                            }
+                                            controller.previousPage();
                                           }
-                                          controller.previousPage();
-                                        }
-                                      : null,
+                                        : null,
 
-                                  icon: const Icon(Icons.chevron_left),
-                                ),
+                                    icon: const Icon(Icons.chevron_left),
+                                  ),
 
-                                InkWell(
-                                  onTap: () {
-                                    _showPages(context, controller);
-                                  },
+                                  InkWell(
+                                    onTap: () {
+                                      _showPages(context, controller);
+                                    },
 
-                                  borderRadius: BorderRadius.circular(18),
+                                    borderRadius: BorderRadius.circular(18),
 
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 8,
-                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 8,
+                                      ),
 
-                                    child: Text(
-                                      "${controller.currentPage + 1} / ${controller.pageCount}",
+                                      child: Text(
+                                        "${controller.currentPage + 1} / ${controller.pageCount}",
 
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
 
-                                IconButton(
-                                  tooltip: "صفحه بعد",
+                                  IconButton(
+                                    tooltip: "صفحه بعد",
 
-                                  onPressed: () {
-                                    if (_smartPenPadOpen) {
-                                      _closeSmartPenPad(commit: true);
-                                    }
-                                    controller.nextPage();
-                                  },
+                                    onPressed: () {
+                                      if (_smartPenPadOpen) {
+                                        _closeSmartPenPad(commit: true);
+                                      }
+                                      controller.nextPage();
+                                    },
 
-                                  icon: const Icon(Icons.chevron_right),
-                                ),
-                              ],
+                                    icon: const Icon(Icons.chevron_right),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
 
-                          const SizedBox(width: 6),
-                        ],
+                            const SizedBox(width: 6),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -1302,36 +1306,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildSmartPenPad(BuildContext context) {
     final controller = context.read<DrawingController>();
     final screen = MediaQuery.sizeOf(context);
-
     final left = _smartPadRect.left * screen.width;
     final top = _smartPadRect.top * screen.height;
     final width = _smartPadRect.width * screen.width;
     final height = _smartPadRect.height * screen.height;
 
-    // نکته مهم:
-    // کنترل‌های این نوار عمداً با IconButton ساخته می‌شوند؛ دقیقاً همان
-    // الگوی دکمه‌های نوار ابزار اصلی برنامه. در نسخه قبلی از ترکیب
-    // Tooltip + Material شفاف + InkWell + Icon استفاده شده بود که در بعضی
-    // Themeها باعث می‌شد خود Icon دیده نشود، در حالی که HitTest و Tooltip
-    // همچنان کار می‌کردند.
+    // این کنترل‌ها عمداً از IconButton معمولی استفاده نمی‌کنند.
+    // چون ممکن است IconButtonTheme / IconTheme پروژه رنگ foreground را
+    // شفاف یا همرنگ پس‌زمینه کند. در اینجا رنگ آیکون مستقیماً تعیین می‌شود.
     Widget controlButton({
       required IconData icon,
       required String tooltip,
       required VoidCallback onPressed,
-      bool destructive = false,
+      Color? iconColor,
     }) {
-      final colorScheme = Theme.of(context).colorScheme;
-
-      return IconButton(
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon),
-        color: destructive ? colorScheme.error : colorScheme.onSurfaceVariant,
-        style: IconButton.styleFrom(
-          minimumSize: const Size(42, 42),
-          fixedSize: const Size(42, 42),
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      final effectiveIconColor =
+          iconColor ?? Theme.of(context).colorScheme.onSurface;
+      return Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 350),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onPressed,
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: Center(
+                child: Icon(icon, size: 23, color: effectiveIconColor),
+              ),
+            ),
+          ),
         ),
       );
     }
@@ -1343,124 +1349,90 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       height: height,
       child: Material(
         elevation: 24,
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
-            // ==========================================================
             // نوار کنترل کادر بزرگ
-            // ==========================================================
             GestureDetector(
-              onPanStart: (_) {
-                _smartPadDragging = true;
-              },
+              onPanStart: (_) => _smartPadDragging = true,
               onPanUpdate: (details) {
                 if (!_smartPadDragging) return;
-
                 _smartMovePad(
                   details.delta.dx / screen.width,
                   details.delta.dy / screen.height,
                 );
               },
-              onPanEnd: (_) {
-                _smartPadDragging = false;
-              },
-              onPanCancel: () {
-                _smartPadDragging = false;
-              },
+              onPanEnd: (_) => _smartPadDragging = false,
               child: Container(
                 height: 52,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
-                child: Directionality(
-                  textDirection: TextDirection.rtl,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    reverse: false,
-                    physics: const BouncingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // عنوان حالت نوشتن
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(
-                            Icons.edit_note_rounded,
-                            size: 21,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.edit_note_rounded,
+                        size: 21,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      const SizedBox(width: 4),
 
-                        const SizedBox(width: 2),
+                      controlButton(
+                        tooltip: 'حرکت به قبلی',
+                        onPressed: _smartMoveTargetPrevious,
+                        icon: Icons.chevron_right_rounded,
+                      ),
 
-                        // حرکت به قبلی
-                        controlButton(
-                          tooltip: 'حرکت به قبلی',
-                          onPressed: _smartMoveTargetPrevious,
-                          icon: Icons.chevron_right_rounded,
-                        ),
+                      controlButton(
+                        tooltip: 'خط جدید',
+                        onPressed: _smartNewLine,
+                        icon: Icons.keyboard_return_rounded,
+                      ),
 
-                        // خط جدید
-                        controlButton(
-                          tooltip: 'خط جدید',
-                          onPressed: _smartNewLine,
-                          icon: Icons.keyboard_return_rounded,
-                        ),
+                      controlButton(
+                        tooltip: 'حرکت به بعدی',
+                        onPressed: _smartMoveTargetNext,
+                        icon: Icons.chevron_left_rounded,
+                      ),
 
-                        // حرکت به بعدی
-                        controlButton(
-                          tooltip: 'حرکت به بعدی',
-                          onPressed: _smartMoveTargetNext,
-                          icon: Icons.chevron_left_rounded,
-                        ),
+                      const SizedBox(width: 8),
 
-                        const SizedBox(width: 8),
+                      controlButton(
+                        tooltip: 'کوچک کردن کادر',
+                        onPressed: () => _smartResizePad(-.06, -.04),
+                        icon: Icons.fullscreen_exit_rounded,
+                      ),
 
-                        // کوچک کردن کادر
-                        controlButton(
-                          tooltip: 'کوچک کردن کادر',
-                          onPressed: () => _smartResizePad(-.06, -.04),
-                          icon: Icons.fullscreen_exit_rounded,
-                        ),
+                      controlButton(
+                        tooltip: 'بزرگ کردن کادر',
+                        onPressed: () => _smartResizePad(.06, .04),
+                        icon: Icons.fullscreen_rounded,
+                      ),
 
-                        // بزرگ کردن کادر
-                        controlButton(
-                          tooltip: 'بزرگ کردن کادر',
-                          onPressed: () => _smartResizePad(.06, .04),
-                          icon: Icons.fullscreen_rounded,
-                        ),
+                      controlButton(
+                        tooltip: 'بستن کادر و انتقال نوشته‌ها',
+                        onPressed: () => _closeSmartPenPad(commit: true),
+                        icon: Icons.picture_in_picture_alt_rounded,
+                      ),
 
-                        // بستن کادر و انتقال نوشته‌ها
-                        controlButton(
-                          tooltip: 'بستن کادر و انتقال نوشته‌ها',
-                          onPressed: () => _closeSmartPenPad(commit: true),
-                          icon: Icons.picture_in_picture_alt_rounded,
-                        ),
-
-                        // بستن حالت نوشتن
-                        controlButton(
-                          tooltip: 'بستن حالت نوشتن',
-                          onPressed: () => _closeSmartPenPad(commit: false),
-                          icon: Icons.close_rounded,
-                          destructive: true,
-                        ),
-
-                        const SizedBox(width: 4),
-                      ],
-                    ),
+                      controlButton(
+                        tooltip: 'بستن حالت نوشتن',
+                        onPressed: () => _closeSmartPenPad(commit: false),
+                        icon: Icons.close_rounded,
+                        iconColor: const Color(0xFFD32F2F),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-
-            // ==========================================================
-            // ناحیه اصلی نوشتن
-            // ==========================================================
             Expanded(
               child: Container(
                 margin: const EdgeInsets.all(10),
