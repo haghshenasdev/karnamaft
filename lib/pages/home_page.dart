@@ -1077,7 +1077,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (isInAdvanceZone) {
       // اگر Stroke تمام شد و باید به خانه بعدی برویم، ۱.۵ ثانیه صبر کن.
       _smartAdvanceTimer?.cancel();
-      _smartAdvanceTimer = Timer(const Duration(milliseconds: 1500), () {
+      _smartAdvanceTimer = Timer(const Duration(milliseconds: 1000), () {
         if (!mounted || !_smartPenPadOpen) return;
         _smartAdvanceTimer = null;
         _advanceSmartPenTarget();
