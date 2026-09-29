@@ -36,9 +36,7 @@ class ProfileHeader extends StatelessWidget {
                     child: ClipOval(
                       child: profile.avatar.isNotEmpty
                           ? Image.network(
-                              profile.avatar.startsWith('http')
-                                  ? profile.avatar
-                                  : '${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar',
+                              '${ApiClient.dio.options.baseUrl}/profile/avatar',
                               headers: {
                                 'Authorization': 'Bearer ${profile.token}',
                               },

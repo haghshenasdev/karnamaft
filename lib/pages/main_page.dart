@@ -44,10 +44,12 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   StreamSubscription<String>? _shareSubscription;
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
+    _refreshUnreadNotifications();
 
     IncomingShareService.initialize();
 
@@ -83,6 +85,27 @@ class _MainPageState extends State<MainPage> {
 
   void _open(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _refreshUnreadNotifications() async {
+    try {
+      final response = await ApiClient.dio.get(
+        '/mobile/v1/notifications',
+        queryParameters: {'page': 1, 'per_page': 1},
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final meta = Map<String, dynamic>.from(data['meta'] ?? const {});
+      if (mounted) setState(() => _unreadNotifications = int.tryParse('${meta['unread_count'] ?? 0}') ?? 0);
+    } catch (_) {
+      // نشان اعلان در صورت قطع شبکه بدون شمارنده باقی می‌ماند.
+    }
+  }
+
+  Future<void> _openAnnouncements() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AnnouncementsPage()),
+    );
+    await _refreshUnreadNotifications();
   }
 
   void _comingSoon(BuildContext context, String title) {
@@ -221,6 +244,33 @@ class _MainPageState extends State<MainPage> {
             onPressed: () => _open(context, const SearchPage()),
             icon: const Icon(Icons.search_rounded),
           ),
+          IconButton(
+            tooltip: _unreadNotifications > 0
+                ? 'اعلانات خوانده‌نشده: $_unreadNotifications'
+                : 'اعلانات',
+            onPressed: _openAnnouncements,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none_rounded),
+                if (_unreadNotifications > 0)
+                  Positioned(
+                    top: -5,
+                    right: -7,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20)),
+                      alignment: Alignment.center,
+                      child: Text(
+                        _unreadNotifications > 99 ? '99+' : '$_unreadNotifications',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 10),
             child: IconButton(
@@ -244,7 +294,9 @@ class _MainPageState extends State<MainPage> {
                     item: items[index],
                     onTap: () {
                       final item = items[index];
-                      if (item.page != null) {
+                      if (item.title == 'اعلانات') {
+                        _openAnnouncements();
+                      } else if (item.page != null) {
                         _open(context, item.page!);
                       } else {
                         item.onTap?.call();
@@ -343,7 +395,7 @@ class _Avatar extends StatelessWidget {
           : ClipOval(
               child: CachedNetworkImage(
                 imageUrl:
-                    '${ApiClient.dio.options.baseUrl}/mobile/v1/profile/avatar',
+                    '${ApiClient.dio.options.baseUrl}/profile/avatar',
                 httpHeaders: {'Authorization': 'Bearer ${user.token}'},
                 width: 36,
                 height: 36,

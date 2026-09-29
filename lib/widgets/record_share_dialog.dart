@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ShareField {
@@ -56,14 +57,19 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
     setState(() => sharing = true);
     try {
       final text = selected.map((e) => '${e.label}: ${e.value}').join('\n');
+      final shareText = text.isEmpty ? widget.title : text;
+      // متن قبل از بازشدن پنجره اشتراک‌گذاری در کلیپ‌بورد نیز قرار می‌گیرد.
+      await Clipboard.setData(ClipboardData(text: shareText));
       final files = <XFile>[];
 
       if (widget.file != null && includeFile) {
         final bytes = await widget.file!.load();
         if (bytes != null) {
+          final fileName = _safeFileName(widget.file!.name);
           files.add(XFile.fromData(
             bytes,
-            name: widget.file!.name,
+            name: fileName,
+            mimeType: _mimeTypeFor(fileName),
           ));
         }
       }
@@ -71,7 +77,7 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
       await SharePlus.instance.share(
         ShareParams(
           title: widget.title,
-          text: text.isEmpty ? widget.title : text,
+          text: shareText,
           files: files,
         ),
       );
@@ -83,6 +89,32 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
       }
     } finally {
       if (mounted) setState(() => sharing = false);
+    }
+  }
+
+  String _safeFileName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'attachment';
+    // اگر نام فایل از سرور بدون پسوند برگشته باشد، پسوند ساختگی اضافه نمی‌کنیم؛
+    // MIME نوع فایل را به سیستم اشتراک‌گذاری معرفی می‌کند.
+    return trimmed.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  }
+
+  String _mimeTypeFor(String name) {
+    switch (name.split('.').last.toLowerCase()) {
+      case 'pdf': return 'application/pdf';
+      case 'png': return 'image/png';
+      case 'jpg':
+      case 'jpeg': return 'image/jpeg';
+      case 'webp': return 'image/webp';
+      case 'gif': return 'image/gif';
+      case 'txt': return 'text/plain';
+      case 'doc': return 'application/msword';
+      case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls': return 'application/vnd.ms-excel';
+      case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'zip': return 'application/zip';
+      default: return 'application/octet-stream';
     }
   }
 

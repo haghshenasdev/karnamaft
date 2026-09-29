@@ -7,6 +7,7 @@ import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/services/letter_ai_service.dart';
+import 'package:karnamaft/services/title_analysis_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/scan_service.dart';
 import 'package:karnamaft/services/reference_service.dart';
@@ -74,6 +75,8 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
   bool saving = false;
   bool analyzing = false;
+  bool analyzingTitle = false;
+  List<TitleSuggestion> suggestedProjects = const [];
   String? detectedCityName;
   List<String> detectedCategoryNames = const [];
 
@@ -305,6 +308,46 @@ class _LetterCreatePageState extends State<LetterCreatePage>
   // Save
   //--------------------------------------------------
 
+  Future<void> _analyzeTitle() async {
+    final title = subjectController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ابتدا عنوان نامه را وارد کنید.')),
+      );
+      return;
+    }
+    setState(() => analyzingTitle = true);
+    try {
+      final result = await const TitleAnalysisService().analyze(title, resource: 'letters');
+      if (!mounted) return;
+      setState(() {
+        detectedCityName = result.cityName;
+        detectedCategoryNames = result.categoryNames;
+        suggestedProjects = result.projects;
+        if (result.organId != null) {
+          selectedCustomer = LetterOrgan(
+            id: result.organId!,
+            name: result.organName ?? 'ارگان تشخیص داده شده',
+          );
+        }
+      });
+      final details = <String>[
+        if (result.cityName != null) 'شهر: ${result.cityName}',
+        if (result.organName != null) 'گیرنده: ${result.organName}',
+        if (result.projects.isNotEmpty) '${result.projects.length} دستورکار پیشنهادی',
+      ];
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(details.isEmpty ? 'تحلیل عنوان انجام شد؛ پیشنهاد مرتبطی پیدا نشد.' : details.join(' | ')),
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تحلیل عنوان انجام نشد: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => analyzingTitle = false);
+    }
+  }
+
   Future<void> _analyzeLetter() async {
     if (selectedFile == null && selectedFileBytes == null && descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -344,6 +387,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
         }
         selectedOrganOwnerIds = result.organOwnerIds;
         selectedCustomerIds = result.customerOwnerIds;
+        selectedProjectIds = result.categoryIds;
         detectedCityName = result.cityName;
         detectedCategoryNames = result.categoryNames;
       });
@@ -490,9 +534,23 @@ class _LetterCreatePageState extends State<LetterCreatePage>
       backgroundColor: const Color(0xfff5f6fa),
 
       appBar: AppBar(title: const Text("ایجاد نامه"), centerTitle: false),
-
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: saving ? null : save,
+              icon: saving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.save_outlined),
+              label: Text(saving ? 'در حال ثبت...' : 'ثبت نامه'),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -581,20 +639,56 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
                 prefixIcon: const Icon(Icons.title),
 
-                suffixIcon: subjectController.text.isEmpty
-                    ? null
-                    : IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'تحلیل عنوان با دیتابیس',
+                      onPressed: analyzingTitle ? null : _analyzeTitle,
+                      icon: analyzingTitle
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.manage_search_rounded),
+                    ),
+                    if (subjectController.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'پاک کردن عنوان',
                         icon: const Icon(Icons.clear),
-
-                        onPressed: () {
-                          subjectController.clear();
-
-                          setState(() {});
-                        },
+                        onPressed: () => setState(subjectController.clear),
                       ),
+                  ],
+                ),
               ),
             ),
-
+            if (suggestedProjects.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('دستورکارهای پیشنهادی بر اساس عنوان', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: suggestedProjects.map((project) => FilterChip(
+                          label: Text(project.name),
+                          selected: selectedProjectIds.contains(project.id),
+                          onSelected: (selected) => setState(() {
+                            if (selected) {
+                              if (!selectedProjectIds.contains(project.id)) selectedProjectIds.add(project.id);
+                            } else {
+                              selectedProjectIds.remove(project.id);
+                            }
+                          }),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
 
             //--------------------------------------------------
@@ -766,30 +860,6 @@ class _LetterCreatePageState extends State<LetterCreatePage>
                 child: Text(error!, style: const TextStyle(color: Colors.red)),
               ),
 
-            //--------------------------------------------------
-            // Save
-            //--------------------------------------------------
-            SizedBox(
-              height: 52,
-
-              child: FilledButton.icon(
-                icon: saving
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save),
-
-                label: Text(saving ? "در حال ثبت..." : "ثبت نامه"),
-
-                onPressed: saving ? null : save,
-              ),
-            ),
           ],
         ),
       ),

@@ -86,7 +86,7 @@ class LetterAiService {
       if (bytes != null) {
         file = MultipartFile.fromBytes(bytes, filename: fileName ?? 'letter.png');
       } else if (filePath != null) {
-        file = await MultipartFile.fromFile(filePath, filename: filePath.split('/').last);
+        file = await MultipartFile.fromFile(filePath, filename: filePath.split(RegExp(r'[/\\]')).last);
       } else {
         throw Exception('فایلی برای تحلیل وجود ندارد');
       }

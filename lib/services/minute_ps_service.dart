@@ -97,7 +97,7 @@ class MinutePsService {
       } else if (filePath != null) {
         file = await MultipartFile.fromFile(
           filePath,
-          filename: filePath.split('/').last,
+          filename: filePath.split(RegExp(r'[/\\]')).last,
         );
       } else {
         throw Exception('فایلی برای ارسال وجود ندارد');
@@ -165,14 +165,14 @@ class MinutePsService {
     Uint8List? bytes,
     String? fileName,
     CancelToken? cancelToken,
-  }) async {
-    final ocrResult = await uploadFile(
+  }) {
+    // endpoint ai/minutes هنگام دریافت فایل، OCR و تحلیل را هر دو انجام می‌دهد؛
+    // درخواست دوم، تحلیل تکراری ایجاد می‌کرد و زمان/احتمال خطا را بالا می‌برد.
+    return uploadFile(
       filePath: filePath,
       bytes: bytes,
       fileName: fileName,
       cancelToken: cancelToken,
     );
-
-    return analyzeText(ocrResult.text, cancelToken: cancelToken);
   }
 }

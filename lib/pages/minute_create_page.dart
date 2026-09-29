@@ -10,6 +10,7 @@ import 'package:karnamaft/models/minutes_group_service.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/minute_ps_service.dart';
+import 'package:karnamaft/services/title_analysis_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/scan_service.dart';
@@ -62,6 +63,8 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
   String? selectedFile;
   final MinutePsService _psService = const MinutePsService();
   bool processingFile = false;
+  bool analyzingTitle = false;
+  List<TitleSuggestion> suggestedTasks = const [];
 
   String processingMessage = "";
 
@@ -90,7 +93,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     super.dispose();
   }
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -213,6 +215,38 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
   // Save
   //--------------------------------------------------
 
+  Future<void> _analyzeTitle() async {
+    final title = titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ابتدا عنوان صورتجلسه را وارد کنید.')),
+      );
+      return;
+    }
+    setState(() => analyzingTitle = true);
+    try {
+      final result = await const TitleAnalysisService().analyze(title, resource: 'minutes');
+      if (!mounted) return;
+      setState(() {
+        suggestedTasks = result.tasks;
+      });
+      final details = <String>[
+        if (result.cityName != null) 'شهر: ${result.cityName}',
+        if (result.organName != null) 'ارگان: ${result.organName}',
+        if (result.tasks.isNotEmpty) '${result.tasks.length} جلسه/فعالیت مشابه',
+      ];
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(details.isEmpty ? 'تحلیل عنوان انجام شد؛ مورد مشابهی پیدا نشد.' : details.join(' | ')),
+      ));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تحلیل عنوان انجام نشد: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => analyzingTitle = false);
+    }
+  }
+
   Future<void> save() async {
     if (titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
@@ -271,9 +305,23 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
       backgroundColor: const Color(0xfff5f6fa),
 
       appBar: AppBar(title: const Text("ایجاد صورتجلسه"), centerTitle: false),
-
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: saving ? null : save,
+              icon: saving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.save_outlined),
+              label: Text(saving ? 'در حال ثبت...' : 'ثبت صورتجلسه'),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
 
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -368,18 +416,50 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
                   borderRadius: BorderRadius.circular(14),
                 ),
                 prefixIcon: const Icon(Icons.title),
-                suffixIcon: titleController.text.isEmpty
-                    ? null
-                    : IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'تحلیل عنوان با دیتابیس',
+                      onPressed: analyzingTitle ? null : _analyzeTitle,
+                      icon: analyzingTitle
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.manage_search_rounded),
+                    ),
+                    if (titleController.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'پاک کردن عنوان',
                         icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          titleController.clear();
-                          setState(() {});
-                        },
+                        onPressed: () => setState(titleController.clear),
                       ),
+                  ],
+                ),
               ),
             ),
-
+            if (suggestedTasks.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('جلسه‌ها/فعالیت‌های مشابه؛ برای انتخاب لمس کنید', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: suggestedTasks.map((task) => ActionChip(
+                          avatar: const Icon(Icons.task_alt_outlined, size: 18),
+                          label: Text(task.name),
+                          onPressed: () => setState(() => selectedTask = TaskCreator(id: task.id, name: task.name)),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
 
             //--------------------------------------------------
@@ -566,32 +646,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
                 child: Text(error!, style: const TextStyle(color: Colors.red)),
               ),
 
-            //--------------------------------------------------
-            // Save Button
-            //--------------------------------------------------
-            SizedBox(
-              height: 52,
-
-              child: FilledButton.icon(
-                icon: saving
-                    ? const SizedBox(
-                        width: 22,
-
-                        height: 22,
-
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save),
-
-                label: Text(saving ? "در حال ثبت..." : "ثبت صورتجلسه"),
-
-                onPressed: saving ? null : save,
-              ),
-            ),
           ],
         ),
       ),
