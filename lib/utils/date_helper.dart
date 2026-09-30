@@ -23,6 +23,27 @@ class DateHelper {
     return "${j.year}/${_two(j.month)}/${_two(j.day)}";
   }
 
+  /// تبدیل تاریخ شمسی نمایش‌داده‌شده در فرم (yyyy/MM/dd) به DateTime.
+  /// هرگز از DateTime.parse روی تاریخ شمسی استفاده نکنید؛ آن تابع تاریخ را
+  /// میلادی فرض می‌کند و برای 1405/01/01 خطا می‌دهد.
+  static DateTime? fromDate(String value) {
+    final text = value.trim().replaceAll('-', '/');
+    final parts = text.split('/');
+    if (parts.length != 3) return null;
+
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null || month == null || day == null) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+    try {
+      return Jalali(year, month, day).toDateTime();
+    } catch (_) {
+      return null;
+    }
+  }
+
   //--------------------------------------------------
   // yyyy/MM/dd HH:mm
   //--------------------------------------------------

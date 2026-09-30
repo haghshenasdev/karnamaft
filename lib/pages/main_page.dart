@@ -8,6 +8,7 @@ import 'package:karnamaft/pages/reports_page.dart';
 import 'package:karnamaft/pages/calendar_page.dart';
 import 'package:karnamaft/pages/announcements_page.dart';
 import 'package:karnamaft/pages/home_page.dart';
+import 'package:karnamaft/pages/contents_page.dart';
 import 'package:karnamaft/pages/letter_create_page.dart';
 import 'package:karnamaft/pages/letter_show_page.dart';
 import 'package:karnamaft/pages/minute_create_page.dart';
@@ -184,6 +185,14 @@ class _MainPageState extends State<MainPage> {
                 : null,
             createSuccessMessage: 'فعالیت با موفقیت ایجاد شد',
           ),
+        ),
+      if (user.can('view_any_content'))
+        const _MenuItem(
+          title: 'یادداشت‌های آنلاین',
+          subtitle: 'یادداشت‌های ذخیره‌شده در سامانه و دسته‌بندی‌ها',
+          icon: Icons.bookmarks_outlined,
+          color: Color(0xff0f766e),
+          page: ContentsPage(),
         ),
       if (user.canManageProjects)
         _MenuItem(

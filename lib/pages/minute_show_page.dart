@@ -731,8 +731,8 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     final model = minute!.copyWith(
       title: titleController.text,
       text: textController.text,
-      date: dateController.text.isNotEmpty
-          ? DateTime.parse(dateController.text)
+      date: dateController.text.trim().isNotEmpty
+          ? (DateHelper.fromDate(dateController.text) ?? minute!.date)
           : null,
       file: minute!.file,
       organs: selectedOrgans,

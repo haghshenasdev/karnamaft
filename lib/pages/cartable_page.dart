@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
 
 import 'package:karnamaft/models/cartable_model.dart';
 import 'package:karnamaft/models/task_model.dart';
@@ -445,6 +447,24 @@ class _CartablePageState extends State<CartablePage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (letter != null &&
+                      context.read<UserController>().can('update_letter'))
+                    IconButton(
+                      tooltip: 'ویرایش نامه',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LetterShowPage(
+                              id: letter.id,
+                              title: 'نامه ${letter.id}',
+                            ),
+                          ),
+                        );
+                        if (mounted) await load();
+                      },
+                    ),
                   Switch.adaptive(
                     value: item.checked,
                     onChanged: (value) => _setChecked(item, value, index),

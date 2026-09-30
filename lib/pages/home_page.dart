@@ -5,11 +5,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:karnamaft/pages/minute_create_page.dart';
+import 'package:karnamaft/pages/content_create_page.dart';
 import 'package:karnamaft/services/note_autosave_service.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../controllers/drawing_controller.dart';
+import '../controllers/user_controller.dart';
 import '../models/note_page.dart';
 import '../models/stroke.dart';
 import '../painters/drawing_painter.dart';
@@ -222,10 +224,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 tooltip = 'ذخیره';
               }
 
-              return IconButton(
-                tooltip: tooltip,
-                onPressed: _saveNote,
-                icon: Icon(icon, color: iconColor),
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (context.read<UserController>().can('create_content'))
+                    IconButton(
+                      tooltip: 'ذخیره به عنوان یادداشت آنلاین',
+                      onPressed: _saveOnlineAsContent,
+                      icon: const Icon(Icons.bookmark_add_outlined),
+                    ),
+                  IconButton(
+                    tooltip: tooltip,
+                    onPressed: _saveNote,
+                    icon: Icon(icon, color: iconColor),
+                  ),
+                ],
               );
             },
           ),
@@ -2362,6 +2375,45 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } catch (e) {
       debugPrint('Capture page error: $e');
       return null;
+    }
+  }
+
+  Future<void> _saveOnlineAsContent() async {
+    if (_smartPenPadOpen) _closeSmartPenPad(commit: true);
+    final controller = context.read<DrawingController>();
+    try {
+      controller.saveCurrentPageText();
+      final oldPage = controller.currentPage;
+      Uint8List? bytes; String? name;
+      final now = Jalali.now();
+      final stamp = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}_${DateTime.now().hour.toString().padLeft(2,'0')}-${DateTime.now().minute.toString().padLeft(2,'0')}-${DateTime.now().second.toString().padLeft(2,'0')}';
+      final title = _titleController.text.trim().isEmpty ? 'note' : _titleController.text.trim();
+      if (controller.pageCount == 1) {
+        bytes = await _captureCurrentPage();
+        name = '${title}_$stamp.png';
+      } else {
+        final pdf = pw.Document();
+        for (int i = 0; i < controller.pageCount; i++) {
+          controller.currentPage = i;
+          controller.loadCurrentPageText();
+          controller.notifyListeners();
+          await Future.delayed(const Duration(milliseconds: 80));
+          final b = await _captureCurrentPage();
+          if (b == null) throw Exception('تصویر صفحه ${i + 1} ایجاد نشد');
+          final image = pw.MemoryImage(b);
+          final format = controller.currentPageLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4;
+          pdf.addPage(pw.Page(pageFormat: format, margin: pw.EdgeInsets.zero, build: (_) => pw.SizedBox(width: format.width, height: format.height, child: pw.Image(image, fit: pw.BoxFit.fill))));
+        }
+        controller.currentPage = oldPage;
+        controller.loadCurrentPageText();
+        controller.notifyListeners();
+        bytes = Uint8List.fromList(await pdf.save());
+        name = '${title}_$stamp.pdf';
+      }
+      if (!mounted) return;
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => ContentCreatePage(initialFileBytes: bytes, initialFileName: name)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در آماده‌سازی یادداشت آنلاین\n$e')));
     }
   }
 

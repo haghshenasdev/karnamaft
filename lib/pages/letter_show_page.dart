@@ -10,6 +10,7 @@ import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/pages/letter_timeline_page.dart';
 import 'package:karnamaft/services/organ_service.dart';
+import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/select_record_dialog.dart';
@@ -62,6 +63,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
   int? selectedKind;
   LetterOrgan? selectedCustomer;
   LetterDaftar? selecteddaftar;
+  List<LetterProject> selectedProjects = [];
 
   late TextEditingController subjectController;
   late TextEditingController descriptionController;
@@ -114,6 +116,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
 
         selectedCustomer = result.organ;
         selecteddaftar = result.daftar;
+        selectedProjects = List<LetterProject>.from(result.projects);
 
         descriptionController.text = result.description ?? "";
         summaryController.text = result.summary ?? "";
@@ -511,9 +514,53 @@ class _LetterShowPageState extends State<LetterShowPage> {
                   token: user.token,
                 ),
               //--------------------------------------------------
-              // Projects
+              // Projects / دستورکارها
               //--------------------------------------------------
-              if (item.projects.isNotEmpty)
+              if (editing)
+                Card(
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                "دستورکارها",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: "افزودن دستورکار",
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: selectProjects,
+                            ),
+                          ],
+                        ),
+                        if (selectedProjects.isEmpty)
+                          const Text("دستورکاری انتخاب نشده است."),
+                        if (selectedProjects.isNotEmpty)
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: selectedProjects.map((project) {
+                              return Chip(
+                                avatar: const Icon(Icons.folder_outlined, size: 18),
+                                label: Text(project.name),
+                                deleteIcon: const Icon(Icons.close, size: 18),
+                                onDeleted: () => setState(() {
+                                  selectedProjects.removeWhere((x) => x.id == project.id);
+                                }),
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (item.projects.isNotEmpty)
                 RecordChipList(
                   title: "دستورکار ها",
                   icon: Icons.folder_outlined,
@@ -660,6 +707,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
       status: selectedStatus,
       kind: selectedKind,
       daftar: selecteddaftar,
+      organ: selectedCustomer,
+      projects: selectedProjects,
     );
 
     setState(() {
@@ -702,6 +751,29 @@ class _LetterShowPageState extends State<LetterShowPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> selectProjects() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ProjectService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب دستورکارها",
+          multiSelect: true,
+          historyKey: "letter_projects",
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    final items = result as List<RecordItem>;
+    setState(() {
+      selectedProjects = items
+          .map((e) => LetterProject(id: e.id, name: e.title))
+          .toList();
+    });
   }
 
   Future<void> selectDate() async {

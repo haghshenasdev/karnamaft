@@ -126,11 +126,16 @@ class LetterService implements RecordService<LetterModel> {
         "status": model.status,
         "kind": model.kind,
         "daftar_id": model.daftar?.id,
-        "created_at": model.created_at,
+        "organ_id": model.organ?.id,
+        "created_at": model.created_at?.toIso8601String(),
 
         if (uploadFile != null)
           "upload_file": await MultipartFile.fromFile(uploadFile),
       });
+
+      for (final project in model.projects) {
+        formData.fields.add(MapEntry("project_ids[]", project.id.toString()));
+      }
 
       final response = await ApiClient.dio.post(
         "$rootPath/$id",
