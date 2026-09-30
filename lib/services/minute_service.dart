@@ -51,6 +51,11 @@ class MinuteService implements RecordService<MinuteModel> {
         formData.fields.add(MapEntry("group_ids[]", group.id.toString()));
       }
 
+      // دستورکارهای مستقیم مرتبط
+      for (final project in model.projects) {
+        formData.fields.add(MapEntry("project_ids[]", project.id.toString()));
+      }
+
       // فایل
       if (uploadBytes != null) {
         formData.files.add(
@@ -205,13 +210,16 @@ class MinuteService implements RecordService<MinuteModel> {
 
         MapEntry("text", model.text ?? ""),
 
-        MapEntry("file", model.file ?? "none"),
+        if (uploadFile == null && model.file != null && model.file!.isNotEmpty)
+          MapEntry("file", model.file!),
 
-        MapEntry("date", model.date!.toIso8601String()),
+        MapEntry("date", model.date?.toIso8601String() ?? ""),
 
-        MapEntry("typer_id", model.typer_id.toString()),
+        if (model.typer_id != null)
+          MapEntry("typer_id", model.typer_id.toString()),
 
-        MapEntry("task_id", model.task_id.toString()),
+        if (model.task_id != null)
+          MapEntry("task_id", model.task_id.toString()),
       ]);
 
       // اضافه کردن آرایه امضا کنندگان
@@ -219,10 +227,24 @@ class MinuteService implements RecordService<MinuteModel> {
         formData.fields.add(MapEntry("organ_ids[]", organ.id.toString()));
       }
 
-      if (uploadFile != null) {
+      if (uploadFile != null && uploadFile.isNotEmpty) {
         formData.files.add(
-          MapEntry("upload_file", await MultipartFile.fromFile(uploadFile)),
+          MapEntry(
+            "upload_file",
+            await MultipartFile.fromFile(
+              uploadFile,
+              filename: uploadFile.split(RegExp(r'[/\\]')).last,
+            ),
+          ),
         );
+      }
+
+      for (final project in model.projects) {
+        formData.fields.add(MapEntry("project_ids[]", project.id.toString()));
+      }
+
+      for (final group in model.group ?? []) {
+        formData.fields.add(MapEntry("group_ids[]", group.id.toString()));
       }
 
       final response = await ApiClient.dio.post(

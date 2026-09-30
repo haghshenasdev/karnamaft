@@ -29,6 +29,7 @@ class TaskModel {
   final TaskUser? responsible;
 
   final TaskMinutes? minutes;
+  final int? minutesId;
 
   final List<TaskProject> projects;
   final List<TaskGroup> taskGroups;
@@ -55,6 +56,7 @@ class TaskModel {
     this.creator,
     this.responsible,
     this.minutes,
+    this.minutesId,
     required this.projects,
     required this.taskGroups,
     required this.appendixOthers,
@@ -158,6 +160,9 @@ class TaskModel {
       minutes: json["minutes"] != null
           ? TaskMinutes.fromJson(json["minutes"])
           : null,
+      minutesId: json["minutes_id"] is int
+          ? json["minutes_id"]
+          : int.tryParse('${json["minutes_id"]}'),
 
       projects: json["projects"] != null
           ? (json["projects"] as List)
@@ -218,6 +223,7 @@ class TaskModel {
     int? progress,
 
     int? completed,
+    int? minutesId,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -255,6 +261,7 @@ class TaskModel {
       responsible: responsible,
 
       minutes: minutes,
+      minutesId: minutesId ?? this.minutesId,
 
       projects: projects,
 

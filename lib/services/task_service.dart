@@ -136,6 +136,7 @@ class TaskService implements RecordService<TaskModel> {
         MapEntry("started_at", model.startedAt ?? ""),
         MapEntry("ended_at", model.endedAt ?? ""),
         MapEntry("created_by", model.creator?.id.toString() ?? ""),
+        MapEntry("minutes_id", model.minutesId?.toString() ?? ""),
       ]);
 
       final files = <String>[];

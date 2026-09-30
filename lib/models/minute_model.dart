@@ -2,6 +2,7 @@ import 'package:karnamaft/models/minute_relation.dart';
 import 'package:karnamaft/models/minutes_group_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/record_file.dart';
+import 'package:karnamaft/models/task_model.dart';
 
 class MinuteModel {
   final int id;
@@ -24,6 +25,8 @@ class MinuteModel {
 
   final List<MinutesGroupModel>? group;
   final List<RecordFile> files;
+  final List<MinuteProject> projects;
+  final List<TaskModel> tasks;
 
   const MinuteModel({
     required this.id,
@@ -40,6 +43,8 @@ class MinuteModel {
     required this.organs,
     required this.group,
     this.files = const [],
+    this.projects = const [],
+    this.tasks = const [],
   });
 
   factory MinuteModel.fromJson(Map<String, dynamic> json) {
@@ -72,6 +77,12 @@ class MinuteModel {
           : [],
       files: (json['files'] as List? ?? [])
           .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      projects: (json['projects'] as List? ?? [])
+          .map((e) => MinuteProject.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      tasks: (json['tasks'] as List? ?? [])
+          .map((e) => TaskModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
@@ -126,6 +137,7 @@ class MinuteModel {
     DateTime? updated_at,
     List<OrganModel>? organs,
     List<MinutesGroupModel>? group,
+    List<MinuteProject>? projects,
   }) {
     return MinuteModel(
       id: id ?? this.id,
@@ -154,6 +166,8 @@ class MinuteModel {
 
       group: group,
       files: files,
+      projects: projects ?? this.projects,
+      tasks: tasks,
     );
   }
 
@@ -166,5 +180,20 @@ class MinuteModel {
       "typer_id": typer_id,
       "task_id": task_id,
     };
+  }
+}
+
+
+class MinuteProject {
+  final int id;
+  final String name;
+
+  const MinuteProject({required this.id, required this.name});
+
+  factory MinuteProject.fromJson(Map<String, dynamic> json) {
+    return MinuteProject(
+      id: json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
+    );
   }
 }

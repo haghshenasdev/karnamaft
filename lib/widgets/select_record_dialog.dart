@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/services/history_service.dart';
 
 import '../models/record_item.dart';
@@ -211,6 +213,22 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
     super.dispose();
   }
 
+  Future<void> _createRecord() async {
+    final callback = widget.config.onCreate;
+    if (callback == null) return;
+
+    final created = await callback(context);
+    if (created == null || !mounted) return;
+
+    setState(() {
+      records.removeWhere((item) => item.id == created.id);
+      records.insert(0, created);
+      selectedIds
+        ..clear()
+        ..add(created.id);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -224,11 +242,24 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(12),
-
-              child: Text(
-                widget.config.title,
-                style: Theme.of(context).textTheme.titleLarge,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.config.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  if (widget.config.onCreate != null &&
+                      (widget.config.createPermission == null ||
+                       context.read<UserController>().can(widget.config.createPermission!)))
+                    IconButton(
+                      tooltip: 'ایجاد جدید',
+                      onPressed: _createRecord,
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                ],
               ),
             ),
 

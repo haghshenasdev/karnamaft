@@ -6,12 +6,17 @@ import '../painters/drawing_painter.dart';
 class DrawingCanvas extends StatelessWidget {
   final DrawingController controller;
   final double zoom;
+  final bool landscape;
 
-  const DrawingCanvas({super.key, required this.controller, this.zoom = 1.0});
+  const DrawingCanvas({
+    super.key,
+    required this.controller,
+    this.zoom = 1.0,
+    this.landscape = false,
+  });
 
   Offset _toPaperPosition(Offset position, Size size) {
     final scale = size.width / DrawingPainter.basePageWidth;
-
     return Offset(position.dx / scale, position.dy / scale);
   }
 
@@ -50,7 +55,7 @@ class DrawingCanvas extends StatelessWidget {
 
                 child: RepaintBoundary(
                   child: CustomPaint(
-                    painter: DrawingPainter(controller, zoom: zoom),
+                    painter: DrawingPainter(controller, zoom: zoom, landscape: landscape),
 
                     isComplex: true,
                     willChange: true,

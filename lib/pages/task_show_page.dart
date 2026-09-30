@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/widgets/record_files_card.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:karnamaft/widgets/record_share_dialog.dart';
@@ -11,6 +12,10 @@ import 'package:karnamaft/services/task_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 
 import 'package:provider/provider.dart';
+import '../models/minute_model.dart';
+import '../models/record_item.dart';
+import '../models/select_dialog_config.dart';
+import '../widgets/select_record_dialog.dart';
 
 import '../widgets/record_chip_list.dart';
 import '../widgets/show/record_field.dart';
@@ -41,6 +46,7 @@ class _TaskShowPageState extends State<TaskShowPage> {
   String? error;
 
   TaskModel? task;
+  MinuteProject? selectedMinute;
 
   final List<String> newUploadFiles = [];
 
@@ -85,6 +91,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
       nameController.text = result.name;
       descriptionController.text = result.description ?? "";
       progressController.text = result.progress?.toString() ?? "";
+      selectedMinute = result.minutes == null
+          ? null
+          : MinuteProject(id: result.minutes!.id, name: result.minutes!.title);
 
       if (!mounted) return;
 
@@ -150,6 +159,24 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
     setState(() {
       newUploadFiles.addAll(paths);
+    });
+  }
+
+  Future<void> selectMinute() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const MinuteService(),
+        config: const SelectDialogConfig(
+          title: 'انتخاب صورتجلسه',
+          multiSelect: false,
+          historyKey: 'task_minutes',
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedMinute = MinuteProject(id: result.id, name: result.title);
     });
   }
 
@@ -396,6 +423,42 @@ class _TaskShowPageState extends State<TaskShowPage> {
                 _userCard(title: "ایجاد کننده", user: item.creator!),
 
               //--------------------------------------------------
+              // صورتجلسه
+              //--------------------------------------------------
+              if (editing)
+                Card(
+                  elevation: 0,
+                  child: ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('صورتجلسه مرتبط'),
+                    subtitle: Text(selectedMinute?.name ?? 'بدون صورتجلسه'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'انتخاب',
+                          onPressed: selectMinute,
+                          icon: const Icon(Icons.search),
+                        ),
+                        if (selectedMinute != null)
+                          IconButton(
+                            tooltip: 'حذف ارتباط',
+                            onPressed: () => setState(() => selectedMinute = null),
+                            icon: const Icon(Icons.close),
+                          ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (item.minutes != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.description_outlined),
+                  title: const Text('صورتجلسه مرتبط'),
+                  subtitle: Text(item.minutes!.title),
+                ),
+
+              //--------------------------------------------------
               // پروژه ها
               //--------------------------------------------------
               if (item.projects.isNotEmpty)
@@ -597,6 +660,7 @@ class _TaskShowPageState extends State<TaskShowPage> {
         description: descriptionController.text.trim(),
 
         progress: int.tryParse(progressController.text),
+        minutesId: selectedMinute?.id,
       );
 
       final result = await _service.update(

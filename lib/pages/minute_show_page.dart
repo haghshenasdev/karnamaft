@@ -13,12 +13,16 @@ import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/models/task_model.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
+import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/services/task_service.dart';
+import 'package:karnamaft/pages/task_create_page.dart';
+import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
 import 'package:karnamaft/widgets/minute_file_editor.dart';
 import 'package:karnamaft/widgets/record_chip_list.dart';
 import 'package:karnamaft/widgets/select_record_dialog.dart';
+import 'package:karnamaft/widgets/create_simple_record_dialog.dart';
 import 'package:karnamaft/widgets/show/record_field.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
@@ -43,6 +47,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   List<OrganModel> selectedOrgans = [];
   TaskCreator? selectedTask;
   List<MinutesGroupModel> selectedGroups = [];
+  List<MinuteProject> selectedProjects = [];
   //--------------------------------------------------
   // Service
   //--------------------------------------------------
@@ -113,6 +118,8 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         );
         selectedOrgans = List.from(result.organs!);
         selectedGroups = List.from(result.group!);
+        selectedProjects = List.from(result.projects);
+        selectedProjects = List.from(result.projects);
         loading = false;
       });
     } catch (e) {
@@ -270,6 +277,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
 
                       onChanged: (value) {
                         setState(() {
+                          selectedFile = value;
                           newUploadFile = value;
                         });
                       },
@@ -442,6 +450,44 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                         Row(
                           children: [
                             const Text(
+                              "دستورکارها",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.work_outline),
+                              onPressed: selectProject,
+                            ),
+                          ],
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: selectedProjects.map((e) => Chip(
+                            avatar: const Icon(Icons.folder_outlined, size: 18),
+                            label: Text(e.name),
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            onDeleted: () => setState(() {
+                              selectedProjects.removeWhere((x) => x.id == e.id);
+                            }),
+                          )).toList(),
+                        ),
+                      ],
+                    )
+                  else if (item.projects.isNotEmpty)
+                    RecordChipList(
+                      title: "دستورکارها",
+                      icon: Icons.work_outline,
+                      items: item.projects.map((e) => e.name).toList(),
+                    ),
+
+                  if (editing)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
                               "دسته بندی",
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
@@ -491,6 +537,60 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                     ),
                 ],
               ),
+
+              if (item.tasks.isNotEmpty || editing)
+                Card(
+                  margin: const EdgeInsets.only(top: 16),
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                "فعالیت‌های صورتجلسه",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                            ),
+                            if (editing)
+                              IconButton(
+                                tooltip: "ایجاد فعالیت",
+                                icon: const Icon(Icons.add_task),
+                                onPressed: () async {
+                                  final created = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TaskCreatePage(initialMinutesId: item.id),
+                                    ),
+                                  );
+                                  if (created != null && mounted) await loadData();
+                                },
+                              ),
+                          ],
+                        ),
+                        if (item.tasks.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Text("هنوز فعالیتی برای این صورتجلسه ثبت نشده است."),
+                          )
+                        else
+                          ...item.tasks.map((task) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(radius: 18, child: Text(task.id.toString())),
+                            title: Text(task.name),
+                            subtitle: Text(task.completed == 1 ? "انجام شده" : "پیشرفت: ${task.progress ?? 0}٪"),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => TaskShowPage(id: task.id, title: task.name)),
+                            ).then((_) { if (mounted) loadData(); }),
+                          )),
+                      ],
+                    ),
+                  ),
+                ),
 
               if (item.typer != null)
                 Container(
@@ -637,6 +737,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       file: minute!.file,
       organs: selectedOrgans,
       group: selectedGroups,
+      projects: selectedProjects,
       task_id: selectedTask?.id,
     );
 
@@ -751,15 +852,40 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     });
   }
 
+  Future<void> selectProject() async {
+    final result = await showDialog(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ProjectService(),
+        config: const SelectDialogConfig(
+          title: "انتخاب دستورکارها",
+          multiSelect: true,
+          historyKey: "minute_projects",
+        ),
+      ),
+    );
+    if (result == null) return;
+    final items = result as List<RecordItem>;
+    setState(() {
+      selectedProjects = items.map((e) => MinuteProject(id: e.id, name: e.title)).toList();
+    });
+  }
+
   Future<void> selectGroup() async {
     final result = await showDialog(
       context: context,
       builder: (_) => SelectRecordDialog(
         service: const MinutesGroupService(),
-        config: const SelectDialogConfig(
+        config: SelectDialogConfig(
           title: "انتخاب دسته بندی",
           multiSelect: true,
           historyKey: "minute_groups",
+          createPermission: "create_minutes::group",
+          onCreate: (context) => showSimpleRecordCreateDialog(
+            context,
+            resource: "minutes-groups",
+            title: "ایجاد دسته‌بندی صورتجلسه",
+          ),
         ),
       ),
     );

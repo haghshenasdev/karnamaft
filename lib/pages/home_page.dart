@@ -70,26 +70,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   // موقعیت و اندازه کادر کوچک روی کاغذ، به صورت نسبت به خود کاغذ.
   // بنابراین با Zoom و تغییر اندازه صفحه، جای کادر خراب نمی‌شود.
-  Rect _smartPenTarget = const Rect.fromLTWH(.56, .34, .30, .12);
+  Rect _smartPenTarget = const Rect.fromLTWH(.05, .05, .30, .12);
   static const double _smartTargetMinWidth = .14;
   static const double _smartTargetMinHeight = .055;
 
   // کنترل‌های کادر بزرگ نوشتن
-  Rect _smartPadRect = const Rect.fromLTWH(.04, .45, .92, .48);
+  Rect _smartPadRect = const Rect.fromLTWH(.08, .43, .84, .32);
   Timer? _smartAdvanceTimer;
   bool _smartPadDragging = false;
 
-  static const double _smartPadMinWidth = .60;
+  static const double _smartPadMinWidth = .48;
   static const double _smartPadMaxWidth = .98;
-  static const double _smartPadMinHeight = .30;
-  static const double _smartPadMaxHeight = .72;
+  static const double _smartPadMinHeight = .24;
+  static const double _smartPadMaxHeight = .48;
+
+  // درصد هم‌پوشانی کادر بعدی با کادر قبلی.
+  // با Zoom بیشتر، هم‌پوشانی کمی بیشتر می‌شود تا ادامه دست‌خط طبیعی‌تر باشد.
+  static const double _smartTargetOverlapFactor = .12;
 
   // نوار سمت چپ کادر بزرگ؛ عبور قلم از این ناحیه یعنی رفتن
   // به قسمت بعدی برگه، درست مثل نوار Advance در Samsung Notes.
   double _smartPadAdvanceZoneWidth = 105.0;
   static const double _smartPadAdvanceZoneMin = 55.0;
   static const double _smartPadAdvanceZoneMax = 260.0;
-  static const double _smartLineGap = .018;
+  static const double _smartLineGap = .006;
 
   bool _noteSavedToMinute = false;
 
@@ -270,6 +274,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               const PopupMenuItem(value: "pdf", child: Text("خروجی PDF")),
 
+              const PopupMenuItem(
+                value: "background",
+                child: Text("تصویر زمینه برگه"),
+              ),
+              const PopupMenuItem(
+                value: "background_remove",
+                child: Text("حذف تصویر زمینه"),
+              ),
+              const PopupMenuItem(
+                value: "orientation",
+                child: Text("چرخش برگه افقی / عمودی"),
+              ),
               const PopupMenuItem(value: "setting", child: Text("تنظیمات")),
             ],
 
@@ -280,6 +296,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               if (value == "pdf") {
                 _exportPdf();
+              }
+
+              if (value == "background") {
+                _pickPageBackground();
+              }
+
+              if (value == "orientation") {
+                _showOrientationScopeDialog();
+              }
+
+              if (value == "background_remove") {
+                _removePageBackground();
               }
             },
           ),
@@ -435,6 +463,24 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                               child: Stack(
                                                 fit: StackFit.expand,
                                                 children: [
+                                                  if (controller
+                                                          .pages[controller
+                                                              .currentPage]
+                                                          .backgroundImagePath !=
+                                                      null)
+                                                    Positioned.fill(
+                                                      child: IgnorePointer(
+                                                        child: Image.file(
+                                                          File(
+                                                            controller
+                                                                .pages[controller
+                                                                    .currentPage]
+                                                                .backgroundImagePath!,
+                                                          ),
+                                                          fit: BoxFit.contain,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   Consumer<DrawingController>(
                                                     builder:
                                                         (
@@ -456,6 +502,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                                   DrawingCanvas(
                                                     controller: controller,
                                                     zoom: _zoom,
+                                                    landscape: controller
+                                                        .currentPageLandscape,
                                                   ),
 
                                                   // کادر کوچک مقصد دقیقاً روی خود کاغذ قرار می‌گیرد.
@@ -625,12 +673,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
                           double pageWidth = availableWidth;
 
-                          double pageHeight = pageWidth / _paperRatio;
+                          final pageRatio = controller.currentPageLandscape
+                              ? DrawingPainter.landscapeRatio
+                              : DrawingPainter.portraitRatio;
+                          double pageHeight = pageWidth / pageRatio;
 
                           if (pageHeight > availableHeight) {
                             pageHeight = availableHeight;
 
-                            pageWidth = pageHeight * _paperRatio;
+                            pageWidth = pageHeight * pageRatio;
                           }
 
                           return Align(
@@ -651,6 +702,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [
+                                      if (controller
+                                              .pages[controller.currentPage]
+                                              .backgroundImagePath !=
+                                          null)
+                                        Positioned.fill(
+                                          child: IgnorePointer(
+                                            child: Image.file(
+                                              File(
+                                                controller
+                                                    .pages[controller
+                                                        .currentPage]
+                                                    .backgroundImagePath!,
+                                              ),
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        ),
                                       Consumer<DrawingController>(
                                         builder: (context, controller, _) {
                                           return NoteEditor(
@@ -662,7 +730,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                         },
                                       ),
 
-                                      DrawingCanvas(controller: controller),
+                                      DrawingCanvas(
+                                        controller: controller,
+                                        landscape:
+                                            controller.currentPageLandscape,
+                                      ),
 
                                       if (_smartPenEnabled)
                                         _buildSmartPenTarget(
@@ -941,10 +1013,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     const double padReferenceWidth = 1000.0;
     const double padReferenceHeight = 520.0;
 
+    final pageHeight =
+        DrawingPainter.basePageWidth /
+        (controller.currentPageLandscape
+            ? DrawingPainter.landscapeRatio
+            : DrawingPainter.portraitRatio);
+
     final targetLeft = target.left * DrawingPainter.basePageWidth;
-    final targetTop = target.top * DrawingPainter.basePageHeight;
+    final targetTop = target.top * pageHeight;
     final targetWidth = target.width * DrawingPainter.basePageWidth;
-    final targetHeight = target.height * DrawingPainter.basePageHeight;
+    final targetHeight = target.height * pageHeight;
 
     final mapped = source.points.map((point) {
       final x = (point.dx / padReferenceWidth).clamp(0.0, 1.0);
@@ -955,13 +1033,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     if (mapped.isEmpty) return;
 
-    final scale = targetWidth / padReferenceWidth;
+    // ضخامت دقیقاً با همان مقیاس انتقال Stroke از کادر بزرگ به کاغذ تغییر می‌کند.
+    final widthScale = targetWidth / padReferenceWidth;
+    final mappedWidth = (source.width * widthScale).clamp(.5, 20.0);
 
     controller.pages[controller.currentPage].strokes.add(
       StrokeModel(
         points: mapped,
         color: source.color,
-        width: (source.width * scale).clamp(.5, 20.0),
+        width: mappedWidth,
         type: source.type,
       ),
     );
@@ -982,12 +1062,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _smartPadCurrentStroke = null;
   }
 
+  double _smartTargetOverlap(Rect target) {
+    final overlap = target.width * _smartTargetOverlapFactor * _zoom;
+    return overlap.clamp(0.008, target.width * .35);
+  }
+
   void _advanceSmartPenTarget() {
     final target = _smartPenTarget;
-    final gap = _smartLineGap;
+    final overlap = _smartTargetOverlap(target);
 
-    // راست به چپ: خانه بعدی سمت چپ خانه فعلی قرار می‌گیرد.
-    final nextLeft = target.left - target.width - gap;
+    // راست به چپ: کادر بعدی کمی داخل کادر قبلی قرار می‌گیرد.
+    final nextLeft = target.left - target.width + overlap;
 
     if (nextLeft >= 0.0) {
       setState(() {
@@ -1003,7 +1088,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     // انتهای خط: از سمت راست خط بعدی شروع کن.
-    final nextTop = (target.top + target.height + gap).clamp(
+    final nextTop = (target.top + target.height + _smartLineGap).clamp(
       0.0,
       1.0 - target.height,
     );
@@ -1077,7 +1162,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (isInAdvanceZone) {
       // اگر Stroke تمام شد و باید به خانه بعدی برویم، ۱.۵ ثانیه صبر کن.
       _smartAdvanceTimer?.cancel();
-      _smartAdvanceTimer = Timer(const Duration(milliseconds: 1000), () {
+      _smartAdvanceTimer = Timer(const Duration(milliseconds: 1500), () {
         if (!mounted || !_smartPenPadOpen) return;
         _smartAdvanceTimer = null;
         _advanceSmartPenTarget();
@@ -1087,11 +1172,99 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showOrientationScopeDialog() async {
+    final controller = context.read<DrawingController>();
+    final applyToAll = await _showApplyScopeDialog(
+      title: 'جهت برگه',
+      currentLabel: 'فقط صفحه فعلی',
+      allLabel: 'همه صفحات و صفحات جدید',
+    );
+
+    if (applyToAll == null || !mounted) return;
+
+    if (applyToAll) {
+      controller.setPageOrientationForAll(!controller.currentPageLandscape);
+    } else {
+      controller.togglePageOrientation();
+    }
+  }
+
+  Future<bool?> _showApplyScopeDialog({
+    required String title,
+    required String currentLabel,
+    required String allLabel,
+  }) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: const Text(
+          'این تغییر فقط روی صفحه فعلی اعمال شود یا روی همه صفحات و صفحات جدید؟',
+          textAlign: TextAlign.right,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(currentLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(allLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickPageBackground() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: false,
+    );
+    if (result == null || result.files.single.path == null || !mounted) return;
+
+    final applyToAll = await _showApplyScopeDialog(
+      title: 'اعمال تصویر زمینه',
+      currentLabel: 'فقط صفحه فعلی',
+      allLabel: 'همه صفحات و صفحات جدید',
+    );
+
+    if (applyToAll == null || !mounted) return;
+
+    final controller = context.read<DrawingController>();
+    final path = result.files.single.path;
+
+    if (applyToAll) {
+      controller.setPageBackgroundForAll(path);
+    } else {
+      controller.setPageBackground(path);
+    }
+  }
+
+  Future<void> _removePageBackground() async {
+    final applyToAll = await _showApplyScopeDialog(
+      title: 'حذف تصویر زمینه',
+      currentLabel: 'فقط صفحه فعلی',
+      allLabel: 'همه صفحات و صفحات جدید',
+    );
+
+    if (applyToAll == null || !mounted) return;
+
+    final controller = context.read<DrawingController>();
+
+    if (applyToAll) {
+      controller.setPageBackgroundForAll(null);
+    } else {
+      controller.setPageBackground(null);
+    }
+  }
+
   void _smartMoveTargetPrevious() {
     _smartAdvanceTimer?.cancel();
     _smartAdvanceTimer = null;
     final target = _smartPenTarget;
-    final left = target.left + target.width + _smartLineGap;
+    final overlap = _smartTargetOverlap(target);
+    final left = target.left + target.width - overlap;
     setState(() {
       _smartPenTarget = Rect.fromLTWH(
         left.clamp(0.0, 1.0 - target.width),
@@ -1192,16 +1365,57 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _resizeSmartPenTarget(Offset delta, Size paperSize) {
     if (paperSize.width <= 0 || paperSize.height <= 0) return;
 
-    // GestureDetector.onPanUpdate مقدار Offset می‌دهد، نه double.
-    // تغییر اندازه را با هر دو محور انجام می‌دهیم.
-    final dw = delta.dx / paperSize.width;
-    final dh = delta.dy / paperSize.height;
+    // کادر انتقال باید همیشه نسبت اولیه خود را حفظ کند؛ بنابراین
+    // عرض و ارتفاع مستقل از هم تغییر نمی‌کنند و فرم کادر دفرمه نمی‌شود.
+    final currentWidthPx = _smartPenTarget.width * paperSize.width;
+    final currentHeightPx = _smartPenTarget.height * paperSize.height;
+    if (currentWidthPx <= 0 || currentHeightPx <= 0) return;
 
-    final newWidth = (_smartPenTarget.width + dw).clamp(
+    final aspect = currentWidthPx / currentHeightPx;
+
+    // هم حرکت افقی و هم عمودی دستگیره در تغییر اندازه اثر می‌گذارد.
+    // با میانگین‌گیری، کشیدن گوشه در هر جهت نتیجه طبیعی و یکنواختی دارد.
+    final widthDeltaFromX = delta.dx;
+    final widthDeltaFromY = delta.dy * aspect;
+    final desiredWidthPx =
+        currentWidthPx + (widthDeltaFromX + widthDeltaFromY) / 2.0;
+
+    final minWidthPx = _smartTargetMinWidth * paperSize.width;
+    final maxWidthPx = .75 * paperSize.width;
+    final minHeightPx = _smartTargetMinHeight * paperSize.height;
+    final maxHeightPx = .45 * paperSize.height;
+
+    var newWidthPx = desiredWidthPx.clamp(minWidthPx, maxWidthPx);
+    var newHeightPx = newWidthPx / aspect;
+
+    // اگر محدودیت ارتفاع مانع شد، عرض را دوباره از روی همان نسبت محاسبه کن.
+    if (newHeightPx < minHeightPx) {
+      newHeightPx = minHeightPx;
+      newWidthPx = newHeightPx * aspect;
+    } else if (newHeightPx > maxHeightPx) {
+      newHeightPx = maxHeightPx;
+      newWidthPx = newHeightPx * aspect;
+    }
+
+    // دستگیره در گوشه پایین-راست است؛ پس گوشه بالا-چپ ثابت می‌ماند.
+    // اگر اندازه جدید از مرز صفحه خارج شود، فقط به اندازه مجاز محدود می‌شود.
+    final maxWidthByPosition = (1.0 - _smartPenTarget.left) * paperSize.width;
+    final maxHeightByPosition = (1.0 - _smartPenTarget.top) * paperSize.height;
+
+    if (newWidthPx > maxWidthByPosition) {
+      newWidthPx = maxWidthByPosition;
+      newHeightPx = newWidthPx / aspect;
+    }
+    if (newHeightPx > maxHeightByPosition) {
+      newHeightPx = maxHeightByPosition;
+      newWidthPx = newHeightPx * aspect;
+    }
+
+    final newWidth = (newWidthPx / paperSize.width).clamp(
       _smartTargetMinWidth,
       .75,
     );
-    final newHeight = (_smartPenTarget.height + dh).clamp(
+    final newHeight = (newHeightPx / paperSize.height).clamp(
       _smartTargetMinHeight,
       .45,
     );
@@ -1251,6 +1465,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           controller.pages[controller.currentPage].strokes,
                       smartStrokes: _smartPadStrokes,
                       target: _smartPenTarget,
+                      landscape: controller.currentPageLandscape,
                     ),
                   ),
                 ),
@@ -1280,18 +1495,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ),
 
               Positioned(
-                left: 2,
-                bottom: 2,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onPanUpdate: (details) =>
-                      _resizeSmartPenTarget(details.delta, paperSize),
-                  child: const Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Icon(
-                      Icons.open_in_full,
-                      size: 13,
-                      color: Colors.blue,
+                right: 4,
+                bottom: 4,
+                child: Tooltip(
+                  message: 'اندازه کادر انتقال',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanUpdate: (details) =>
+                        _resizeSmartPenTarget(details.delta, paperSize),
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(.92),
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(color: Colors.blue, width: 1.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                            color: Colors.black26,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.open_in_full_rounded,
+                        size: 14,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
                 ),
@@ -1306,38 +1537,138 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildSmartPenPad(BuildContext context) {
     final controller = context.read<DrawingController>();
     final screen = MediaQuery.sizeOf(context);
-    final left = _smartPadRect.left * screen.width;
-    final top = _smartPadRect.top * screen.height;
-    final width = _smartPadRect.width * screen.width;
-    final height = _smartPadRect.height * screen.height;
 
-    // این کنترل‌ها عمداً از IconButton معمولی استفاده نمی‌کنند.
-    // چون ممکن است IconButtonTheme / IconTheme پروژه رنگ foreground را
-    // شفاف یا همرنگ پس‌زمینه کند. در اینجا رنگ آیکون مستقیماً تعیین می‌شود.
-    Widget controlButton({
+    // روی نمایشگرهای کوچک، کادر به‌صورت درصدی کوچک‌تر می‌شود و هرگز
+    // از محدوده امن صفحه بیرون نمی‌رود.
+    final safeHorizontal = screen.width < 520 ? .02 : .04;
+    final safeVertical = screen.height < 650 ? .035 : .055;
+
+    final left = (_smartPadRect.left * screen.width).clamp(
+      6.0,
+      screen.width - 40.0,
+    );
+    final top = (_smartPadRect.top * screen.height).clamp(
+      6.0,
+      screen.height - 40.0,
+    );
+    final maxWidth = (screen.width * (1.0 - safeHorizontal * 2)).clamp(
+      180.0,
+      screen.width,
+    );
+    final maxHeight = (screen.height * (1.0 - safeVertical * 2)).clamp(
+      140.0,
+      screen.height,
+    );
+    final width = (screen.width * _smartPadRect.width)
+        .clamp(180.0, maxWidth)
+        .clamp(0.0, screen.width - left - 6.0);
+    final height = (screen.height * _smartPadRect.height)
+        .clamp(140.0, maxHeight)
+        .clamp(0.0, screen.height - top - 6.0);
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final isNarrow = screen.width < 650;
+    final buttonSize = isNarrow ? 34.0 : 40.0;
+
+    Widget toolButton({
       required IconData icon,
       required String tooltip,
       required VoidCallback onPressed,
-      Color? iconColor,
+      Color? foreground,
+      bool filled = false,
     }) {
-      final effectiveIconColor =
-          iconColor ?? Theme.of(context).colorScheme.onSurface;
+      final fg = foreground ?? const Color(0xFF263238);
       return Tooltip(
         message: tooltip,
-        waitDuration: const Duration(milliseconds: 350),
+        waitDuration: const Duration(milliseconds: 300),
         child: Material(
-          type: MaterialType.transparency,
+          color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
             onTap: onPressed,
-            child: SizedBox(
-              width: 42,
-              height: 42,
+            borderRadius: BorderRadius.circular(isNarrow ? 9 : 11),
+            child: Ink(
+              width: buttonSize,
+              height: buttonSize,
+              decoration: BoxDecoration(
+                color: filled
+                    ? colorScheme.primaryContainer
+                    : const Color(0xFFF7F9FB),
+                borderRadius: BorderRadius.circular(isNarrow ? 9 : 11),
+                border: Border.all(
+                  color: filled
+                      ? colorScheme.primary.withOpacity(.35)
+                      : const Color(0xFFD2D8DE),
+                ),
+              ),
               child: Center(
-                child: Icon(icon, size: 23, color: effectiveIconColor),
+                child: Icon(icon, size: isNarrow ? 18 : 21, color: fg),
               ),
             ),
           ),
+        ),
+      );
+    }
+
+    Widget sectionDivider() => Container(
+      width: 1,
+      height: 26,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      color: const Color(0xFFD4D9DE),
+    );
+
+    Widget controls() {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            toolButton(
+              tooltip: 'کادر کوچک‌تر',
+              onPressed: () => _smartResizePad(-.06, -.04),
+              icon: Icons.remove_rounded,
+            ),
+            const SizedBox(width: 3),
+            toolButton(
+              tooltip: 'کادر بزرگ‌تر',
+              onPressed: () => _smartResizePad(.06, .04),
+              icon: Icons.add_rounded,
+            ),
+            sectionDivider(),
+            toolButton(
+              tooltip: 'قسمت قبلی',
+              onPressed: _smartMoveTargetPrevious,
+              icon: Icons.chevron_right_rounded,
+            ),
+            const SizedBox(width: 3),
+            toolButton(
+              tooltip: 'خط جدید',
+              onPressed: _smartNewLine,
+              icon: Icons.keyboard_return_rounded,
+            ),
+            const SizedBox(width: 3),
+            toolButton(
+              tooltip: 'قسمت بعدی',
+              onPressed: _smartMoveTargetNext,
+              icon: Icons.chevron_left_rounded,
+            ),
+            sectionDivider(),
+            toolButton(
+              tooltip: 'انتقال نوشته‌ها و بستن',
+              onPressed: () => _closeSmartPenPad(commit: true),
+              icon: Icons.check_rounded,
+              foreground: const Color(0xFF1B5E20),
+              filled: true,
+            ),
+            const SizedBox(width: 3),
+            toolButton(
+              tooltip: 'بستن بدون انتقال',
+              onPressed: () => _closeSmartPenPad(commit: false),
+              icon: Icons.close_rounded,
+              foreground: const Color(0xFFC62828),
+            ),
+          ],
         ),
       );
     }
@@ -1348,115 +1679,195 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       width: width,
       height: height,
       child: Material(
-        elevation: 24,
+        elevation: 18,
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        shadowColor: Colors.black.withOpacity(.28),
         clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isNarrow ? 16 : 22),
+          side: BorderSide(
+            color: colorScheme.outline.withOpacity(.45),
+            width: 1.5,
+          ),
+        ),
         child: Column(
           children: [
-            // نوار کنترل کادر بزرگ
-            GestureDetector(
-              onPanStart: (_) => _smartPadDragging = true,
-              onPanUpdate: (details) {
-                if (!_smartPadDragging) return;
-                _smartMovePad(
-                  details.delta.dx / screen.width,
-                  details.delta.dy / screen.height,
-                );
-              },
-              onPanEnd: (_) => _smartPadDragging = false,
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.edit_note_rounded,
-                        size: 21,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      const SizedBox(width: 4),
-
-                      controlButton(
-                        tooltip: 'حرکت به قبلی',
-                        onPressed: _smartMoveTargetPrevious,
-                        icon: Icons.chevron_right_rounded,
-                      ),
-
-                      controlButton(
-                        tooltip: 'خط جدید',
-                        onPressed: _smartNewLine,
-                        icon: Icons.keyboard_return_rounded,
-                      ),
-
-                      controlButton(
-                        tooltip: 'حرکت به بعدی',
-                        onPressed: _smartMoveTargetNext,
-                        icon: Icons.chevron_left_rounded,
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      controlButton(
-                        tooltip: 'کوچک کردن کادر',
-                        onPressed: () => _smartResizePad(-.06, -.04),
-                        icon: Icons.fullscreen_exit_rounded,
-                      ),
-
-                      controlButton(
-                        tooltip: 'بزرگ کردن کادر',
-                        onPressed: () => _smartResizePad(.06, .04),
-                        icon: Icons.fullscreen_rounded,
-                      ),
-
-                      controlButton(
-                        tooltip: 'بستن کادر و انتقال نوشته‌ها',
-                        onPressed: () => _closeSmartPenPad(commit: true),
-                        icon: Icons.picture_in_picture_alt_rounded,
-                      ),
-
-                      controlButton(
-                        tooltip: 'بستن حالت نوشتن',
-                        onPressed: () => _closeSmartPenPad(commit: false),
-                        icon: Icons.close_rounded,
-                        iconColor: const Color(0xFFD32F2F),
-                      ),
-                    ],
-                  ),
-                ),
+            // در نمایشگر کوچک، عنوان و کنترل‌ها دو ردیف می‌شوند تا دکمه‌ها
+            // فشرده یا بریده نشوند. خود نوار کنترل نیز اسکرول افقی دارد.
+            Container(
+              constraints: BoxConstraints(minHeight: isNarrow ? 88 : 58),
+              padding: EdgeInsets.symmetric(
+                horizontal: isNarrow ? 5 : 8,
+                vertical: isNarrow ? 5 : 0,
               ),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF0F3F6),
+                border: Border(bottom: BorderSide(color: Color(0xFFD6DCE1))),
+              ),
+              child: isNarrow
+                  ? Column(
+                      children: [
+                        SizedBox(
+                          height: 34,
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onPanStart: (_) => _smartPadDragging = true,
+                                onPanUpdate: (details) {
+                                  if (!_smartPadDragging) return;
+                                  _smartMovePad(
+                                    details.delta.dx / screen.width,
+                                    details.delta.dy / screen.height,
+                                  );
+                                },
+                                onPanEnd: (_) => _smartPadDragging = false,
+                                onPanCancel: () => _smartPadDragging = false,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(9),
+                                    border: Border.all(
+                                      color: const Color(0xFFD0D7DD),
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.drag_indicator_rounded,
+                                    size: 19,
+                                    color: Color(0xFF455A64),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.edit_note_rounded,
+                                size: 20,
+                                color: Color(0xFF1565C0),
+                              ),
+                              const SizedBox(width: 5),
+                              const Expanded(
+                                child: Text(
+                                  'نوشتن با قلم',
+                                  textAlign: TextAlign.right,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF263238),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 38, child: controls()),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onPanStart: (_) => _smartPadDragging = true,
+                          onPanUpdate: (details) {
+                            if (!_smartPadDragging) return;
+                            _smartMovePad(
+                              details.delta.dx / screen.width,
+                              details.delta.dy / screen.height,
+                            );
+                          },
+                          onPanEnd: (_) => _smartPadDragging = false,
+                          onPanCancel: () => _smartPadDragging = false,
+                          child: Container(
+                            width: 38,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(
+                                color: const Color(0xFFD0D7DD),
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.drag_indicator_rounded,
+                              size: 22,
+                              color: Color(0xFF455A64),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        const Icon(
+                          Icons.edit_note_rounded,
+                          size: 22,
+                          color: Color(0xFF1565C0),
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'نوشتن با قلم',
+                            textAlign: TextAlign.right,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF263238),
+                            ),
+                          ),
+                        ),
+                        Expanded(child: controls()),
+                      ],
+                    ),
             ),
+
             Expanded(
               child: Container(
-                margin: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.blueGrey.withOpacity(.20)),
+                margin: EdgeInsets.fromLTRB(
+                  isNarrow ? 6 : 10,
+                  isNarrow ? 5 : 8,
+                  isNarrow ? 6 : 10,
+                  isNarrow ? 6 : 10,
                 ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCFDFE),
+                  borderRadius: BorderRadius.circular(isNarrow ? 13 : 17),
+                  border: Border.all(
+                    color: const Color(0xFFC8D0D7),
+                    width: 1.2,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
+                    final writingSize = constraints.biggest;
+                    final advanceWidth = _smartPadAdvanceZoneWidth.clamp(
+                      _smartPadAdvanceZoneMin,
+                      writingSize.width * .45,
+                    );
+
                     return Listener(
                       behavior: HitTestBehavior.opaque,
                       onPointerDown: (event) => _startSmartPadStroke(
                         event.localPosition,
-                        constraints.biggest,
+                        writingSize,
                       ),
                       onPointerMove: (event) => _updateSmartPadStroke(
                         event.localPosition,
-                        constraints.biggest,
+                        writingSize,
                       ),
-                      onPointerUp: (_) =>
-                          _endSmartPadStroke(constraints.biggest),
-                      onPointerCancel: (_) =>
-                          _endSmartPadStroke(constraints.biggest),
+                      onPointerUp: (_) => _endSmartPadStroke(writingSize),
+                      onPointerCancel: (_) {
+                        final stroke = _smartPadCurrentStroke;
+                        if (stroke != null) {
+                          _smartPadStrokes.remove(stroke);
+                        }
+                        _smartPadCurrentStroke = null;
+                        if (mounted) setState(() {});
+                      },
                       child: CustomPaint(
                         painter: _SmartPadPainter(
                           pageStrokes:
@@ -1464,6 +1875,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           smartStrokes: _smartPadStrokes,
                           target: _smartPenTarget,
                           penColor: controller.penColor,
+                          landscape: controller.currentPageLandscape,
                         ),
                         child: Stack(
                           children: [
@@ -1471,28 +1883,31 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               left: 0,
                               top: 0,
                               bottom: 0,
-                              width: _smartPadAdvanceZoneWidth,
+                              width: advanceWidth,
                               child: IgnorePointer(
-                                child: Container(
+                                child: DecoratedBox(
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.withOpacity(.055),
+                                    color: const Color(
+                                      0xFF1976D2,
+                                    ).withOpacity(.055),
                                     border: Border(
                                       right: BorderSide(
-                                        color: Colors.blue.withOpacity(.28),
-                                        width: 1,
+                                        color: const Color(
+                                          0xFF1976D2,
+                                        ).withOpacity(.22),
                                       ),
                                     ),
                                   ),
-                                  child: const Center(
+                                  child: Center(
                                     child: RotatedBox(
                                       quarterTurns: 3,
                                       child: Text(
                                         'برای ادامه، قلم را به این قسمت برسانید',
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          color: Colors.blueGrey,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF546E7A),
+                                          fontSize: isNarrow ? 8 : 10,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
@@ -1500,27 +1915,57 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 ),
                               ),
                             ),
+
+                            // دستگیره فقط در نوار بالایی ناحیه Advance است تا
+                            // هنگام نوشتن در کناره صفحه به‌صورت تصادفی لمس نشود.
                             Positioned(
-                              left: _smartPadAdvanceZoneWidth - 12,
-                              top: 0,
-                              bottom: 0,
-                              width: 24,
+                              left: 4,
+                              top: 4,
+                              width: (advanceWidth - 8).clamp(20.0, 260.0),
+                              height: 22,
                               child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
+                                behavior: HitTestBehavior.opaque,
                                 onHorizontalDragUpdate: (details) =>
                                     _resizeSmartAdvanceZone(details.delta.dx),
                                 child: Center(
                                   child: Container(
-                                    width: 4,
-                                    height: 70,
+                                    width: isNarrow ? 42 : 58,
+                                    height: 5,
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.withOpacity(.55),
-                                      borderRadius: BorderRadius.circular(4),
+                                      color: const Color(0xFF90A4AE),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(
-                                      Icons.drag_handle,
-                                      size: 16,
-                                      color: Colors.blueGrey,
+                                    child: Icon(
+                                      Icons.drag_handle_rounded,
+                                      size: isNarrow ? 13 : 16,
+                                      color: const Color(0xFF607D8B),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: IgnorePointer(
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: isNarrow ? 6 : 9,
+                                    vertical: isNarrow ? 3 : 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(.82),
+                                    borderRadius: BorderRadius.circular(9),
+                                    border: Border.all(
+                                      color: const Color(0xFFE0E5E9),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'بنویسید...',
+                                    style: TextStyle(
+                                      color: const Color(0xFF90A0AA),
+                                      fontSize: isNarrow ? 8 : 10,
                                     ),
                                   ),
                                 ),
@@ -1987,14 +2432,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
           final image = pw.MemoryImage(bytes);
 
+          final pageFormat = controller.currentPageLandscape
+              ? PdfPageFormat.a4.landscape
+              : PdfPageFormat.a4;
+
           pdf.addPage(
             pw.Page(
-              pageFormat: PdfPageFormat.a4,
+              pageFormat: pageFormat,
               margin: pw.EdgeInsets.zero,
               build: (context) {
                 return pw.SizedBox(
-                  width: PdfPageFormat.a4.width,
-                  height: PdfPageFormat.a4.height,
+                  width: pageFormat.width,
+                  height: pageFormat.height,
                   child: pw.Image(image, fit: pw.BoxFit.fill),
                 );
               },
@@ -2107,14 +2556,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           throw Exception('تصویر صفحه ${i + 1} ایجاد نشد');
         }
 
+        final pageFormat = controller.currentPageLandscape
+            ? PdfPageFormat.a4.landscape
+            : PdfPageFormat.a4;
+
         pdf.addPage(
           pw.Page(
-            pageFormat: PdfPageFormat.a4,
+            pageFormat: pageFormat,
             margin: pw.EdgeInsets.zero,
             build: (context) {
               return pw.SizedBox(
-                width: PdfPageFormat.a4.width,
-                height: PdfPageFormat.a4.height,
+                width: pageFormat.width,
+                height: pageFormat.height,
                 child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.fill),
               );
             },
@@ -2281,22 +2734,28 @@ class _SmartPadPainter extends CustomPainter {
   final List<StrokeModel> smartStrokes;
   final Rect target;
   final Color penColor;
+  final bool landscape;
 
   const _SmartPadPainter({
     required this.pageStrokes,
     required this.smartStrokes,
     required this.target,
     required this.penColor,
+    required this.landscape,
   });
 
   static final double _pageWidth = DrawingPainter.basePageWidth;
-  static final double _pageHeight = DrawingPainter.basePageHeight;
+  double get _pageHeight =>
+      DrawingPainter.basePageWidth /
+      (landscape
+          ? DrawingPainter.landscapeRatio
+          : DrawingPainter.portraitRatio);
   static const double _padWidth = 1000.0;
   static const double _padHeight = 520.0;
 
-  Paint _paintFor(StrokeModel stroke) {
+  Paint _paintFor(StrokeModel stroke, {double scale = 1.0}) {
     final paint = Paint()
-      ..strokeWidth = stroke.width.clamp(1.0, 20.0)
+      ..strokeWidth = (stroke.width * scale).clamp(.5, 24.0)
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke
@@ -2345,6 +2804,7 @@ class _SmartPadPainter extends CustomPainter {
     // آن را به اندازه کل کادر بزرگ می‌کنیم.
     canvas.save();
     canvas.clipRect(Offset.zero & size);
+    canvas.saveLayer(Offset.zero & size, Paint());
 
     for (final stroke in pageStrokes) {
       if (stroke.points.isEmpty) continue;
@@ -2358,11 +2818,7 @@ class _SmartPadPainter extends CustomPainter {
           )
           .toList();
 
-      final paint = _paintFor(stroke)
-        ..strokeWidth = (stroke.width * size.width / targetWidth).clamp(
-          .5,
-          24.0,
-        );
+      final paint = _paintFor(stroke, scale: size.width / targetWidth);
 
       _drawStroke(canvas, stroke, points, paint);
     }
@@ -2380,10 +2836,11 @@ class _SmartPadPainter extends CustomPainter {
           )
           .toList();
 
-      final paint = _paintFor(stroke);
+      final paint = _paintFor(stroke, scale: 1.0);
       _drawStroke(canvas, stroke, points, paint);
     }
 
+    canvas.restore();
     canvas.restore();
   }
 
@@ -2395,15 +2852,21 @@ class _MappedSmartPadPainter extends CustomPainter {
   final List<StrokeModel> pageStrokes;
   final List<StrokeModel> smartStrokes;
   final Rect target;
+  final bool landscape;
 
   const _MappedSmartPadPainter({
     required this.pageStrokes,
     required this.smartStrokes,
     required this.target,
+    required this.landscape,
   });
 
   static final double _pageWidth = DrawingPainter.basePageWidth;
-  static final double _pageHeight = DrawingPainter.basePageHeight;
+  double get _pageHeight =>
+      DrawingPainter.basePageWidth /
+      (landscape
+          ? DrawingPainter.landscapeRatio
+          : DrawingPainter.portraitRatio);
   static const double _padWidth = 1000.0;
   static const double _padHeight = 520.0;
 
@@ -2444,6 +2907,7 @@ class _MappedSmartPadPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
+    canvas.saveLayer(Offset.zero & size, Paint());
 
     final targetLeft = target.left * _pageWidth;
     final targetTop = target.top * _pageHeight;
@@ -2483,9 +2947,11 @@ class _MappedSmartPadPainter extends CustomPainter {
           )
           .toList();
 
-      _draw(canvas, points, _paintFor(stroke, size));
+      final scale = size.width / _padWidth;
+      _draw(canvas, points, _paintFor(stroke, size, scale: scale));
     }
 
+    canvas.restore();
     canvas.restore();
   }
 

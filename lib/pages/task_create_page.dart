@@ -5,13 +5,20 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
+import 'package:karnamaft/models/record_item.dart';
+import 'package:karnamaft/models/select_dialog_config.dart';
+import 'package:karnamaft/models/minute_model.dart';
+import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/widgets/select_record_dialog.dart';
 
 class TaskCreatePage extends StatefulWidget {
   final String? initialFilePath;
+  final int? initialMinutesId;
 
   const TaskCreatePage({
     super.key,
     this.initialFilePath,
+    this.initialMinutesId,
   });
 
   @override
@@ -32,6 +39,7 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
   bool completed = false;
   bool repeat = false;
   bool saving = false;
+  MinuteProject? selectedMinute;
 
   @override
   void initState() {
@@ -41,6 +49,10 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
 
     if (path != null && path.isNotEmpty) {
       selectedFiles.add(path);
+    }
+
+    if (widget.initialMinutesId != null) {
+      _loadInitialMinute(widget.initialMinutesId!);
     }
   }
 
@@ -113,6 +125,34 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
     });
   }
 
+  Future<void> _loadInitialMinute(int id) async {
+    try {
+      final minute = await const MinuteService().show(id);
+      if (!mounted) return;
+      setState(() {
+        selectedMinute = MinuteProject(id: minute.id, name: minute.title);
+      });
+    } catch (_) {}
+  }
+
+  Future<void> selectMinute() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const MinuteService(),
+        config: const SelectDialogConfig(
+          title: 'انتخاب صورتجلسه',
+          multiSelect: false,
+          historyKey: 'task_minutes',
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedMinute = MinuteProject(id: result.id, name: result.title);
+    });
+  }
+
   Future<void> save() async {
     if (!form.currentState!.validate()) {
       return;
@@ -139,6 +179,8 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
         ),
         MapEntry('completed', completed ? '1' : '0'),
         MapEntry('repeat', repeat ? '1' : '0'),
+        if (selectedMinute != null)
+          MapEntry('minutes_id', selectedMinute!.id.toString()),
       ]);
 
       for (final path in selectedFiles) {
@@ -303,6 +345,36 @@ class _TaskCreatePageState extends State<TaskCreatePage> {
               decoration: const InputDecoration(
                 labelText: 'توضیحات',
                 prefixIcon: Icon(Icons.notes_outlined),
+              ),
+            ),
+            const SizedBox(height: 14),
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'صورتجلسه مرتبط',
+                prefixIcon: Icon(Icons.description_outlined),
+                border: OutlineInputBorder(),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedMinute?.name ?? 'بدون صورتجلسه',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'انتخاب صورتجلسه',
+                    onPressed: saving ? null : selectMinute,
+                    icon: const Icon(Icons.search),
+                  ),
+                  if (selectedMinute != null)
+                    IconButton(
+                      tooltip: 'حذف ارتباط',
+                      onPressed: saving ? null : () => setState(() => selectedMinute = null),
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 14),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:karnamaft/services/note_autosave_service.dart';
@@ -8,35 +9,11 @@ import '../models/note_page.dart';
 import '../models/stroke.dart';
 
 class DrawingController extends ChangeNotifier {
+  // ============================================================
+  // Pages
+  // ============================================================
+
   final List<NotePage> pages = [NotePage()];
-
-  bool _writingMode = false;
-
-  bool get writingMode => _writingMode;
-
-  final NoteAutoSaveService _autoSaveService = NoteAutoSaveService();
-
-  Timer? _autoSaveTimer;
-
-  String? _noteId;
-
-  String _title = '';
-
-  bool _isAutoSaving = false;
-
-  bool get isAutoSaving => _isAutoSaving;
-
-  bool get hasAutoSave => _noteId != null;
-
-  String get title => _title;
-
-  bool _autoSaveSaved = false;
-
-  bool get autoSaveSaved => _autoSaveSaved;
-
-  //--------------------------------------------------
-  // Page
-  //--------------------------------------------------
 
   int currentPage = 0;
 
@@ -44,17 +21,152 @@ class DrawingController extends ChangeNotifier {
 
   List<StrokeModel> get strokes => pages[currentPage].strokes;
 
+  bool get currentPageLandscape => pages[currentPage].landscape;
+
+  // ============================================================
+  // Default settings for new pages
+  // ============================================================
+
+  /// پس‌زمینه‌ای که برای صفحات جدید استفاده می‌شود.
+  String? _defaultBackgroundImagePath;
+
+  /// جهت پیش‌فرض صفحات جدید.
+  bool _defaultLandscape = false;
+
+  String? get defaultBackgroundImagePath => _defaultBackgroundImagePath;
+
+  bool get defaultLandscape => _defaultLandscape;
+
+  // ============================================================
+  // Page orientation
+  // ============================================================
+
+  /// فقط صفحه فعلی را تغییر می‌دهد.
+  void togglePageOrientation() {
+    final page = pages[currentPage];
+
+    page.landscape = !page.landscape;
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  /// جهت همه صفحات فعلی را یکسان می‌کند
+  /// و همین حالت را برای صفحات آینده نگه می‌دارد.
+  void setPageOrientationForAll(bool landscape) {
+    _defaultLandscape = landscape;
+
+    for (final page in pages) {
+      page.landscape = landscape;
+    }
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  /// حالت همه صفحات را بر اساس وضعیت فعلی برعکس می‌کند.
+  void togglePageOrientationForAll() {
+    final newLandscape = !currentPageLandscape;
+
+    setPageOrientationForAll(newLandscape);
+  }
+
+  // ============================================================
+  // Background
+  // ============================================================
+
+  /// فقط پس‌زمینه صفحه فعلی را تغییر می‌دهد.
+  void setPageBackground(String? path) {
+    pages[currentPage].backgroundImagePath = path;
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  /// پس‌زمینه را برای تمام صفحات فعلی اعمال می‌کند
+  /// و صفحات جدید نیز همین پس‌زمینه را خواهند داشت.
+  void setPageBackgroundForAll(String? path) {
+    _defaultBackgroundImagePath = path;
+
+    for (final page in pages) {
+      page.backgroundImagePath = path;
+    }
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  // ============================================================
+  // Create page
+  // ============================================================
+
+  /// ساخت صفحه جدید با تنظیمات پیش‌فرض فعلی.
+  NotePage _createPage() {
+    return NotePage(
+      backgroundImagePath: _defaultBackgroundImagePath,
+      landscape: _defaultLandscape,
+    );
+  }
+
+  // ============================================================
+  // Navigation
+  // ============================================================
+
   bool get canPrevious => currentPage > 0;
 
+  /// چون صفحه بعدی در صورت نیاز ساخته می‌شود،
+  /// همیشه امکان رفتن به صفحه بعد وجود دارد.
   bool get canNext => true;
 
-  //--------------------------------------------------
-  // Text
-  //--------------------------------------------------
+  void previousPage() {
+    if (!canPrevious) {
+      return;
+    }
 
-  //--------------------------------------------------
+    goToPage(currentPage - 1);
+  }
+
+  void nextPage() {
+    saveCurrentPageText();
+
+    if (currentPage == pages.length - 1) {
+      pages.add(_createPage());
+    }
+
+    currentPage++;
+
+    loadCurrentPageText();
+
+    redoStack.clear();
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  void goToPage(int index) {
+    if (index < 0 || index >= pages.length) {
+      return;
+    }
+
+    if (index == currentPage) {
+      return;
+    }
+
+    saveCurrentPageText();
+
+    currentPage = index;
+
+    loadCurrentPageText();
+
+    redoStack.clear();
+
+    requestAutoSave();
+    notifyListeners();
+  }
+
+  // ============================================================
   // Text
-  //--------------------------------------------------
+  // ============================================================
 
   final TextEditingController noteController = TextEditingController();
 
@@ -69,7 +181,9 @@ class DrawingController extends ChangeNotifier {
 
     noteController.value = TextEditingValue(
       text: text,
-      selection: TextSelection.collapsed(offset: text.length),
+      selection: TextSelection.collapsed(
+        offset: text.length,
+      ),
     );
   }
 
@@ -78,10 +192,16 @@ class DrawingController extends ChangeNotifier {
     pages[currentPage].text = value;
 
     requestAutoSave();
+    notifyListeners();
   }
-  //--------------------------------------------------
+
+  // ============================================================
   // Writing Mode
-  //--------------------------------------------------
+  // ============================================================
+
+  bool _writingMode = false;
+
+  bool get writingMode => _writingMode;
 
   Future<void> toggleWritingMode() async {
     _writingMode = !_writingMode;
@@ -104,9 +224,9 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  //--------------------------------------------------
+  // ============================================================
   // Drawing / Text Mode
-  //--------------------------------------------------
+  // ============================================================
 
   bool _textMode = false;
 
@@ -142,9 +262,9 @@ class DrawingController extends ChangeNotifier {
     notifyListeners();
   }
 
-  //--------------------------------------------------
+  // ============================================================
   // Pen
-  //--------------------------------------------------
+  // ============================================================
 
   final List<StrokeModel> redoStack = [];
 
@@ -158,25 +278,33 @@ class DrawingController extends ChangeNotifier {
 
   void setTool(ToolType tool) {
     selectedTool = tool;
+
+    // وقتی ابزار عوض می‌شود، stroke نیمه‌کاره نباید باقی بماند.
+    currentStroke = null;
+
     notifyListeners();
   }
 
   void setColor(Color color) {
     penColor = color;
+
     notifyListeners();
   }
 
   void setWidth(double width) {
     penWidth = width;
+
     notifyListeners();
   }
 
-  //--------------------------------------------------
+  // ============================================================
   // Drawing
-  //--------------------------------------------------
+  // ============================================================
 
   void start(Offset point) {
-    if (_textMode) return;
+    if (_textMode) {
+      return;
+    }
 
     currentStroke = StrokeModel(
       points: [point],
@@ -195,8 +323,13 @@ class DrawingController extends ChangeNotifier {
   }
 
   void update(Offset point) {
-    if (_textMode) return;
-    if (currentStroke == null) return;
+    if (_textMode) {
+      return;
+    }
+
+    if (currentStroke == null) {
+      return;
+    }
 
     final points = currentStroke!.points;
 
@@ -212,50 +345,21 @@ class DrawingController extends ChangeNotifier {
   }
 
   void end() {
-    if (_textMode) return;
+    if (_textMode) {
+      return;
+    }
 
     currentStroke = null;
 
     redoStack.clear();
 
     requestAutoSave();
-
     notifyListeners();
   }
 
-  //--------------------------------------------------
-  // Pages
-  //--------------------------------------------------
-
-  void previousPage() {
-    if (!canPrevious) {
-      return;
-    }
-
-    goToPage(currentPage - 1);
-  }
-
-  void nextPage() {
-    saveCurrentPageText();
-
-    if (currentPage == pages.length - 1) {
-      pages.add(NotePage());
-    }
-
-    currentPage++;
-
-    loadCurrentPageText();
-
-    redoStack.clear();
-
-    requestAutoSave();
-
-    notifyListeners();
-  }
-
-  //--------------------------------------------------
+  // ============================================================
   // Undo / Redo
-  //--------------------------------------------------
+  // ============================================================
 
   bool get canUndo => strokes.isNotEmpty;
 
@@ -268,6 +372,7 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.add(strokes.removeLast());
 
+    requestAutoSave();
     notifyListeners();
   }
 
@@ -278,12 +383,13 @@ class DrawingController extends ChangeNotifier {
 
     strokes.add(redoStack.removeLast());
 
+    requestAutoSave();
     notifyListeners();
   }
 
-  //--------------------------------------------------
+  // ============================================================
   // Clear
-  //--------------------------------------------------
+  // ============================================================
 
   void clear() {
     strokes.clear();
@@ -294,14 +400,15 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.clear();
 
-    requestAutoSave();
+    currentStroke = null;
 
+    requestAutoSave();
     notifyListeners();
   }
 
-  //--------------------------------------------------
+  // ============================================================
   // Delete Page
-  //--------------------------------------------------
+  // ============================================================
 
   void removeCurrentPage() {
     // اگر فقط یک صفحه داریم،
@@ -321,63 +428,61 @@ class DrawingController extends ChangeNotifier {
 
     redoStack.clear();
 
-    notifyListeners();
-  }
-
-  //--------------------------------------------------
-  // Dispose
-  //--------------------------------------------------
-
-  @override
-  void dispose() {
-    _autoSaveTimer?.cancel();
-
-    noteController.dispose();
-
-    super.dispose();
-  }
-
-  void goToPage(int index) {
-    if (index < 0 || index >= pages.length) {
-      return;
-    }
-
-    if (index == currentPage) {
-      return;
-    }
-
-    saveCurrentPageText();
-
-    currentPage = index;
-
-    loadCurrentPageText();
-
-    redoStack.clear();
+    currentStroke = null;
 
     requestAutoSave();
-
     notifyListeners();
   }
+
+  // ============================================================
+  // Auto Save
+  // ============================================================
+
+  final NoteAutoSaveService _autoSaveService = NoteAutoSaveService();
+
+  Timer? _autoSaveTimer;
+
+  String? _noteId;
+
+  String _title = '';
+
+  bool _isAutoSaving = false;
+
+  bool get isAutoSaving => _isAutoSaving;
+
+  bool get hasAutoSave => _noteId != null;
+
+  String get title => _title;
+
+  bool _autoSaveSaved = false;
+
+  bool get autoSaveSaved => _autoSaveSaved;
 
   void setTitle(String value) {
     _title = value;
 
     requestAutoSave();
-
     notifyListeners();
   }
 
   void requestAutoSave() {
     _autoSaveTimer?.cancel();
 
-    _autoSaveTimer = Timer(const Duration(seconds: 1), () {
-      autoSave();
-    });
+    _autoSaveTimer = Timer(
+      const Duration(seconds: 1),
+      () {
+        autoSave();
+      },
+    );
   }
 
   Future<void> autoSave() async {
     final hasContent = pages.any(
-      (page) => page.text.trim().isNotEmpty || page.strokes.isNotEmpty,
+      (page) =>
+          page.text.trim().isNotEmpty ||
+          page.strokes.isNotEmpty ||
+          page.backgroundImagePath != null ||
+          page.landscape,
     );
 
     if (!hasContent && _noteId == null) {
@@ -386,6 +491,7 @@ class DrawingController extends ChangeNotifier {
 
     _isAutoSaving = true;
     _autoSaveSaved = false;
+
     notifyListeners();
 
     try {
@@ -404,11 +510,13 @@ class DrawingController extends ChangeNotifier {
 
       stopwatch.stop();
 
-      // حداقل 700 میلی‌ثانیه حالت نارنجی نمایش داده شود
+      // حداقل 700 میلی‌ثانیه حالت ذخیره نمایش داده شود.
       final remaining = 700 - stopwatch.elapsedMilliseconds;
 
       if (remaining > 0) {
-        await Future.delayed(Duration(milliseconds: remaining));
+        await Future.delayed(
+          Duration(milliseconds: remaining),
+        );
       }
 
       _autoSaveSaved = true;
@@ -418,6 +526,7 @@ class DrawingController extends ChangeNotifier {
       _autoSaveSaved = false;
     } finally {
       _isAutoSaving = false;
+
       notifyListeners();
     }
   }
@@ -442,9 +551,21 @@ class DrawingController extends ChangeNotifier {
 
       _title = data.title;
 
-      currentPage = data.currentPage.clamp(0, pages.length - 1);
+      currentPage = data.currentPage.clamp(
+        0,
+        pages.length - 1,
+      );
+
+      // در صورتی که یادداشت قبلی تنظیمات یکسانی
+      // برای صفحات داشته باشد، همان تنظیمات برای
+      // صفحات جدید ادامه پیدا می‌کند.
+      _syncDefaultsFromPages();
 
       loadCurrentPageText();
+
+      redoStack.clear();
+
+      currentStroke = null;
 
       notifyListeners();
 
@@ -456,6 +577,32 @@ class DrawingController extends ChangeNotifier {
     }
   }
 
+  void _syncDefaultsFromPages() {
+    if (pages.isEmpty) {
+      _defaultBackgroundImagePath = null;
+      _defaultLandscape = false;
+      return;
+    }
+
+    final firstBackground = pages.first.backgroundImagePath;
+    final firstLandscape = pages.first.landscape;
+
+    final sameBackground = pages.every(
+      (page) => page.backgroundImagePath == firstBackground,
+    );
+    final sameLandscape = pages.every(
+      (page) => page.landscape == firstLandscape,
+    );
+
+    _defaultBackgroundImagePath = sameBackground
+        ? firstBackground
+        : pages[currentPage].backgroundImagePath;
+
+    _defaultLandscape = sameLandscape
+        ? firstLandscape
+        : pages[currentPage].landscape;
+  }
+
   void createNewNote() {
     _autoSaveTimer?.cancel();
 
@@ -463,15 +610,23 @@ class DrawingController extends ChangeNotifier {
 
     _title = '';
 
+    // یادداشت جدید با تنظیمات پایه شروع می‌شود.
+    _defaultBackgroundImagePath = null;
+    _defaultLandscape = false;
+
     pages
       ..clear()
-      ..add(NotePage());
+      ..add(_createPage());
 
     currentPage = 0;
 
     noteController.clear();
 
     redoStack.clear();
+
+    currentStroke = null;
+
+    _autoSaveSaved = false;
 
     notifyListeners();
   }
@@ -482,18 +637,25 @@ class DrawingController extends ChangeNotifier {
       ..addAll(data.pages);
 
     if (pages.isEmpty) {
-      pages.add(NotePage());
+      pages.add(_createPage());
     }
 
     _noteId = data.id;
 
     _title = data.title;
 
-    currentPage = data.currentPage.clamp(0, pages.length - 1);
+    currentPage = data.currentPage.clamp(
+      0,
+      pages.length - 1,
+    );
+
+    _syncDefaultsFromPages();
 
     loadCurrentPageText();
 
     redoStack.clear();
+
+    currentStroke = null;
 
     notifyListeners();
   }
@@ -514,6 +676,27 @@ class DrawingController extends ChangeNotifier {
       debugPrint('Delete AutoSave error: $e');
     }
   }
+
+  // ============================================================
+  // Dispose
+  // ============================================================
+
+  @override
+  void dispose() {
+    _autoSaveTimer?.cancel();
+
+    noteController.dispose();
+
+    super.dispose();
+  }
 }
 
-enum ToolType { pen, highlighter, eraser }
+// ============================================================
+// Tools
+// ============================================================
+
+enum ToolType {
+  pen,
+  highlighter,
+  eraser,
+}
