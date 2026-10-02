@@ -2,6 +2,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class ShareField {
   final String label;
@@ -21,13 +24,18 @@ Future<void> showRecordShareDialog(
   required String title,
   required List<ShareField> fields,
   ShareFile? file,
+  List<ShareFile> files = const [],
 }) async {
+  final allFiles = <ShareFile>[
+    if (file != null) file,
+    ...files,
+  ];
   await showDialog(
     context: context,
     builder: (context) => _RecordShareDialog(
       title: title,
       fields: fields,
-      file: file,
+      files: allFiles,
     ),
   );
 }
@@ -35,9 +43,13 @@ Future<void> showRecordShareDialog(
 class _RecordShareDialog extends StatefulWidget {
   final String title;
   final List<ShareField> fields;
-  final ShareFile? file;
+  final List<ShareFile> files;
 
-  const _RecordShareDialog({required this.title, required this.fields, this.file});
+  const _RecordShareDialog({
+    required this.title,
+    required this.fields,
+    required this.files,
+  });
 
   @override
   State<_RecordShareDialog> createState() => _RecordShareDialogState();
@@ -49,7 +61,7 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
 
   Future<void> share() async {
     final selected = widget.fields.where((e) => e.selected && e.value.trim().isNotEmpty).toList();
-    if (selected.isEmpty && widget.file == null) {
+    if (selected.isEmpty && widget.files.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حداقل یک مورد را انتخاب کنید.')));
       return;
     }
@@ -60,17 +72,51 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
       final shareText = text.isEmpty ? widget.title : text;
       // متن قبل از بازشدن پنجره اشتراک‌گذاری در کلیپ‌بورد نیز قرار می‌گیرد.
       await Clipboard.setData(ClipboardData(text: shareText));
-      final files = <XFile>[];
+      final sharedFiles = <XFile>[];
 
-      if (widget.file != null && includeFile) {
-        final bytes = await widget.file!.load();
-        if (bytes != null) {
-          final fileName = _safeFileName(widget.file!.name);
-          files.add(XFile.fromData(
-            bytes,
-            name: fileName,
-            mimeType: _mimeTypeFor(fileName),
+      if (includeFile && widget.files.isNotEmpty) {
+        final loaded = <({String name, Uint8List bytes})>[];
+        for (final item in widget.files) {
+          final bytes = await item.load();
+          if (bytes != null && bytes.isNotEmpty) {
+            loaded.add((name: _safeFileName(item.name), bytes: bytes));
+          }
+        }
+
+        final imageFiles = loaded.where((e) => _isImageName(e.name)).toList();
+
+        // چند تصویر به یک PDF چندصفحه‌ای تبدیل می‌شود تا اندروید/Share
+        // آن‌ها را به صورت یک سند واحد دریافت کند.
+        if (imageFiles.length > 1 && imageFiles.length == loaded.length) {
+          final pdf = pw.Document();
+          for (final item in imageFiles) {
+            final image = pw.MemoryImage(item.bytes);
+            pdf.addPage(
+              pw.Page(
+                pageFormat: PdfPageFormat.a4,
+                margin: pw.EdgeInsets.zero,
+                build: (_) => pw.SizedBox(
+                  width: PdfPageFormat.a4.width,
+                  height: PdfPageFormat.a4.height,
+                  child: pw.Image(image, fit: pw.BoxFit.contain),
+                ),
+              ),
+            );
+          }
+          final pdfBytes = Uint8List.fromList(await pdf.save());
+          sharedFiles.add(XFile.fromData(
+            pdfBytes,
+            name: '${_safeFileName(widget.title)}_تصاویر.pdf',
+            mimeType: 'application/pdf',
           ));
+        } else {
+          for (final item in loaded) {
+            sharedFiles.add(XFile.fromData(
+              item.bytes,
+              name: item.name,
+              mimeType: _mimeTypeFor(item.name),
+            ));
+          }
         }
       }
 
@@ -78,7 +124,7 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
         ShareParams(
           title: widget.title,
           text: shareText,
-          files: files,
+          files: sharedFiles,
         ),
       );
 
@@ -98,6 +144,11 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
     // اگر نام فایل از سرور بدون پسوند برگشته باشد، پسوند ساختگی اضافه نمی‌کنیم؛
     // MIME نوع فایل را به سیستم اشتراک‌گذاری معرفی می‌کند.
     return trimmed.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  }
+
+  bool _isImageName(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    return const ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].contains(ext);
   }
 
   String _mimeTypeFor(String name) {
@@ -141,14 +192,30 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
             subtitle: Text(field.value, maxLines: 2, overflow: TextOverflow.ellipsis),
             onChanged: (v) => setState(() => field.selected = v ?? false),
           )),
-          if (widget.file != null)
+          if (widget.files.isNotEmpty) ...[
             CheckboxListTile(
               value: includeFile,
               contentPadding: EdgeInsets.zero,
-              title: const Text('فایل مرتبط'),
-              subtitle: Text(widget.file!.name),
+              title: Text('فایل‌ها (${widget.files.length})'),
+              subtitle: Text(
+                widget.files.map((e) => e.name).join('، '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               onChanged: sharing ? null : (v) => setState(() => includeFile = v ?? false),
             ),
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.files.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (_, index) => _SharePreview(
+                  file: widget.files[index],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     ),
@@ -163,4 +230,48 @@ class _RecordShareDialogState extends State<_RecordShareDialog> {
       ),
     ],
   );
+}
+
+
+class _SharePreview extends StatelessWidget {
+  final ShareFile file;
+
+  const _SharePreview({required this.file});
+
+  bool get isImage {
+    final ext = file.name.split('.').last.toLowerCase();
+    return const ['jpg','jpeg','png','gif','bmp','webp'].contains(ext);
+  }
+
+  bool get isPdf => file.name.toLowerCase().endsWith('.pdf');
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: file.load(),
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 86,
+            height: 92,
+            color: Colors.grey.shade100,
+            child: bytes == null
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : isImage
+                    ? Image.memory(bytes, fit: BoxFit.cover)
+                    : isPdf
+                        ? SfPdfViewer.memory(
+                            bytes,
+                            pageLayoutMode: PdfPageLayoutMode.single,
+                            canShowScrollHead: false,
+                            canShowScrollStatus: false,
+                          )
+                        : const Center(child: Icon(Icons.insert_drive_file, size: 38)),
+          ),
+        );
+      },
+    );
+  }
 }

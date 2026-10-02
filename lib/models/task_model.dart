@@ -213,62 +213,59 @@ class TaskModel {
 
   TaskModel copyWith({
     int? id,
-
     String? name,
-
     String? description,
-
     int? status,
-
     int? progress,
-
     int? completed,
+    String? startedAt,
+    String? endedAt,
+    String? completedAt,
+    double? amount,
+    int? repeat,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    TaskOrgan? organ,
+    TaskCity? city,
+    TaskUser? creator,
+    TaskUser? responsible,
+    TaskMinutes? minutes,
     int? minutesId,
+    List<TaskProject>? projects,
+    List<TaskGroup>? taskGroups,
+    List<dynamic>? appendixOthers,
+    List<RecordFile>? files,
+    bool clearMinutes = false,
+    bool clearResponsible = false,
+    bool clearCity = false,
+    bool clearOrgan = false,
+    bool clearStartedAt = false,
+    bool clearEndedAt = false,
   }) {
     return TaskModel(
       id: id ?? this.id,
-
       name: name ?? this.name,
-
       description: description ?? this.description,
-
       status: status ?? this.status,
-
       progress: progress ?? this.progress,
-
       completed: completed ?? this.completed,
-
-      startedAt: startedAt,
-
-      endedAt: endedAt,
-
-      completedAt: completedAt,
-
-      amount: amount,
-
-      repeat: repeat,
-
-      createdAt: createdAt,
-
-      updatedAt: updatedAt,
-
-      organ: organ,
-
-      city: city,
-
-      creator: creator,
-
-      responsible: responsible,
-
+      startedAt: clearStartedAt ? null : (startedAt ?? this.startedAt),
+      endedAt: clearEndedAt ? null : (endedAt ?? this.endedAt),
+      completedAt: completedAt ?? this.completedAt,
+      amount: amount ?? this.amount,
+      repeat: repeat ?? this.repeat,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      organ: clearOrgan ? null : (organ ?? this.organ),
+      city: clearCity ? null : (city ?? this.city),
+      creator: creator ?? this.creator,
+      responsible: clearResponsible ? null : (responsible ?? this.responsible),
       minutes: minutes,
-      minutesId: minutesId ?? this.minutesId,
-
-      projects: projects,
-
-      taskGroups: taskGroups,
-
-      appendixOthers: appendixOthers,
-      files: files,
+      minutesId: clearMinutes ? null : (minutesId ?? this.minutesId),
+      projects: projects ?? this.projects,
+      taskGroups: taskGroups ?? this.taskGroups,
+      appendixOthers: appendixOthers ?? this.appendixOthers,
+      files: files ?? this.files,
     );
   }
 }

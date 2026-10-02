@@ -5,7 +5,7 @@ import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 
-import '../../widgets/search/search_bar_widget.dart';
+import '../widgets/search/search_bar_widget.dart';
 
 class RecordsPage extends StatefulWidget {
   final String title;

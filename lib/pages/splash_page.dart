@@ -8,7 +8,7 @@ import 'package:karnamaft/services/incoming_share_service.dart';
 import 'package:karnamaft/pages/incoming_share_page.dart';
 import 'package:provider/provider.dart';
 
-import '../../storage/auth_storage.dart';
+import '../storage/auth_storage.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -57,7 +57,7 @@ class _SplashPageState extends State<SplashPage> {
       final token = await AuthStorage.getToken();
       context.read<UserController>().setUser(user, token!);
 
-      final sharedFile = await IncomingShareService.takeInitialFile();
+      final sharedFiles = await IncomingShareService.takeInitialFiles();
 
       if (!mounted) return;
 
@@ -65,7 +65,14 @@ class _SplashPageState extends State<SplashPage> {
         context,
         MaterialPageRoute(
           builder: (_) => MainPage(
-            initialSharedFile: sharedFile,
+            initialSharedFile: sharedFiles == null || sharedFiles.isEmpty
+                ? null
+                : sharedFiles.length == 1
+                    ? sharedFiles.first
+                    : null,
+            initialSharedFiles: sharedFiles != null && sharedFiles.length > 1
+                ? sharedFiles
+                : null,
           ),
         ),
       );

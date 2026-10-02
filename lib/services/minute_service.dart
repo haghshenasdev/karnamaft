@@ -141,12 +141,15 @@ class MinuteService implements RecordService<MinuteModel> {
           .map((e) => MinuteModel.fromJson(e).toRecord())
           .toList();
 
+      final meta = Map<String, dynamic>.from(
+        (json["meta"] as Map?) ?? const <String, dynamic>{},
+      );
       return PageResult<RecordItem>(
         data: records,
-        currentPage: json["meta"]["current_page"] ?? 1,
-        lastPage: json["meta"]["last_page"] ?? 1,
-        total: json["meta"]["total"] ?? records.length,
-        perPage: json["meta"]["per_page"] ?? records.length,
+        currentPage: meta["current_page"] ?? 1,
+        lastPage: meta["last_page"] ?? 1,
+        total: meta["total"] ?? records.length,
+        perPage: meta["per_page"] ?? records.length,
       );
     } catch (e) {
       throw ApiErrorHandler.handle(e);

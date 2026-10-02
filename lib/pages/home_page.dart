@@ -1861,6 +1861,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       _smartPadAdvanceZoneMin,
                       writingSize.width * .45,
                     );
+                    final backgroundPath = controller
+                        .pages[controller.currentPage]
+                        .backgroundImagePath;
 
                     return Listener(
                       behavior: HitTestBehavior.opaque,
@@ -1881,111 +1884,138 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         _smartPadCurrentStroke = null;
                         if (mounted) setState(() {});
                       },
-                      child: CustomPaint(
-                        painter: _SmartPadPainter(
-                          pageStrokes:
-                              controller.pages[controller.currentPage].strokes,
-                          smartStrokes: _smartPadStrokes,
-                          target: _smartPenTarget,
-                          penColor: controller.penColor,
-                          landscape: controller.currentPageLandscape,
-                        ),
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: advanceWidth,
-                              child: IgnorePointer(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF1976D2,
-                                    ).withOpacity(.055),
-                                    border: Border(
-                                      right: BorderSide(
-                                        color: const Color(
-                                          0xFF1976D2,
-                                        ).withOpacity(.22),
-                                      ),
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: RotatedBox(
-                                      quarterTurns: 3,
-                                      child: Text(
-                                        'برای ادامه، قلم را به این قسمت برسانید',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: const Color(0xFF546E7A),
-                                          fontSize: isNarrow ? 8 : 10,
-                                          fontWeight: FontWeight.w700,
+                      child: Stack(
+                        clipBehavior: Clip.hardEdge,
+                        children: [
+                          if (backgroundPath != null &&
+                              backgroundPath.isNotEmpty)
+                            Positioned.fill(
+                              child: _SmartPenBackground(
+                                path: backgroundPath,
+                                target: _smartPenTarget,
+                                writingSize: writingSize,
+                                landscape: controller.currentPageLandscape,
+                              ),
+                            ),
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _SmartPadPainter(
+                                pageStrokes: controller
+                                    .pages[controller.currentPage]
+                                    .strokes,
+                                smartStrokes: _smartPadStrokes,
+                                target: _smartPenTarget,
+                                penColor: controller.penColor,
+                                landscape: controller.currentPageLandscape,
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: advanceWidth,
+                                    child: IgnorePointer(
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF1976D2,
+                                          ).withOpacity(.055),
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: const Color(
+                                                0xFF1976D2,
+                                              ).withOpacity(.22),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: RotatedBox(
+                                            quarterTurns: 3,
+                                            child: Text(
+                                              'برای ادامه، قلم را به این قسمت برسانید',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: const Color(0xFF546E7A),
+                                                fontSize: isNarrow ? 8 : 10,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
 
-                            // دستگیره فقط در نوار بالایی ناحیه Advance است تا
-                            // هنگام نوشتن در کناره صفحه به‌صورت تصادفی لمس نشود.
-                            Positioned(
-                              left: 4,
-                              top: 4,
-                              width: (advanceWidth - 8).clamp(20.0, 260.0),
-                              height: 22,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onHorizontalDragUpdate: (details) =>
-                                    _resizeSmartAdvanceZone(details.delta.dx),
-                                child: Center(
-                                  child: Container(
-                                    width: isNarrow ? 42 : 58,
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF90A4AE),
-                                      borderRadius: BorderRadius.circular(8),
+                                  // دستگیره فقط در نوار بالایی ناحیه Advance است تا
+                                  // هنگام نوشتن در کناره صفحه به‌صورت تصادفی لمس نشود.
+                                  Positioned(
+                                    left: 4,
+                                    top: 4,
+                                    width: (advanceWidth - 8).clamp(
+                                      20.0,
+                                      260.0,
                                     ),
-                                    child: Icon(
-                                      Icons.drag_handle_rounded,
-                                      size: isNarrow ? 13 : 16,
-                                      color: const Color(0xFF607D8B),
+                                    height: 22,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onHorizontalDragUpdate: (details) =>
+                                          _resizeSmartAdvanceZone(
+                                            details.delta.dx,
+                                          ),
+                                      child: Center(
+                                        child: Container(
+                                          width: isNarrow ? 42 : 58,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF90A4AE),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.drag_handle_rounded,
+                                            size: isNarrow ? 13 : 16,
+                                            color: const Color(0xFF607D8B),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
 
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: IgnorePointer(
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: isNarrow ? 6 : 9,
-                                    vertical: isNarrow ? 3 : 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(.82),
-                                    borderRadius: BorderRadius.circular(9),
-                                    border: Border.all(
-                                      color: const Color(0xFFE0E5E9),
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: IgnorePointer(
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isNarrow ? 6 : 9,
+                                          vertical: isNarrow ? 3 : 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(.82),
+                                          borderRadius: BorderRadius.circular(
+                                            9,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFE0E5E9),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'بنویسید...',
+                                          style: TextStyle(
+                                            color: const Color(0xFF90A0AA),
+                                            fontSize: isNarrow ? 8 : 10,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  child: Text(
-                                    'بنویسید...',
-                                    style: TextStyle(
-                                      color: const Color(0xFF90A0AA),
-                                      fontSize: isNarrow ? 8 : 10,
-                                    ),
-                                  ),
-                                ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -2384,10 +2414,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     try {
       controller.saveCurrentPageText();
       final oldPage = controller.currentPage;
-      Uint8List? bytes; String? name;
+      Uint8List? bytes;
+      String? name;
       final now = Jalali.now();
-      final stamp = '${now.year}-${now.month.toString().padLeft(2,'0')}-${now.day.toString().padLeft(2,'0')}_${DateTime.now().hour.toString().padLeft(2,'0')}-${DateTime.now().minute.toString().padLeft(2,'0')}-${DateTime.now().second.toString().padLeft(2,'0')}';
-      final title = _titleController.text.trim().isEmpty ? 'note' : _titleController.text.trim();
+      final stamp =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}_${DateTime.now().hour.toString().padLeft(2, '0')}-${DateTime.now().minute.toString().padLeft(2, '0')}-${DateTime.now().second.toString().padLeft(2, '0')}';
+      final title = _titleController.text.trim().isEmpty
+          ? 'note'
+          : _titleController.text.trim();
       if (controller.pageCount == 1) {
         bytes = await _captureCurrentPage();
         name = '${title}_$stamp.png';
@@ -2401,8 +2435,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           final b = await _captureCurrentPage();
           if (b == null) throw Exception('تصویر صفحه ${i + 1} ایجاد نشد');
           final image = pw.MemoryImage(b);
-          final format = controller.currentPageLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4;
-          pdf.addPage(pw.Page(pageFormat: format, margin: pw.EdgeInsets.zero, build: (_) => pw.SizedBox(width: format.width, height: format.height, child: pw.Image(image, fit: pw.BoxFit.fill))));
+          final format = controller.currentPageLandscape
+              ? PdfPageFormat.a4.landscape
+              : PdfPageFormat.a4;
+          pdf.addPage(
+            pw.Page(
+              pageFormat: format,
+              margin: pw.EdgeInsets.zero,
+              build: (_) => pw.SizedBox(
+                width: format.width,
+                height: format.height,
+                child: pw.Image(image, fit: pw.BoxFit.fill),
+              ),
+            ),
+          );
         }
         controller.currentPage = oldPage;
         controller.loadCurrentPageText();
@@ -2411,9 +2457,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         name = '${title}_$stamp.pdf';
       }
       if (!mounted) return;
-      await Navigator.push(context, MaterialPageRoute(builder: (_) => ContentCreatePage(initialFileBytes: bytes, initialFileName: name)));
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ContentCreatePage(initialFileBytes: bytes, initialFileName: name),
+        ),
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در آماده‌سازی یادداشت آنلاین\n$e')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطا در آماده‌سازی یادداشت آنلاین\n$e')),
+        );
     }
   }
 
@@ -2781,6 +2836,68 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 }
 
+class _SmartPenBackground extends StatelessWidget {
+  final String path;
+  final Rect target;
+  final Size writingSize;
+  final bool landscape;
+
+  const _SmartPenBackground({
+    required this.path,
+    required this.target,
+    required this.writingSize,
+    required this.landscape,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const pageWidth = DrawingPainter.basePageWidth;
+    final pageHeight =
+        pageWidth /
+        (landscape
+            ? DrawingPainter.landscapeRatio
+            : DrawingPainter.portraitRatio);
+
+    final targetWidth = (target.width * pageWidth).clamp(1.0, pageWidth);
+    final targetHeight = (target.height * pageHeight).clamp(1.0, pageHeight);
+
+    // مقیاس طوری انتخاب می‌شود که محدوده آبی صفحه دقیقاً فضای
+    // کادر بزرگ نوشتن را پر کند؛ در نتیجه تصویر زمینه هم مانند خود
+    // کاغذ، بزرگ‌نمایی و جابه‌جا می‌شود.
+    final scale = [
+      writingSize.width / targetWidth,
+      writingSize.height / targetHeight,
+    ].reduce((a, b) => a > b ? a : b);
+
+    final fullWidth = pageWidth * scale;
+    final fullHeight = pageHeight * scale;
+    final targetCenterX = (target.left + target.width / 2) * fullWidth;
+    final targetCenterY = (target.top + target.height / 2) * fullHeight;
+
+    final left = writingSize.width / 2 - targetCenterX;
+    final top = writingSize.height / 2 - targetCenterY;
+
+    return ClipRect(
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned(
+            left: left,
+            top: top,
+            width: fullWidth,
+            height: fullHeight,
+            child: Image.file(
+              File(path),
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SmartPadPainter extends CustomPainter {
   final List<StrokeModel> pageStrokes;
   final List<StrokeModel> smartStrokes;
@@ -2845,7 +2962,7 @@ class _SmartPadPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawColor(Colors.white, BlendMode.srcOver);
+    // canvas.drawColor(Colors.white, BlendMode.srcOver);
 
     final targetLeft = target.left * _pageWidth;
     final targetTop = target.top * _pageHeight;

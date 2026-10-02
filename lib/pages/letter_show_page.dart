@@ -63,6 +63,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
   int? selectedKind;
   LetterOrgan? selectedCustomer;
   LetterDaftar? selecteddaftar;
+  int? selectedPeiroowLetterId;
+  String? selectedPeiroowLetterTitle;
   List<LetterProject> selectedProjects = [];
 
   late TextEditingController subjectController;
@@ -116,6 +118,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
 
         selectedCustomer = result.organ;
         selecteddaftar = result.daftar;
+        selectedPeiroowLetterId = result.peiroowLetterId;
+        selectedPeiroowLetterTitle = result.peiroowLetter?.subject;
         selectedProjects = List<LetterProject>.from(result.projects);
 
         descriptionController.text = result.description ?? "";
@@ -151,12 +155,13 @@ class _LetterShowPageState extends State<LetterShowPage> {
         ShareField(label: 'وضعیت', value: item.status?.toString() ?? ''),
         ShareField(label: 'گیرنده', value: item.organ?.name ?? ''),
         ShareField(label: 'دفتر', value: item.daftar?.name ?? ''),
+        ShareField(label: 'پیرو نامه', value: item.peiroowLetter?.subject ?? ''),
         ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.created_at)),
       ],
-      file: item.files.isEmpty ? null : ShareFile(
-        name: item.files.first.fileName,
-        load: () => FileService.download(item.files.first.url),
-      ),
+      files: item.files.map((f) => ShareFile(
+        name: f.fileName,
+        load: () => FileService.download(f.url),
+      )).toList(),
     );
   }
 
@@ -514,6 +519,60 @@ class _LetterShowPageState extends State<LetterShowPage> {
                   token: user.token,
                 ),
               //--------------------------------------------------
+              // پیرو نامه
+              //--------------------------------------------------
+              if (editing)
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'پیرو نامه',
+                    prefixIcon: Icon(Icons.reply_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selectedPeiroowLetterTitle ?? 'بدون پیرو نامه',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'انتخاب',
+                        onPressed: selectPeiroowLetter,
+                        icon: const Icon(Icons.search),
+                      ),
+                      if (selectedPeiroowLetterId != null)
+                        IconButton(
+                          tooltip: 'حذف',
+                          onPressed: () => setState(() {
+                            selectedPeiroowLetterId = null;
+                            selectedPeiroowLetterTitle = null;
+                          }),
+                          icon: const Icon(Icons.close),
+                        ),
+                    ],
+                  ),
+                )
+              else if (item.peiroowLetter != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.reply_outlined),
+                  title: const Text('پیرو نامه'),
+                  subtitle: Text(item.peiroowLetter!.subject),
+                  trailing: const Icon(Icons.chevron_left),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LetterShowPage(
+                        id: item.peiroowLetter!.id,
+                        title: item.peiroowLetter!.subject,
+                      ),
+                    ),
+                  ),
+                ),
+
+              //--------------------------------------------------
               // Projects / دستورکارها
               //--------------------------------------------------
               if (editing)
@@ -694,6 +753,25 @@ class _LetterShowPageState extends State<LetterShowPage> {
     );
   }
 
+  Future<void> selectPeiroowLetter() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const LetterService(),
+        config: const SelectDialogConfig(
+          title: 'انتخاب پیرو نامه',
+          multiSelect: false,
+          historyKey: 'letter_peiroow',
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedPeiroowLetterId = result.id;
+      selectedPeiroowLetterTitle = result.title;
+    });
+  }
+
   Future<void> save() async {
     if (letter == null) {
       return;
@@ -706,6 +784,11 @@ class _LetterShowPageState extends State<LetterShowPage> {
       file: letter!.file,
       status: selectedStatus,
       kind: selectedKind,
+      peiroowLetterId: selectedPeiroowLetterId,
+      clearPeiroowLetter: selectedPeiroowLetterId == null,
+      peiroowLetter: selectedPeiroowLetterId == null
+          ? null
+          : LetterReference(id: selectedPeiroowLetterId!, subject: selectedPeiroowLetterTitle ?? ''),
       daftar: selecteddaftar,
       organ: selectedCustomer,
       projects: selectedProjects,

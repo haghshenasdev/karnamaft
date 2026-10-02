@@ -135,9 +135,21 @@ class TaskService implements RecordService<TaskModel> {
         MapEntry("completed", model.completed?.toString() ?? ""),
         MapEntry("started_at", model.startedAt ?? ""),
         MapEntry("ended_at", model.endedAt ?? ""),
-        MapEntry("created_by", model.creator?.id.toString() ?? ""),
+        MapEntry("completed_at", model.completedAt ?? ""),
+        MapEntry("repeat", model.repeat?.toString() ?? ""),
+        MapEntry("amount", model.amount?.toString() ?? ""),
+        MapEntry("created_at", model.createdAt?.toIso8601String() ?? ""),
+        MapEntry("Responsible_id", model.responsible?.id.toString() ?? ""),
+        MapEntry("city_id", model.city?.id.toString() ?? ""),
+        MapEntry("organ_id", model.organ?.id.toString() ?? ""),
         MapEntry("minutes_id", model.minutesId?.toString() ?? ""),
       ]);
+
+      for (final project in model.projects) {
+        formData.fields.add(
+          MapEntry("project_ids[]", project.id.toString()),
+        );
+      }
 
       final files = <String>[];
 
@@ -185,6 +197,62 @@ class TaskService implements RecordService<TaskModel> {
     }
   }
 
+
+  Future<TaskModel> create(
+    TaskModel model, {
+    List<String>? uploadFiles,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        "name": model.name,
+        "description": model.description ?? "",
+        "status": model.status?.toString() ?? "0",
+        "progress": model.progress?.toString() ?? "0",
+        "completed": model.completed?.toString() ?? "0",
+        "started_at": model.startedAt ?? "",
+        "ended_at": model.endedAt ?? "",
+        "completed_at": model.completedAt ?? "",
+        "repeat": model.repeat?.toString() ?? "0",
+        "amount": model.amount?.toString() ?? "",
+        "created_at": model.createdAt?.toIso8601String() ?? "",
+        if (model.responsible != null) "Responsible_id": model.responsible!.id,
+        if (model.city != null) "city_id": model.city!.id,
+        if (model.organ != null) "organ_id": model.organ!.id,
+        if (model.minutesId != null) "minutes_id": model.minutesId,
+      });
+
+      for (final project in model.projects) {
+        formData.fields.add(MapEntry("project_ids[]", project.id.toString()));
+      }
+
+      for (final path in uploadFiles ?? const <String>[]) {
+        if (path.trim().isEmpty) continue;
+        formData.files.add(
+          MapEntry(
+            "upload_files[]",
+            await MultipartFile.fromFile(
+              path,
+              filename: path.split(RegExp(r'[/\\]')).last,
+            ),
+          ),
+        );
+      }
+
+      final response = await ApiClient.dio.post(
+        rootPath,
+        data: formData,
+        options: Options(
+          contentType: "multipart/form-data",
+          receiveTimeout: const Duration(minutes: 2),
+          sendTimeout: const Duration(minutes: 2),
+        ),
+      );
+
+      return TaskModel.fromJson(response.data["data"]);
+    } catch (e) {
+      throw ApiErrorHandler.handle(e);
+    }
+  }
 
   /// فعالیت‌هایی که مسئول انجام آن‌ها کاربر فعلی است.
   ///

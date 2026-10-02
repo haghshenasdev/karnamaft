@@ -163,10 +163,10 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         ShareField(label: 'امضاکنندگان', value: item.organs?.map((e) => e.name).join('، ') ?? ''),
         ShareField(label: 'دسته‌بندی', value: item.group?.map((e) => e.name).join('، ') ?? ''),
       ],
-      file: item.files.isEmpty ? null : ShareFile(
-        name: item.files.first.fileName,
-        load: () => FileService.download(item.files.first.url),
-      ),
+      files: item.files.map((f) => ShareFile(
+        name: f.fileName,
+        load: () => FileService.download(f.url),
+      )).toList(),
     );
   }
 

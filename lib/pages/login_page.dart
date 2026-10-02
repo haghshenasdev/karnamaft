@@ -5,8 +5,8 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/main_page.dart';
 import 'package:karnamaft/storage/auth_storage.dart';
 import 'package:provider/provider.dart';
-import '../../models/login_request.dart';
-import '../../services/auth_service.dart';
+import '../models/login_request.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

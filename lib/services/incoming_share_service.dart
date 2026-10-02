@@ -9,89 +9,119 @@ class IncomingShareService {
   static const MethodChannel _channel =
       MethodChannel('karnama/incoming_share');
 
-  static final StreamController<String> _controller =
-      StreamController<String>.broadcast();
+  static final StreamController<List<String>> _controller =
+      StreamController<List<String>>.broadcast();
 
-  static String? _pendingPath;
+  static List<String>? _pendingPaths;
   static bool _initialized = false;
 
-  static Stream<String> get sharedFiles => _controller.stream;
+  static Stream<List<String>> get sharedFiles => _controller.stream;
 
   static bool get isSupported => Platform.isAndroid;
 
   static void initialize() {
-    if (!isSupported || _initialized) {
-      return;
-    }
+    if (!isSupported || _initialized) return;
 
     _initialized = true;
 
     _channel.setMethodCallHandler((call) async {
-      if (call.method != 'sharedFileReceived') {
+      if (call.method != 'sharedFilesReceived' &&
+          call.method != 'sharedFileReceived') {
         return;
       }
 
-      final path = call.arguments?.toString();
+      final paths = _parsePaths(call.arguments);
+      if (paths.isEmpty) return;
 
-      if (path == null || path.trim().isEmpty) {
-        return;
-      }
-
-      _pendingPath = path;
-
+      _pendingPaths = paths;
       if (!_controller.isClosed) {
-        _controller.add(path);
+        _controller.add(paths);
       }
     });
   }
 
-  static Future<String?> takeInitialFile() async {
-    if (!isSupported) {
-      return null;
-    }
+  static Future<List<String>?> takeInitialFiles() async {
+    if (!isSupported) return null;
 
     initialize();
 
     try {
-      final path =
-          await _channel.invokeMethod<String>('getInitialSharedFile');
-
-      if (path != null && path.isNotEmpty) {
-        _pendingPath = path;
+      dynamic result;
+      try {
+        result = await _channel.invokeMethod('getInitialSharedFiles');
+      } on MissingPluginException {
+        result = await _channel.invokeMethod('getInitialSharedFile');
       }
 
-      final result = _pendingPath;
-      _pendingPath = null;
+      final paths = _parsePaths(result);
+      if (paths.isNotEmpty) _pendingPaths = paths;
 
-      return result;
+      final answer = _pendingPaths;
+      _pendingPaths = null;
+      return answer;
     } catch (_) {
-      return null;
+      final answer = _pendingPaths;
+      _pendingPaths = null;
+      return answer;
+    }
+  }
+
+  // سازگاری با کدهای قدیمی که فقط یک فایل انتظار داشتند.
+  static Future<String?> takeInitialFile() async {
+    final files = await takeInitialFiles();
+    return files == null || files.isEmpty ? null : files.first;
+  }
+
+  static Future<List<String>?> takeNextFiles() async {
+    if (!isSupported) return null;
+
+    initialize();
+
+    try {
+      dynamic result;
+      try {
+        result = await _channel.invokeMethod('getPendingSharedFiles');
+      } on MissingPluginException {
+        result = await _channel.invokeMethod('getPendingSharedFile');
+      }
+
+      final paths = _parsePaths(result);
+      if (paths.isNotEmpty) {
+        _pendingPaths = null;
+        return paths;
+      }
+
+      final answer = _pendingPaths;
+      _pendingPaths = null;
+      return answer;
+    } catch (_) {
+      final answer = _pendingPaths;
+      _pendingPaths = null;
+      return answer;
     }
   }
 
   static Future<String?> takeNextFile() async {
-    if (!isSupported) {
-      return null;
+    final files = await takeNextFiles();
+    return files == null || files.isEmpty ? null : files.first;
+  }
+
+  static List<String> _parsePaths(dynamic value) {
+    if (value == null) return const [];
+
+    if (value is String) {
+      final path = value.trim();
+      return path.isEmpty ? const [] : [path];
     }
 
-    initialize();
-
-    try {
-      final path =
-          await _channel.invokeMethod<String>('getPendingSharedFile');
-
-      if (path != null && path.isNotEmpty) {
-        _pendingPath = null;
-        return path;
-      }
-
-      final result = _pendingPath;
-      _pendingPath = null;
-      return result;
-    } catch (_) {
-      final result = _pendingPath;
-      _pendingPath = null;
-      return result;
+    if (value is List) {
+      return value
+          .map((e) => e?.toString().trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
     }
+
+    return const [];
   }
 }

@@ -64,6 +64,8 @@ class _LetterCreatePageState extends State<LetterCreatePage>
 
   LetterDaftar? selectedDaftar;
   int? selectedTypeId;
+  int? selectedPeiroowLetterId;
+  String? selectedPeiroowLetterTitle;
   List<int> selectedCustomerIds = [];
   List<int> selectedOrganOwnerIds = [];
   List<int> selectedProjectIds = [];
@@ -304,6 +306,25 @@ class _LetterCreatePageState extends State<LetterCreatePage>
     if (result != null) setState(() => selectedTypeId = result.id);
   }
 
+  Future<void> selectPeiroowLetter() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const LetterService(),
+        config: const SelectDialogConfig(
+          title: 'انتخاب پیرو نامه',
+          multiSelect: false,
+          historyKey: 'letter_peiroow',
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedPeiroowLetterId = result.id;
+      selectedPeiroowLetterTitle = result.title;
+    });
+  }
+
   //--------------------------------------------------
   // Save
   //--------------------------------------------------
@@ -486,6 +507,7 @@ class _LetterCreatePageState extends State<LetterCreatePage>
         uploadFile: selectedFile,
         typeId: selectedTypeId,
         mokatebe: mokatebeController.text.trim().isEmpty ? null : mokatebeController.text.trim(),
+        peiroowLetterId: selectedPeiroowLetterId,
         customerIds: selectedCustomerIds,
         organOwnerIds: selectedOrganOwnerIds,
         projectIds: selectedProjectIds,
@@ -789,6 +811,40 @@ class _LetterCreatePageState extends State<LetterCreatePage>
               decoration: const InputDecoration(
                 labelText: "شماره مکاتبه",
                 prefixIcon: Icon(Icons.numbers_outlined),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'پیرو نامه',
+                prefixIcon: Icon(Icons.reply_outlined),
+                border: OutlineInputBorder(),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedPeiroowLetterTitle ?? 'بدون پیرو نامه',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'انتخاب پیرو نامه',
+                    onPressed: saving ? null : selectPeiroowLetter,
+                    icon: const Icon(Icons.search),
+                  ),
+                  if (selectedPeiroowLetterId != null)
+                    IconButton(
+                      tooltip: 'حذف',
+                      onPressed: saving ? null : () => setState(() {
+                        selectedPeiroowLetterId = null;
+                        selectedPeiroowLetterTitle = null;
+                      }),
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 14),
