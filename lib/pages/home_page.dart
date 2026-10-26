@@ -9,6 +9,7 @@ import 'package:karnamaft/pages/content_create_page.dart';
 import 'package:karnamaft/services/note_autosave_service.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../controllers/drawing_controller.dart';
 import '../controllers/user_controller.dart';
@@ -28,7 +29,10 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/note_export_result.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  /// فایل دریافت‌شده از Share که باید به عنوان یادداشت باز شود.
+  final String? initialSharedFile;
+
+  const HomePage({super.key, this.initialSharedFile});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -128,12 +132,84 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       final controller = context.read<DrawingController>();
 
-      final restored = await controller.restoreLatestAutoSave();
-
-      if (restored && mounted) {
-        _titleController.text = controller.title;
+      // هنگام دریافت فایل اشتراکی، یک یادداشت مستقل بسازیم تا محتوای
+      // یادداشت قبلی کاربر به اشتباه جایگزین نشود.
+      if (widget.initialSharedFile != null &&
+          widget.initialSharedFile!.trim().isNotEmpty) {
+        await _openSharedFileAsNote(controller, widget.initialSharedFile!);
+      } else {
+        final restored = await controller.restoreLatestAutoSave();
+        if (restored && mounted) {
+          _titleController.text = controller.title;
+        }
       }
     });
+  }
+
+  Future<void> _openSharedFileAsNote(
+    DrawingController controller,
+    String sourcePath,
+  ) async {
+    try {
+      final source = File(sourcePath);
+      if (!await source.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('فایل اشتراکی دیگر در دسترس نیست.')),
+          );
+        }
+        return;
+      }
+
+      final docs = await getApplicationDocumentsDirectory();
+      final attachmentDir = Directory(
+        '${docs.path}${Platform.pathSeparator}KarnamaNotes${Platform.pathSeparator}attachments',
+      );
+      await attachmentDir.create(recursive: true);
+
+      final ext = source.path.contains('.')
+          ? source.path.substring(source.path.lastIndexOf('.'))
+          : '';
+      final target = File(
+        '${attachmentDir.path}${Platform.pathSeparator}shared_${DateTime.now().microsecondsSinceEpoch}$ext',
+      );
+      await source.copy(target.path);
+
+      controller.createNewNote();
+      final baseName = source.uri.pathSegments.isNotEmpty
+          ? source.uri.pathSegments.last
+          : 'فایل اشتراکی';
+      controller.setTitle(baseName);
+
+      final imageExt = ext.toLowerCase();
+      const imageExtensions = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'};
+      if (imageExtensions.contains(imageExt)) {
+        controller.setPageBackground(target.path);
+      } else {
+        controller.savePageText(
+          'فایل پیوست: $baseName\\nمسیر فایل: ${target.path}',
+        );
+      }
+
+      if (mounted) {
+        _titleController.text = baseName;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              imageExtensions.contains(imageExt)
+                  ? 'تصویر به عنوان پس‌زمینه یادداشت اضافه شد؛ برای نگهداری آن یادداشت را ذخیره کنید.'
+                  : 'نام و مسیر فایل در متن یادداشت درج شد؛ برای نگهداری آن یادداشت را ذخیره کنید.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('افزودن فایل به یادداشت ناموفق بود: $e')),
+        );
+      }
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:karnamaft/utils/app_settings.dart';
+import 'package:karnamaft/offline/offline_sync_service.dart';
 
 class AppSettingsCard extends StatefulWidget {
   const AppSettingsCard({super.key});
@@ -15,6 +16,12 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
   String camScannerPath2 = '';
 
   bool readWithoutGallerySave = false;
+  bool offlineEnabled = false;
+  String offlineRootPath = '';
+  DateTime? offlineLastSync;
+  bool syncingOffline = false;
+  double syncProgress = 0;
+  String syncMessage = '';
 
   bool loading = true;
   bool saving = false;
@@ -33,6 +40,9 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
       final path2 = await AppSettings.getCamScannerPath2();
 
       final readWithoutGallery = await AppSettings.getReadWithoutGallerySave();
+      final offline = await AppSettings.getOfflineEnabled();
+      final offlinePath = await AppSettings.getOfflineRootPath();
+      final lastSync = await AppSettings.getOfflineLastSync();
 
       if (!mounted) return;
 
@@ -41,6 +51,9 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
         camScannerPath1 = path1;
         camScannerPath2 = path2;
         readWithoutGallerySave = readWithoutGallery;
+        offlineEnabled = offline;
+        offlineRootPath = offlinePath;
+        offlineLastSync = lastSync;
         loading = false;
       });
     } catch (e) {
@@ -156,6 +169,58 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
     });
 
     _showMessage('مسیر دوم CamScanner ذخیره شد');
+  }
+
+  Future<void> _changeOfflineEnabled(bool value) async {
+    try {
+      await AppSettings.setOfflineEnabled(value);
+      if (!mounted) return;
+      setState(() => offlineEnabled = value);
+      _showMessage(value
+          ? 'حالت آفلاین فعال شد؛ برای دریافت اطلاعات همگام‌سازی را اجرا کنید.'
+          : 'حالت آفلاین غیرفعال شد. اطلاعات محلی حذف نمی‌شوند.');
+    } catch (e) {
+      _showMessage('خطا در تغییر حالت آفلاین: $e');
+    }
+  }
+
+  Future<void> _pickOfflineDirectory() async {
+    try {
+      final path = await FilePicker.platform.getDirectoryPath();
+      if (path == null || path.isEmpty) return;
+      await AppSettings.setOfflineRootPath(path);
+      if (!mounted) return;
+      setState(() => offlineRootPath = path);
+      _showMessage('مسیر آفلاین ذخیره شد. مسیر جدید از همگام‌سازی بعدی استفاده می‌شود.');
+    } catch (e) {
+      _showMessage('انتخاب پوشه در این دستگاه پشتیبانی نشد. در اندروید از مسیر پیش‌فرض خصوصی برنامه استفاده کنید.\n$e');
+    }
+  }
+
+  Future<void> _syncOfflineNow() async {
+    if (syncingOffline) return;
+    setState(() {
+      syncingOffline = true;
+      syncProgress = 0;
+      syncMessage = 'آماده‌سازی همگام‌سازی...';
+    });
+    try {
+      await OfflineSyncService.sync(onProgress: (done, total, message) {
+        if (!mounted) return;
+        setState(() {
+          syncProgress = total == 0 ? 0 : done / total;
+          syncMessage = message;
+        });
+      });
+      final last = await AppSettings.getOfflineLastSync();
+      if (mounted) setState(() => offlineLastSync = last);
+      _showMessage('همگام‌سازی اطلاعات تمام شد.');
+    } catch (e) {
+      if (mounted) setState(() => syncMessage = 'همگام‌سازی ناموفق بود: $e');
+      _showMessage('خطا در همگام‌سازی. اطلاعات قبلی محلی حذف نشده‌اند.\n$e');
+    } finally {
+      if (mounted) setState(() => syncingOffline = false);
+    }
   }
 
   Future<void> _changeReadWithoutGallerySave(bool value) async {

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/record_card.dart';
+import '../offline/offline_store.dart';
+import '../utils/app_settings.dart';
 
 import '../../widgets/search/search_bar_widget.dart';
 
@@ -115,12 +117,64 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     } catch (e) {
       if (!mounted) return;
-
+      try {
+        final enabled = await AppSettings.getOfflineEnabled();
+        final resource = _offlineResourceName();
+        if (enabled && resource != null) {
+          final cached = await OfflineStore.instance.readCachedRecords(
+            resource: resource,
+            userId: 'current-user',
+          );
+          if (cached.isNotEmpty) {
+            final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
+            if (localRecords.isNotEmpty) {
+              setState(() {
+                records = localRecords;
+                totalCount = localRecords.length;
+                currentPage = 1;
+                hasMore = false;
+                loading = false;
+                loadError = 'نمایش نسخه محلی؛ اتصال به سرور برقرار نیست.';
+              });
+              return;
+            }
+          }
+        }
+      } catch (_) {
+        // Keep the original server error if local cache cannot be read.
+      }
       setState(() {
         loading = false;
         loadError = e.toString();
       });
     }
+  }
+
+  String? _offlineResourceName() {
+    final name = widget.service.runtimeType.toString().toLowerCase();
+    if (name.contains('letter')) return 'letters';
+    if (name.contains('minute')) return 'minutes';
+    if (name.contains('content')) return 'contents';
+    if (name.contains('project')) return 'projects';
+    if (name.contains('task')) return 'tasks';
+    return null;
+  }
+
+  RecordItem? _recordItemFromCache(Map<String, dynamic> json) {
+    final id = int.tryParse('${json['id'] ?? json['uuid'] ?? ''}');
+    if (id == null) return null;
+    final date = DateTime.tryParse('${json['date'] ?? json['created_at'] ?? ''}');
+    return RecordItem(
+      id: id,
+      title: '${json['title'] ?? json['subject'] ?? json['name'] ?? 'بدون عنوان'}',
+      description: json['description']?.toString() ?? json['text']?.toString(),
+      from: json['from']?.toString(),
+      to: json['to']?.toString(),
+      number: json['number']?.toString(),
+      date: date,
+      tag: json['tag']?.toString(),
+      hasAttachment: json['has_attachment'] == true || json['file_url'] != null,
+    );
   }
 
   Future<void> loadMore() async {

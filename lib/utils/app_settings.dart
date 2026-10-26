@@ -7,6 +7,43 @@ class AppSettings {
   static const _camScannerPath1Key = 'camscanner_path_1';
   static const _camScannerPath2Key = 'camscanner_path_2';
   static const _readWithoutGallerySaveKey = 'read_without_gallery_save';
+  static const _offlineEnabledKey = 'offline_enabled';
+  static const _offlineRootPathKey = 'offline_root_path';
+  static const _offlineLastSyncKey = 'offline_last_sync';
+
+  static Future<bool> getOfflineEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_offlineEnabledKey) ?? false;
+  }
+
+  static Future<void> setOfflineEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_offlineEnabledKey, value);
+  }
+
+  static Future<String> getOfflineRootPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_offlineRootPathKey);
+    if (saved != null && saved.isNotEmpty) return saved;
+    final dir = await getApplicationSupportDirectory();
+    return '${dir.path}/KarnamaOffline';
+  }
+
+  static Future<DateTime?> getOfflineLastSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_offlineLastSyncKey);
+    return value == null ? null : DateTime.tryParse(value);
+  }
+
+  static Future<void> setOfflineLastSync(DateTime value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_offlineLastSyncKey, value.toIso8601String());
+  }
+
+  static Future<void> setOfflineRootPath(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_offlineRootPathKey, value);
+  }
 
   static const String defaultCamScannerPath1 =
       "/storage/emulated/0/DCIM/CamScanner";

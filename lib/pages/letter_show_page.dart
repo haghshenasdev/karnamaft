@@ -8,6 +8,8 @@ import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
 import 'package:karnamaft/services/letter_service.dart';
+import 'package:karnamaft/services/reference_service.dart';
+import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/pages/letter_timeline_page.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/project_service.dart';
@@ -160,6 +162,85 @@ class _LetterShowPageState extends State<LetterShowPage> {
     );
   }
 
+  Future<void> _createReferral() async {
+    if (!user.can('create_referral')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('مجوز ارجاع نامه را ندارید.')),
+      );
+      return;
+    }
+
+    final selected = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('users'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب شخص ارجاع‌شونده',
+          historyKey: 'letter_referral_users',
+        ),
+      ),
+    );
+    if (!mounted || selected == null) return;
+
+    final ruleController = TextEditingController();
+    final rule = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('ارجاع نامه به ${selected.title}'),
+        content: TextField(
+          controller: ruleController,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'دستور ارجاع',
+            hintText: 'اقدام لازم را بنویسید...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('انصراف'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, ruleController.text.trim()),
+            icon: const Icon(Icons.send),
+            label: const Text('ثبت ارجاع'),
+          ),
+        ],
+      ),
+    );
+    ruleController.dispose();
+    if (!mounted || rule == null) return;
+    if (rule.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('متن دستور ارجاع را وارد کنید.')),
+      );
+      return;
+    }
+
+    try {
+      await ApiClient.dio.post(
+        '/mobile/v1/referrals',
+        data: {
+          'letter_id': widget.id,
+          'to_user_id': selected.id,
+          'rule': rule.trim(),
+        },
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('نامه با موفقیت به ${selected.title} ارجاع شد.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ثبت ارجاع ناموفق بود: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     //--------------------------------------------------
@@ -219,6 +300,12 @@ class _LetterShowPageState extends State<LetterShowPage> {
         title: Text(widget.title),
 
         actions: [
+          if (user.can('create_referral'))
+            IconButton(
+              tooltip: 'ارجاع نامه',
+              icon: const Icon(Icons.assignment_ind_outlined),
+              onPressed: _createReferral,
+            ),
           IconButton(
             tooltip: 'تاریخچه و Timeline',
             icon: const Icon(Icons.timeline_rounded),

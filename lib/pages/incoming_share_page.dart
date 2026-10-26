@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'letter_create_page.dart';
+import 'home_page.dart';
 import 'minute_create_page.dart';
 import 'task_create_page.dart';
 
@@ -112,6 +113,17 @@ class _IncomingSharePageState extends State<IncomingSharePage> {
             ),
           ),
           const SizedBox(height: 12),
+          _Action(
+            icon: Icons.edit_note_outlined,
+            title: 'ذخیره در دفترچه یادداشت',
+            subtitle: 'فایل در یک یادداشت جدید باز می‌شود؛ تصویر روی برگه قرار می‌گیرد.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HomePage(initialSharedFile: widget.filePath),
+              ),
+            ),
+          ),
           _Action(
             icon: Icons.mail_outline,
             title: 'ایجاد نامه',
