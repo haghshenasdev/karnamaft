@@ -337,54 +337,6 @@ class _IncomingSharePageState extends State<IncomingSharePage> {
                     LetterCreatePage(
                       initialFilePath: currentPath,
                     ),
-<<<<<<< HEAD
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'این فایل را در کدام بخش ثبت می‌کنید؟',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _Action(
-            icon: Icons.edit_note_outlined,
-            title: 'ذخیره در دفترچه یادداشت',
-            subtitle: 'فایل در یک یادداشت جدید باز می‌شود؛ تصویر روی برگه قرار می‌گیرد.',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => HomePage(initialSharedFile: widget.filePath),
-              ),
-            ),
-          ),
-          _Action(
-            icon: Icons.mail_outline,
-            title: 'ایجاد نامه',
-            subtitle: 'فایل به عنوان فایل اصلی نامه قرار می‌گیرد.',
-            onTap: () => _openCreate(
-              LetterCreatePage(
-                initialFilePath: widget.filePath,
-              ),
-            ),
-          ),
-          _Action(
-            icon: Icons.description_outlined,
-            title: 'ایجاد صورتجلسه',
-            subtitle: 'فایل در فرم صورتجلسه آماده می‌شود.',
-            onTap: loading || bytes == null
-                ? null
-                : () => _openCreate(
-                      MinuteCreatePage(
-                        initialFileBytes: bytes,
-                        initialFileName: fileName,
-                      ),
-=======
                   );
                 },
         ),
@@ -403,7 +355,6 @@ class _IncomingSharePageState extends State<IncomingSharePage> {
                       initialFileName: currentPath == null
                           ? 'shared.pdf'
                           : _name(currentPath),
->>>>>>> 4909c1b9ce67d0216582f26c8808f0a26c8e113b
                     ),
                   );
                 },

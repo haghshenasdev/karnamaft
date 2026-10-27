@@ -7,7 +7,7 @@ import 'package:karnamaft/widgets/record_card.dart';
 import '../offline/offline_store.dart';
 import '../utils/app_settings.dart';
 
-import '../widgets/search/search_bar_widget.dart';
+import '../../widgets/search/search_bar_widget.dart';
 
 class RecordsPage extends StatefulWidget {
   final String title;
@@ -98,6 +98,33 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     }
 
+    // اگر حالت آفلاین فعال باشد، ابتدا نسخه محلی را فوراً نشان بده؛
+    // سپس در صورت دسترسی، داده‌های سرور جایگزین نسخه محلی می‌شوند.
+    final offlineEnabled = await AppSettings.getOfflineEnabled();
+    final offlineResource = _offlineResourceName();
+    if (offlineEnabled && offlineResource != null) {
+      try {
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: offlineResource,
+          userId: 'current-user',
+        );
+        final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
+        if (localRecords.isNotEmpty && mounted) {
+          setState(() {
+            records = localRecords;
+            totalCount = localRecords.length;
+            currentPage = 1;
+            hasMore = false;
+            loading = false;
+            loadError = 'حالت آفلاین فعال است؛ برای دریافت تغییرات جدید، از تنظیمات همگام‌سازی را اجرا کنید.';
+          });
+          return;
+        }
+      } catch (_) {
+        // اگر کش خراب یا خالی باشد، بارگذاری عادی سرور ادامه پیدا می‌کند.
+      }
+    }
+
     try {
       final result = await widget.service.list(
         page: 1,
@@ -114,7 +141,26 @@ class _RecordsPageState extends State<RecordsPage> {
         currentPage = result.currentPage;
         hasMore = result.hasNextPage;
         loading = false;
+        loadError = null;
       });
+
+      if (offlineEnabled && offlineResource != null) {
+        await OfflineStore.instance.cacheRecords(
+          resource: offlineResource,
+          userId: 'current-user',
+          records: result.data.map((r) => <String, dynamic>{
+            'id': r.id,
+            'title': r.title,
+            'description': r.description,
+            'from': r.from,
+            'to': r.to,
+            'number': r.number,
+            'date': r.date?.toIso8601String(),
+            'tag': r.tag,
+            'has_attachment': r.hasAttachment,
+          }).toList(),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       try {

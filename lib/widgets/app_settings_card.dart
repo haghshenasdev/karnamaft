@@ -208,7 +208,7 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
       await OfflineSyncService.sync(onProgress: (done, total, message) {
         if (!mounted) return;
         setState(() {
-          syncProgress = total == 0 ? 0 : done / total;
+          syncProgress = total == 0 ? 0 : (done / total).clamp(0.0, 1.0);
           syncMessage = message;
         });
       });
@@ -361,6 +361,80 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
                     onTap: _changeCamScannerPath2,
                   ),
 
+                  const Divider(height: 24),
+
+                  //----------------------------------
+                  // Offline mode
+                  //----------------------------------
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.cloud_off_outlined, color: Colors.teal.shade700),
+                    ),
+                    title: const Text(
+                      'حالت کار آفلاین',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: const Text(
+                      'در صورت فعال بودن، فهرست‌های ذخیره‌شده روی دستگاه هنگام قطع اینترنت نمایش داده می‌شوند.',
+                    ),
+                    value: offlineEnabled,
+                    onChanged: saving || syncingOffline ? null : _changeOfflineEnabled,
+                  ),
+                  if (offlineEnabled) ...[
+                    const SizedBox(height: 8),
+                    _SettingItem(
+                      icon: Icons.folder_copy_outlined,
+                      title: 'محل ذخیره اطلاعات آفلاین',
+                      value: _displayPath(offlineRootPath),
+                      onTap: syncingOffline ? () {} : _pickOfflineDirectory,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: syncingOffline ? null : _pickOfflineDirectory,
+                            icon: const Icon(Icons.folder_open),
+                            label: const Text('انتخاب پوشه'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: syncingOffline ? null : _syncOfflineNow,
+                            icon: syncingOffline
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.sync),
+                            label: Text(syncingOffline ? 'در حال همگام‌سازی' : 'همگام‌سازی اکنون'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (syncingOffline || syncMessage.isNotEmpty) ...[
+                      LinearProgressIndicator(
+                        value: syncingOffline ? (syncProgress > 0 ? syncProgress.clamp(0.0, 1.0) : null) : syncProgress,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(syncMessage, style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                    ],
+                    Text(
+                      offlineLastSync == null
+                          ? 'هنوز همگام‌سازی موفقی انجام نشده است.'
+                          : 'آخرین همگام‌سازی: ${offlineLastSync!.toLocal()}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                   const Divider(height: 24),
 
                   //----------------------------------

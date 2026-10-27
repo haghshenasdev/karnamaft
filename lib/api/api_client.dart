@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 
 import '../storage/auth_storage.dart';
+import '../offline/offline_store.dart';
+import '../utils/app_settings.dart';
+import 'dart:convert';
 import 'api_error_handler.dart';
 
 class ApiClient {
@@ -49,7 +52,75 @@ class ApiClient {
           handler.next(error);
         },
       ),
+    )..interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (response, handler) async {
+          try {
+            final request = response.requestOptions;
+            if (request.method.toUpperCase() == 'GET' &&
+                await AppSettings.getOfflineEnabled() &&
+                response.statusCode != null &&
+                response.statusCode! >= 200 &&
+                response.statusCode! < 300) {
+              final token = await AuthStorage.getToken();
+              if (token != null && token.isNotEmpty) {
+                final key = _offlineCacheKey(request);
+                await OfflineStore.instance.cacheHttpResponse(
+                  key: key,
+                  userScope: token.hashCode.toString(),
+                  payload: response.data,
+                );
+              }
+            }
+          } catch (_) {
+            // Caching failure must never fail a successful online request.
+          }
+          handler.next(response);
+        },
+        onError: (error, handler) async {
+          final status = error.response?.statusCode;
+          final canFallback = status == null || status >= 500;
+          final request = error.requestOptions;
+          if (request.method.toUpperCase() == 'GET' &&
+              canFallback &&
+              await AppSettings.getOfflineEnabled()) {
+            try {
+              final token = await AuthStorage.getToken();
+              if (token != null && token.isNotEmpty) {
+                final cached = await OfflineStore.instance.readHttpResponse(
+                  key: _offlineCacheKey(request),
+                  userScope: token.hashCode.toString(),
+                );
+                if (cached != null) {
+                  handler.resolve(Response<dynamic>(
+                    requestOptions: request,
+                    data: cached,
+                    statusCode: 200,
+                    statusMessage: 'Offline cache',
+                    headers: Headers.fromMap({
+                      'x-karnama-offline-cache': ['1'],
+                    }),
+                  ));
+                  return;
+                }
+              }
+            } catch (_) {
+              // Fall through to original network error.
+            }
+          }
+          handler.next(error);
+        },
+      ),
     );
+
+  static String _offlineCacheKey(RequestOptions request) {
+    final query = Map<String, dynamic>.from(request.queryParameters);
+    final sortedKeys = query.keys.toList()..sort();
+    final normalizedQuery = <String, dynamic>{
+      for (final key in sortedKeys) key: query[key],
+    };
+    return '${request.method.toUpperCase()}:${request.uri.path}?${jsonEncode(normalizedQuery)}';
+  }
 
   static Future<Response<T>> get<T>(
     String path, {
