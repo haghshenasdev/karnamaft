@@ -61,7 +61,7 @@ class RecordCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        if (record.description!.trim().isNotEmpty) ...[
+                        if ((record.description ?? '').trim().isNotEmpty) ...[
                           const SizedBox(height: 5),
                           Text(
                             record.description!.trim(),

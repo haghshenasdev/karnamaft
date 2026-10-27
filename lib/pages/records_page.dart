@@ -6,6 +6,7 @@ import 'package:karnamaft/services/RecordService.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 import '../offline/offline_store.dart';
 import '../utils/app_settings.dart';
+import '../offline/offline_sync_service.dart';
 
 import '../../widgets/search/search_bar_widget.dart';
 
@@ -58,6 +59,7 @@ class _RecordsPageState extends State<RecordsPage> {
   String search = "";
   String? loadError;
   Timer? _searchDebounce;
+  Timer? _offlineCacheRefreshTimer;
   String sort = "-id";
   final Map<String, String> filters = {};
 
@@ -68,6 +70,7 @@ class _RecordsPageState extends State<RecordsPage> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _offlineCacheRefreshTimer?.cancel();
     searchController.dispose();
     scrollController.dispose();
     super.dispose();
@@ -78,6 +81,10 @@ class _RecordsPageState extends State<RecordsPage> {
     super.initState();
 
     loadData();
+    _offlineCacheRefreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (_) => _refreshCachedRecordsDuringSync(),
+    );
 
     scrollController.addListener(() {
       if (!scrollController.hasClients) return;
@@ -87,6 +94,53 @@ class _RecordsPageState extends State<RecordsPage> {
         loadMore();
       }
     });
+  }
+
+  Future<void> _refreshCachedRecordsDuringSync() async {
+    if (!mounted || !OfflineSyncService.isSyncing) return;
+
+    final enabled = await AppSettings.getOfflineEnabled();
+    final resource = _offlineResourceName();
+    if (!enabled || resource == null) return;
+
+    try {
+      final cached = await OfflineStore.instance.readCachedRecords(
+        resource: resource,
+        userId: 'current-user',
+      );
+      if (!mounted || cached.isEmpty) return;
+
+      final localRecords = cached
+          .map(_recordItemFromCache)
+          .whereType<RecordItem>()
+          .toList();
+
+      if (localRecords.isEmpty) return;
+
+      // Preserve search/filter behavior: only live-refresh the unfiltered list.
+      if (search.trim().isNotEmpty || filters.values.any((v) => v.isNotEmpty)) {
+        return;
+      }
+
+      final existingIds = records.map((r) => r.id).toSet();
+      final newIds = localRecords.map((r) => r.id).toSet();
+      if (existingIds.length == newIds.length &&
+          existingIds.containsAll(newIds)) {
+        return;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        records = localRecords;
+        totalCount = localRecords.length;
+        currentPage = 1;
+        hasMore = false;
+        loading = false;
+        loadError = 'همگام‌سازی در حال انجام است؛ اطلاعات ذخیره‌شده تا این لحظه نمایش داده می‌شود.';
+      });
+    } catch (_) {
+      // A cache refresh failure must not interrupt the current screen.
+    }
   }
 
   Future<void> loadData() async {
@@ -335,6 +389,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
   void onSearchChanged(String value) {
     _searchDebounce?.cancel();
+    _offlineCacheRefreshTimer?.cancel();
 
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
       search = value.trim();
@@ -474,7 +529,7 @@ class _RecordsPageState extends State<RecordsPage> {
             Expanded(
               child: loading
                   ? const Center(child: CircularProgressIndicator())
-                  : loadError != null
+                  : (loadError != null && records.isEmpty)
                       ? _RecordsErrorView(
                           message: loadError!,
                           onRetry: loadData,
