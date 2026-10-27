@@ -15,6 +15,8 @@ class LetterModel {
   final int? status;
 
   final int? kind;
+  final int? peiroowLetterId;
+  final LetterReference? peiroowLetter;
 
   final LetterUser? user;
 
@@ -43,6 +45,8 @@ class LetterModel {
     this.file,
     this.status,
     this.kind,
+    this.peiroowLetterId,
+    this.peiroowLetter,
     this.user,
     this.type,
     this.organ,
@@ -80,6 +84,14 @@ class LetterModel {
       file: json["file"]?.toString(),
       status: json["status"],
       kind: json["kind"],
+      peiroowLetterId: json["peiroow_letter_id"] is int
+          ? json["peiroow_letter_id"]
+          : int.tryParse('${json["peiroow_letter_id"] ?? ''}'),
+      peiroowLetter: json["peiroow_letter"] != null
+          ? LetterReference.fromJson(Map<String, dynamic>.from(json["peiroow_letter"]))
+          : (json["letter"] != null
+              ? LetterReference.fromJson(Map<String, dynamic>.from(json["letter"]))
+              : null),
 
       created_at: json["created_at"] == null
           ? null
@@ -152,6 +164,7 @@ class LetterModel {
       "file": file,
       "status": status,
       "kind": kind,
+      "peiroow_letter_id": peiroowLetterId,
     };
   }
 
@@ -163,6 +176,8 @@ class LetterModel {
     String? file,
     int? status,
     int? kind,
+    int? peiroowLetterId,
+    LetterReference? peiroowLetter,
     LetterDaftar? daftar,
     DateTime? created_at,
     DateTime? updated_at,
@@ -171,6 +186,7 @@ class LetterModel {
     List<LetterCustomer>? customers,
     List<LetterOrganOwner>? organsOwner,
     List<LetterUser>? cartables,
+    bool clearPeiroowLetter = false,
   }) {
     return LetterModel(
       id: id ?? this.id,
@@ -180,6 +196,8 @@ class LetterModel {
       file: file ?? this.file,
       status: status ?? this.status,
       kind: kind ?? this.kind,
+      peiroowLetterId: clearPeiroowLetter ? null : (peiroowLetterId ?? this.peiroowLetterId),
+      peiroowLetter: clearPeiroowLetter ? null : (peiroowLetter ?? this.peiroowLetter),
       user: user,
       type: type,
       organ: organ ?? this.organ,
@@ -204,7 +222,22 @@ class LetterModel {
       "file": file,
       "status": status,
       "kind": kind,
+      "peiroow_letter_id": peiroowLetterId,
     };
+  }
+}
+
+class LetterReference {
+  final int id;
+  final String subject;
+
+  const LetterReference({required this.id, required this.subject});
+
+  factory LetterReference.fromJson(Map<String, dynamic> json) {
+    return LetterReference(
+      id: json["id"] ?? 0,
+      subject: json["subject"]?.toString() ?? json["name"]?.toString() ?? "",
+    );
   }
 }
 

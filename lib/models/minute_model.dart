@@ -53,15 +53,11 @@ class MinuteModel {
       title: json["title"] ?? "",
       text: json["text"]?.toString(),
       file: json["file"]?.toString(),
-      date: json["date"] == null ? null : DateTime.parse(json["date"]),
+      date: _parseDate(json["date"]),
       typer_id: json["typer_id"] ?? null,
       task_id: json["task_id"] ?? null,
-      created_at: json["created_at"] == null
-          ? null
-          : DateTime.parse(json["created_at"]),
-      updated_at: json["updated_at"] == null
-          ? null
-          : DateTime.parse(json["updated_at"]),
+      created_at: _parseDate(json["created_at"]),
+      updated_at: _parseDate(json["updated_at"]),
       typer: json["typer"] != null ? MinuteUser.fromJson(json["typer"]) : null,
 
       taskCreator: json["task_creator"] != null
@@ -183,6 +179,13 @@ class MinuteModel {
   }
 }
 
+
+DateTime? _parseDate(dynamic value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  return DateTime.tryParse(text);
+}
 
 class MinuteProject {
   final int id;

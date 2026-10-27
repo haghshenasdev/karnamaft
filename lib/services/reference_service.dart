@@ -1,9 +1,12 @@
+import 'package:flutter/material.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
 import 'package:karnamaft/models/page_result.dart';
 import 'package:karnamaft/models/record_filter.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
+import 'package:karnamaft/widgets/reference_record_filter.dart';
+import 'package:karnamaft/widgets/date_record_filter.dart';
 
 class ReferenceService implements RecordService<RecordItem> {
   final String resource;
@@ -39,6 +42,65 @@ class ReferenceService implements RecordService<RecordItem> {
     } catch(e){throw ApiErrorHandler.handle(e);}
   }
 
-  @override List<RecordFilter> get filters => const [];
+  @override
+  List<RecordFilter> get filters {
+    switch (resource) {
+      case 'projects':
+        return [
+          RecordFilter(
+            key: 'status',
+            field: 'status',
+            title: 'وضعیت دستورکار',
+            icon: Icons.flag_outlined,
+            builder: (context, values, refresh, field) =>
+                DropdownButtonFormField<String>(
+              value: values[field],
+              decoration: const InputDecoration(labelText: 'وضعیت دستورکار'),
+              items: const [
+                DropdownMenuItem(value: '0', child: Text('جدید')),
+                DropdownMenuItem(value: '1', child: Text('اتمام')),
+                DropdownMenuItem(value: '2', child: Text('در حال پیگیری')),
+                DropdownMenuItem(value: '3', child: Text('غیرقابل پیگیری')),
+              ],
+              onChanged: (v) {
+                values[field] = v ?? '';
+                refresh();
+              },
+            ),
+          ),
+          RecordFilter(
+            key: 'date',
+            field: 'created_at',
+            title: 'تاریخ ایجاد',
+            icon: Icons.calendar_today,
+            builder: (context, values, refresh, field) =>
+                DateRecordFilter(
+              values: values,
+              field: field,
+              onChanged: refresh,
+            ),
+          ),
+        ];
+      case 'organs':
+        return [
+          RecordFilter(
+            key: 'organ_type_id',
+            field: 'organ_type_id',
+            title: 'نوع سازمان',
+            icon: Icons.account_tree_outlined,
+            builder: (context, values, refresh, field) =>
+                ReferenceRecordFilter(
+              resource: 'organ-types',
+              values: values,
+              field: field,
+              refresh: refresh,
+              label: 'نوع سازمان',
+            ),
+          ),
+        ];
+      default:
+        return const [];
+    }
+  }
   @override Future<bool> delete(int id) => throw UnimplementedError();
 }

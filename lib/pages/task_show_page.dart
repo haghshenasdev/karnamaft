@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:karnamaft/services/minute_service.dart';
+import 'package:karnamaft/widgets/file_preview_tile.dart';
 import 'package:karnamaft/widgets/record_files_card.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:karnamaft/widgets/record_share_dialog.dart';
@@ -9,10 +10,14 @@ import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/task_model.dart';
 import 'package:karnamaft/services/task_service.dart';
+import 'package:karnamaft/services/reference_service.dart';
+import 'package:karnamaft/widgets/jalali_dropdown_dialog.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 import 'package:karnamaft/utils/date_helper.dart';
 
 import 'package:provider/provider.dart';
 import '../models/minute_model.dart';
+import 'minute_show_page.dart';
 import '../models/record_item.dart';
 import '../models/select_dialog_config.dart';
 import '../widgets/select_record_dialog.dart';
@@ -57,6 +62,17 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
   final TextEditingController progressController =
       TextEditingController();
+  final TextEditingController dateController = TextEditingController();
+  final TextEditingController startedController = TextEditingController();
+  final TextEditingController endedController = TextEditingController();
+
+  TaskUser? selectedResponsible;
+  TaskCity? selectedCity;
+  TaskOrgan? selectedOrgan;
+  List<TaskProject> selectedProjects = [];
+  DateTime? selectedCreatedAt;
+  DateTime? selectedStartedAt;
+  DateTime? selectedEndedAt;
 
   @override
   void initState() {
@@ -72,6 +88,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
     descriptionController.dispose();
 
     progressController.dispose();
+    dateController.dispose();
+    startedController.dispose();
+    endedController.dispose();
 
     super.dispose();
   }
@@ -94,6 +113,16 @@ class _TaskShowPageState extends State<TaskShowPage> {
       selectedMinute = result.minutes == null
           ? null
           : MinuteProject(id: result.minutes!.id, name: result.minutes!.title);
+      selectedResponsible = result.responsible;
+      selectedCity = result.city;
+      selectedOrgan = result.organ;
+      selectedProjects = List<TaskProject>.from(result.projects);
+      selectedCreatedAt = result.createdAt;
+      selectedStartedAt = result.startedAt == null ? null : DateTime.tryParse(result.startedAt!);
+      selectedEndedAt = result.endedAt == null ? null : DateTime.tryParse(result.endedAt!);
+      dateController.text = result.createdAt == null ? '' : DateHelper.toDate(result.createdAt);
+      startedController.text = selectedStartedAt == null ? '' : DateHelper.toDateTime(selectedStartedAt);
+      endedController.text = selectedEndedAt == null ? '' : DateHelper.toDateTime(selectedEndedAt);
 
       if (!mounted) return;
 
@@ -180,6 +209,148 @@ class _TaskShowPageState extends State<TaskShowPage> {
     });
   }
 
+  Future<void> selectResponsible() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('users'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب مسئول',
+          multiSelect: false,
+          historyKey: 'task_responsible',
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() => selectedResponsible = TaskUser(id: result.id, name: result.title));
+    }
+  }
+
+  Future<void> selectCity() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('cities'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب محدوده (شهر)',
+          multiSelect: false,
+          historyKey: 'task_city',
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() => selectedCity = TaskCity(id: result.id, name: result.title));
+    }
+  }
+
+  Future<void> selectOrgan() async {
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('organs'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب دستگاه مربوطه',
+          multiSelect: false,
+          historyKey: 'task_organ',
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() => selectedOrgan = TaskOrgan(id: result.id, name: result.title));
+    }
+  }
+
+  Future<void> selectProjects() async {
+    final result = await showDialog<List<RecordItem>>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('projects'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب دستورکارها',
+          multiSelect: true,
+          historyKey: 'task_projects',
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        selectedProjects = result.map((e) => TaskProject(id: e.id, name: e.title)).toList();
+      });
+    }
+  }
+
+  Future<void> selectDate() async {
+    final j = await showJalaliDropdownDialog(
+      context,
+      initialDate: Jalali.fromDateTime(selectedCreatedAt ?? DateTime.now()),
+    );
+    if (j == null || !mounted) return;
+    setState(() {
+      selectedCreatedAt = j.toDateTime();
+      dateController.text = DateHelper.toDate(selectedCreatedAt);
+    });
+  }
+
+  Future<DateTime?> pickDateTime(DateTime? current) async {
+    final j = await showJalaliDropdownDialog(
+      context,
+      initialDate: Jalali.fromDateTime(current ?? DateTime.now()),
+    );
+    if (j == null || !mounted) return null;
+    final d = j.toDateTime();
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(current ?? DateTime.now()),
+    );
+    if (time == null) return null;
+    return DateTime(d.year, d.month, d.day, time.hour, time.minute);
+  }
+
+  Future<void> selectStarted() async {
+    final value = await pickDateTime(selectedStartedAt);
+    if (value == null || !mounted) return;
+    setState(() {
+      selectedStartedAt = value;
+      startedController.text = DateHelper.toDateTime(value);
+    });
+  }
+
+  Future<void> selectEnded() async {
+    final value = await pickDateTime(selectedEndedAt);
+    if (value == null || !mounted) return;
+    setState(() {
+      selectedEndedAt = value;
+      endedController.text = DateHelper.toDateTime(value);
+    });
+  }
+
+  Widget _selectionEditor({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    VoidCallback? onClear,
+    IconData icon = Icons.search,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          border: const OutlineInputBorder(),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis)),
+            IconButton(onPressed: onTap, icon: const Icon(Icons.search)),
+            if (onClear != null)
+              IconButton(onPressed: onClear, icon: const Icon(Icons.close)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _shareRecord() async {
     final item = task;
     if (item == null) return;
@@ -197,10 +368,10 @@ class _TaskShowPageState extends State<TaskShowPage> {
         ShareField(label: 'مسئول', value: item.responsible?.name ?? ''),
         ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.createdAt)),
       ],
-      file: item.files.isEmpty ? null : ShareFile(
-        name: item.files.first.fileName,
-        load: () => FileService.download(item.files.first.url),
-      ),
+      files: item.files.map((f) => ShareFile(
+        name: f.fileName,
+        load: () => FileService.download(f.url),
+      )).toList(),
     );
   }
 
@@ -351,24 +522,13 @@ class _TaskShowPageState extends State<TaskShowPage> {
                           ],
                         ),
                         for (final path in newUploadFiles)
-                          ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.insert_drive_file_outlined,
-                            ),
-                            title: Text(
-                              path.split(RegExp(r'[/\\]')).last,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  newUploadFiles.remove(path);
-                                });
-                              },
-                              icon: const Icon(Icons.clear),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: LocalFilePreviewTile(
+                              path: path,
+                              onRemove: () => setState(() {
+                                newUploadFiles.remove(path);
+                              }),
                             ),
                           ),
                       ],
@@ -397,6 +557,18 @@ class _TaskShowPageState extends State<TaskShowPage> {
                   ),
 
                   RecordField(title: "پیشرفت", value: "${item.progress ?? 0}٪"),
+
+                  if (item.startedAt != null)
+                    RecordField(
+                      title: "شروع",
+                      value: DateHelper.toDateTime(DateTime.tryParse(item.startedAt!)),
+                    ),
+
+                  if (item.endedAt != null)
+                    RecordField(
+                      title: "پایان",
+                      value: DateHelper.toDateTime(DateTime.tryParse(item.endedAt!)),
+                    ),
 
                   if (item.organ != null)
                     RecordField(title: "سازمان", value: item.organ!.name),
@@ -456,6 +628,100 @@ class _TaskShowPageState extends State<TaskShowPage> {
                   leading: const Icon(Icons.description_outlined),
                   title: const Text('صورتجلسه مرتبط'),
                   subtitle: Text(item.minutes!.title),
+                  trailing: const Icon(Icons.chevron_left),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MinuteShowPage(
+                        id: item.minutes!.id,
+                        title: item.minutes!.title,
+                      ),
+                    ),
+                  ).then((_) { if (mounted) loadData(); }),
+                ),
+
+              if (editing) ...[
+                _selectionEditor(
+                  label: 'تاریخ',
+                  value: dateController.text,
+                  icon: Icons.calendar_month,
+                  onTap: selectDate,
+                ),
+                _selectionEditor(
+                  label: 'شروع',
+                  value: startedController.text.isEmpty ? 'بدون زمان شروع' : startedController.text,
+                  icon: Icons.play_arrow_outlined,
+                  onTap: selectStarted,
+                  onClear: selectedStartedAt == null ? null : () => setState(() {
+                    selectedStartedAt = null;
+                    startedController.clear();
+                  }),
+                ),
+                _selectionEditor(
+                  label: 'پایان',
+                  value: endedController.text.isEmpty ? 'بدون زمان پایان' : endedController.text,
+                  icon: Icons.event_outlined,
+                  onTap: selectEnded,
+                  onClear: selectedEndedAt == null ? null : () => setState(() {
+                    selectedEndedAt = null;
+                    endedController.clear();
+                  }),
+                ),
+                _selectionEditor(
+                  label: 'محدوده (شهر)',
+                  value: selectedCity?.name ?? 'انتخاب نشده',
+                  icon: Icons.location_city_outlined,
+                  onTap: selectCity,
+                  onClear: selectedCity == null ? null : () => setState(() => selectedCity = null),
+                ),
+                _selectionEditor(
+                  label: 'مسئول',
+                  value: selectedResponsible?.name ?? 'انتخاب نشده',
+                  icon: Icons.person_outline,
+                  onTap: selectResponsible,
+                  onClear: selectedResponsible == null ? null : () => setState(() => selectedResponsible = null),
+                ),
+                _selectionEditor(
+                  label: 'دستگاه مربوطه',
+                  value: selectedOrgan?.name ?? 'انتخاب نشده',
+                  icon: Icons.business_outlined,
+                  onTap: selectOrgan,
+                  onClear: selectedOrgan == null ? null : () => setState(() => selectedOrgan = null),
+                ),
+              ],
+
+              if (editing)
+                Card(
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.folder_outlined),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: selectedProjects.isEmpty
+                                ? [const Text('دستورکاری انتخاب نشده است.')]
+                                : selectedProjects.map((e) => Chip(
+                                    label: Text(e.name),
+                                    deleteIcon: const Icon(Icons.close, size: 18),
+                                    onDeleted: () => setState(() {
+                                      selectedProjects.removeWhere((x) => x.id == e.id);
+                                    }),
+                                  )).toList(),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'انتخاب دستورکار',
+                          onPressed: selectProjects,
+                          icon: const Icon(Icons.search),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
 
               //--------------------------------------------------
@@ -656,11 +922,22 @@ class _TaskShowPageState extends State<TaskShowPage> {
     try {
       final model = task!.copyWith(
         name: nameController.text.trim(),
-
         description: descriptionController.text.trim(),
-
         progress: int.tryParse(progressController.text),
         minutesId: selectedMinute?.id,
+        clearMinutes: selectedMinute == null,
+        createdAt: selectedCreatedAt,
+        startedAt: selectedStartedAt?.toIso8601String(),
+        endedAt: selectedEndedAt?.toIso8601String(),
+        responsible: selectedResponsible,
+        city: selectedCity,
+        organ: selectedOrgan,
+        projects: selectedProjects,
+        clearStartedAt: selectedStartedAt == null,
+        clearEndedAt: selectedEndedAt == null,
+        clearResponsible: selectedResponsible == null,
+        clearCity: selectedCity == null,
+        clearOrgan: selectedOrgan == null,
       );
 
       final result = await _service.update(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../models/record_file.dart';
-import '../services/file_service.dart';
-import 'file_viewer_page.dart';
+import 'file_preview_tile.dart';
 
 class RecordFilesCard extends StatelessWidget {
   final List<RecordFile> files;
@@ -23,29 +23,21 @@ class RecordFilesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Icon(Icons.attach_file),
-            SizedBox(width: 8),
-            Text('فایل‌ها', style: TextStyle(fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 8),
-          ...files.map((file) => ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.insert_drive_file_outlined),
-            title: Text(file.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(file.extension.isEmpty ? 'فایل' : file.extension.toUpperCase()),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => FileViewerPage(
-                  title: file.title,
-                  fileName: file.fileName,
-                  future: FileService.download(file.url),
-                ),
+          const Row(
+            children: [
+              Icon(Icons.attach_file),
+              SizedBox(width: 8),
+              Text(
+                'پیش‌نمایش فایل‌ها',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-          )),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final file in files) ...[
+            FilePreviewTile(file: file),
+            const SizedBox(height: 8),
+          ],
         ],
       ),
     );

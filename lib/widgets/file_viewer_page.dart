@@ -496,11 +496,21 @@ class _FileViewerPageState extends State<FileViewerPage> {
 
       final pdf = pw.Document();
 
+      const format = PdfPageFormat.a4;
       pdf.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4,
+          pageFormat: format,
+          margin: pw.EdgeInsets.zero,
           build: (_) {
-            return pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain));
+            return pw.SizedBox(
+              width: format.width,
+              height: format.height,
+              child: pw.Image(
+                image,
+                fit: pw.BoxFit.contain,
+                alignment: pw.Alignment.center,
+              ),
+            );
           },
         ),
       );

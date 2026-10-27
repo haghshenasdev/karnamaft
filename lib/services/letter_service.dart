@@ -127,6 +127,7 @@ class LetterService implements RecordService<LetterModel> {
         "kind": model.kind,
         "daftar_id": model.daftar?.id,
         "organ_id": model.organ?.id,
+        "peiroow_letter_id": model.peiroowLetterId?.toString() ?? "",
         "created_at": model.created_at?.toIso8601String(),
 
         if (uploadFile != null)

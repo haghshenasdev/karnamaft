@@ -336,6 +336,7 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
             //--------------------------------------------------
             MinuteFileEditor(
               file: selectedFile,
+              bytes: selectedFileBytes,
 
               onChanged: (value) {
                 setState(() {

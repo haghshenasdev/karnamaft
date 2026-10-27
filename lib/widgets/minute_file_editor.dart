@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:karnamaft/services/scan_service.dart';
+import 'file_preview_tile.dart';
 
 class MinuteFileEditor extends StatefulWidget {
   final String? file;
@@ -10,6 +12,7 @@ class MinuteFileEditor extends StatefulWidget {
 
   final ValueChanged<Uint8List?>? onBytesChanged;
   final VoidCallback? onScan;
+  final Uint8List? bytes;
 
   const MinuteFileEditor({
     super.key,
@@ -17,6 +20,7 @@ class MinuteFileEditor extends StatefulWidget {
     required this.onChanged,
     this.onBytesChanged,
     this.onScan,
+    this.bytes,
   });
 
   @override
@@ -53,6 +57,7 @@ class _MinuteFileEditorState extends State<MinuteFileEditor> {
       widget.onBytesChanged?.call(picked.bytes);
     } else {
       widget.onChanged(picked.path!);
+      widget.onBytesChanged?.call(null);
     }
   }
 
@@ -83,31 +88,20 @@ class _MinuteFileEditorState extends State<MinuteFileEditor> {
 
           const SizedBox(height: 16),
 
-          if (widget.file != null && widget.file!.isNotEmpty)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.description, color: Colors.blue),
-              ),
-
-              title: Text(
-                widget.file!.split('/').last,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () {
-                  widget.onChanged(null);
-                },
-              ),
+          if (widget.bytes != null)
+            MemoryFilePreviewTile(
+              bytes: widget.bytes!,
+              fileName: widget.file ?? 'attachment',
+              onRemove: () {
+                widget.onChanged(null);
+                widget.onBytesChanged?.call(null);
+              },
+            )
+          else if (widget.file != null && widget.file!.isNotEmpty &&
+              File(widget.file!).existsSync())
+            LocalFilePreviewTile(
+              path: widget.file!,
+              onRemove: () => widget.onChanged(null),
             )
           else
             const Text(

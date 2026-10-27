@@ -204,6 +204,120 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
     });
   }
 
+  Future<void> showSortDialog() async {
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.arrow_downward),
+              title: const Text('جدیدترین'),
+              onTap: () => Navigator.pop(context, '-id'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_upward),
+              title: const Text('قدیمی‌ترین'),
+              onTap: () => Navigator.pop(context, 'id'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.sort_by_alpha),
+              title: const Text('عنوان (الف تا ی)'),
+              onTap: () => Navigator.pop(context, 'title'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.sort_by_alpha),
+              title: const Text('عنوان (ی تا الف)'),
+              onTap: () => Navigator.pop(context, '-title'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (value != null && value != sort) {
+      setState(() => sort = value);
+      await loadData();
+    }
+  }
+
+  Future<void> showFilterDialog() async {
+    final serviceFilters = widget.service.filters;
+    if (serviceFilters.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('برای این انتخاب‌گر فیلتر دیگری تعریف نشده است.')),
+        );
+      }
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'فیلترهای انتخاب',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      ...serviceFilters.map(
+                        (filter) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: filter.builder(
+                            context,
+                            filters,
+                            () => setSheetState(() {}),
+                            filter.field,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                filters.removeWhere((key, _) =>
+                                    key != 'search' &&
+                                    !key.startsWith('__label__'));
+                                setSheetState(() {});
+                              },
+                              child: const Text('حذف فیلترها'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () {
+                                Navigator.pop(sheetContext);
+                                loadData();
+                              },
+                              child: const Text('اعمال'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     debounce?.cancel();
@@ -307,33 +421,56 @@ class _SelectRecordDialogState extends State<SelectRecordDialog> {
                 ),
               ),
 
-            Row(
-              children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.filter_alt),
-
-                  label: const Text("فیلتر"),
-
-                  onPressed: () {
-                    // همان showFilterDialog صفحه RecordsPage
-                  },
-                ),
-
-                TextButton.icon(
-                  icon: const Icon(Icons.sort),
-
-                  label: const Text("مرتب سازی"),
-
-                  onPressed: () {},
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.filter_alt),
+                    label: Text(
+                      filters.entries.where((e) =>
+                          e.value.isNotEmpty &&
+                          e.key != 'search' &&
+                          !e.key.startsWith('__label__')).isEmpty
+                          ? "فیلتر"
+                          : "فیلتر فعال",
+                    ),
+                    onPressed: showFilterDialog,
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.sort),
+                    label: const Text("مرتب سازی"),
+                    onPressed: showSortDialog,
+                  ),
+                ],
+              ),
             ),
 
             const Divider(),
             Expanded(
               child: loading
                   ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
+                  : records.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.search_off, size: 48),
+                                const SizedBox(height: 10),
+                                const Text('موردی پیدا نشد.'),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: loadData,
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('تلاش مجدد'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
                       controller: scrollController,
                       itemCount: records.length + (loadingMore ? 1 : 0),
                       itemBuilder: (context, index) {

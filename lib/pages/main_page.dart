@@ -36,15 +36,20 @@ import 'package:provider/provider.dart';
 /// خوانده می‌شود.
 class MainPage extends StatefulWidget {
   final String? initialSharedFile;
+  final List<String>? initialSharedFiles;
 
-  const MainPage({super.key, this.initialSharedFile});
+  const MainPage({
+    super.key,
+    this.initialSharedFile,
+    this.initialSharedFiles,
+  });
 
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> {
-  StreamSubscription<String>? _shareSubscription;
+  StreamSubscription<List<String>>? _shareSubscription;
   int _unreadNotifications = 0;
 
   @override
@@ -58,13 +63,16 @@ class _MainPageState extends State<MainPage> {
       _openIncomingShare,
     );
 
+    final initialFiles = widget.initialSharedFiles;
     final initialFile = widget.initialSharedFile;
 
-    if (initialFile != null && initialFile.isNotEmpty) {
+    if (initialFiles != null && initialFiles.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _openIncomingShare(initialFile);
-        }
+        if (mounted) _openIncomingShare(initialFiles);
+      });
+    } else if (initialFile != null && initialFile.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openIncomingShare([initialFile]);
       });
     }
   }
@@ -76,11 +84,12 @@ class _MainPageState extends State<MainPage> {
     super.dispose();
   }
 
-  void _openIncomingShare(String path) {
-    if (!mounted || path.trim().isEmpty) return;
+  void _openIncomingShare(List<String> paths) {
+    final valid = paths.where((p) => p.trim().isNotEmpty).toList();
+    if (!mounted || valid.isEmpty) return;
 
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => IncomingSharePage(filePath: path)),
+      MaterialPageRoute(builder: (_) => IncomingSharePage(filePaths: valid)),
     );
   }
 
