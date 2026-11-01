@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:karnamaft/offline/offline_sync_service.dart';
+import 'package:karnamaft/utils/app_settings.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/pages/cartable_page.dart';
@@ -51,11 +55,14 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   StreamSubscription<List<String>>? _shareSubscription;
   int _unreadNotifications = 0;
+  bool _offlineEnabled = false;
+  bool _offlineDialogSyncing = false;
 
   @override
   void initState() {
     super.initState();
     _refreshUnreadNotifications();
+    _loadOfflineEnabled();
 
     IncomingShareService.initialize();
 
@@ -95,6 +102,89 @@ class _MainPageState extends State<MainPage> {
 
   void _open(BuildContext context, Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _loadOfflineEnabled() async {
+    final enabled = await AppSettings.getOfflineEnabled();
+    if (mounted) setState(() => _offlineEnabled = enabled);
+  }
+
+  String _jalaliSyncTime(DateTime? value) {
+    if (value == null) return 'هنوز همگام‌سازی موفقی انجام نشده است.';
+    final local = value.toLocal();
+    final j = Jalali.fromDateTime(local);
+    return 'آخرین همگام‌سازی: ${j.year}/${j.month.toString().padLeft(2, '0')}/${j.day.toString().padLeft(2, '0')} - ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _runOfflineSync(StateSetter setDialogState) async {
+    if (OfflineSyncService.isSyncing) return;
+    setDialogState(() => _offlineDialogSyncing = true);
+    try {
+      await OfflineSyncService.sync(onProgress: (_, __, ___) {
+        if (mounted) setDialogState(() {});
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در همگام‌سازی: $e')));
+    } finally {
+      if (mounted) setDialogState(() => _offlineDialogSyncing = false);
+    }
+  }
+
+  Future<void> _showOfflineDialog() async {
+    final enabled = await AppSettings.getOfflineEnabled();
+    if (!mounted) return;
+    if (!enabled) return;
+    final lastSync = await AppSettings.getOfflineLastSync();
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => ValueListenableBuilder<OfflineSyncStatus>(
+          valueListenable: OfflineSyncService.status,
+          builder: (context, status, _) => AlertDialog(
+            title: const Row(children: [Icon(Icons.cloud_sync_outlined), SizedBox(width: 8), Text('وضعیت آفلاین')]),
+            content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(status.message),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(value: status.phase == OfflineSyncPhase.running ? (status.progress > 0 ? status.progress : null) : status.progress),
+              const SizedBox(height: 6),
+              Text('${(status.progress * 100).round()}٪', style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 12),
+              FutureBuilder<String>(
+                future: AppSettings.getOfflineRootPath(),
+                builder: (context, snapshot) => Text('مسیر ذخیره: ${snapshot.data ?? '...' }', style: const TextStyle(fontSize: 12)),
+              ),
+              Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(
+                onPressed: _offlineDialogSyncing ? null : () async {
+                  final path = await FilePicker.platform.getDirectoryPath();
+                  if (path == null || path.isEmpty) return;
+                  await AppSettings.setOfflineRootPath(path);
+                  if (dialogContext.mounted) setDialogState(() {});
+                },
+                icon: const Icon(Icons.folder_open, size: 18),
+                label: const Text('تغییر مسیر ذخیره اطلاعات'),
+              )),
+              const SizedBox(height: 6),
+              FutureBuilder<DateTime?>(
+                future: AppSettings.getOfflineLastSync(),
+                builder: (context, snapshot) => Text(
+                  _jalaliSyncTime(snapshot.data ?? lastSync),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ),
+            ])),
+            actions: [
+              if (status.phase == OfflineSyncPhase.running)
+                TextButton.icon(onPressed: OfflineSyncService.requestPause, icon: const Icon(Icons.pause), label: const Text('توقف موقت'))
+              else
+                FilledButton.icon(onPressed: _offlineDialogSyncing ? null : () => _runOfflineSync(setDialogState), icon: const Icon(Icons.play_arrow), label: const Text('ادامه / شروع')),
+              TextButton(onPressed: () async { await AppSettings.setOfflineEnabled(false); if (mounted) setState(() => _offlineEnabled = false); if (dialogContext.mounted) Navigator.pop(dialogContext); }, child: const Text('غیرفعال‌سازی')),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('بستن')),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshUnreadNotifications() async {
@@ -289,6 +379,28 @@ class _MainPageState extends State<MainPage> {
               ],
             ),
           ),
+          if (_offlineEnabled)
+            ValueListenableBuilder<OfflineSyncStatus>(
+              valueListenable: OfflineSyncService.status,
+              builder: (context, status, _) {
+                final color = switch (status.phase) {
+                  OfflineSyncPhase.running => Colors.orange,
+                  OfflineSyncPhase.paused => Colors.amber,
+                  OfflineSyncPhase.completed => Colors.green,
+                  OfflineSyncPhase.sending => Colors.blue,
+                  OfflineSyncPhase.idle => Colors.teal,
+                };
+                return IconButton(
+                  tooltip: switch (status.phase) { OfflineSyncPhase.running => 'در حال دریافت اطلاعات', OfflineSyncPhase.paused => 'همگام‌سازی متوقف شده', OfflineSyncPhase.completed => 'همگام‌سازی کامل شده', OfflineSyncPhase.sending => 'در حال ارسال تغییرات', OfflineSyncPhase.idle => 'تنظیمات و همگام‌سازی آفلاین' },
+                  onPressed: _showOfflineDialog,
+                  icon: Stack(alignment: Alignment.center, children: [
+                    Icon(Icons.cloud_sync_outlined, color: color),
+                    if (status.phase == OfflineSyncPhase.running)
+                      const Positioned(right: 0, bottom: 0, child: SizedBox(width: 8, height: 8, child: CircularProgressIndicator(strokeWidth: 1.5))),
+                  ]),
+                );
+              },
+            ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 10),
             child: IconButton(

@@ -1,10 +1,13 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
 import '../api/api_client.dart';
+import '../storage/auth_storage.dart';
 import '../utils/app_settings.dart';
 import 'offline_store.dart';
 
@@ -29,7 +32,7 @@ class OfflineSyncService {
 
   // Larger pages reduce HTTP round trips. If the backend caps per_page,
   // pagination still works with the actual number of rows returned.
-  static const int _pageSize = 200;
+  static const int _pageSize = 100;
   static const int _cacheBatchSize = 250;
   static const int _downloadGroupSize = 20;
 
@@ -43,18 +46,50 @@ class OfflineSyncService {
   static bool get isSyncing => _isSyncing;
   static bool get isPauseRequested => _pauseRequested;
 
+  static Future<String> currentUserScope() async {
+    final token = await AuthStorage.getToken();
+    if (token == null || token.isEmpty) throw StateError('کاربر وارد نشده است.');
+    return base64Url.encode(utf8.encode(token));
+  }
+
+  /// Shared live state used by the home-screen offline indicator and settings.
+  static final ValueNotifier<OfflineSyncStatus> status = ValueNotifier(
+    const OfflineSyncStatus(
+      phase: OfflineSyncPhase.idle,
+      progress: 0,
+      message: 'همگام‌سازی هنوز اجرا نشده است',
+    ),
+  );
+
+  static void _publish(double done, double total, String message) {
+    final progress = total <= 0 ? 0.0 : (done / total).clamp(0.0, 1.0).toDouble();
+    final previousPhase = status.value.phase;
+    status.value = OfflineSyncStatus(
+      phase: _pauseRequested
+          ? OfflineSyncPhase.paused
+          : (previousPhase == OfflineSyncPhase.sending ? OfflineSyncPhase.sending : (_isSyncing ? OfflineSyncPhase.running : OfflineSyncPhase.idle)),
+      progress: progress,
+      message: message,
+    );
+  }
+
   /// Requests a safe pause. Current HTTP/file operation is allowed to finish.
   static void requestPause() {
     _pauseRequested = true;
+    final old = status.value;
+    status.value = OfflineSyncStatus(phase: OfflineSyncPhase.paused, progress: old.progress, message: 'درخواست توقف ثبت شد؛ پس از پایان عملیات جاری متوقف می‌شود.');
   }
 
   static Future<void> sync({required SyncProgress onProgress}) async {
     if (_isSyncing) return;
     _isSyncing = true;
+    _publish(0, 1, 'آماده‌سازی همگام‌سازی...');
     try {
-      await _syncInternal(onProgress: onProgress);
+      await _syncInternal(onProgress: (done, total, message) { _publish(done, total, message); onProgress(done, total, message); });
     } finally {
       _isSyncing = false;
+      final old = status.value;
+      status.value = OfflineSyncStatus(phase: _pauseRequested ? OfflineSyncPhase.paused : old.phase == OfflineSyncPhase.completed ? OfflineSyncPhase.completed : OfflineSyncPhase.idle, progress: old.progress, message: old.message);
     }
   }
 
@@ -64,7 +99,8 @@ class OfflineSyncService {
     await Directory(p.join(root.path, 'database')).create(recursive: true);
     await Directory(p.join(root.path, 'files')).create(recursive: true);
 
-    const userId = 'current-user';
+    // A token-scoped cache prevents one account from seeing another account's records.
+    final userId = await currentUserScope();
     var doneResources = 0;
     final totalResources = _resources.length;
     final checkpoint = await OfflineStore.instance.getSyncCheckpoint();
@@ -142,12 +178,22 @@ class OfflineSyncService {
           return;
         }
 
-        if ((parsed.lastPage != null && page >= parsed.lastPage!) ||
-            pageRecords.length < _pageSize) {
+        // Laravel caps per_page at 100. Do not stop merely because the
+        // returned page is smaller than our requested 200 rows.
+        if (parsed.lastPage != null && page >= parsed.lastPage!) {
           break;
         }
         page++;
       }
+
+      // The server response is a complete paginated snapshot. Remove local
+      // records that no longer exist in the authorized server result (deleted
+      // remotely or no longer visible to this account).
+      await OfflineStore.instance.removeRecordsMissingFromServer(
+        resource: resource,
+        userId: userId,
+        serverRecords: records,
+      );
 
       // Ensure globally descending order before processing attachments.
       records.sort(
@@ -224,6 +270,10 @@ class OfflineSyncService {
       );
     }
 
+    // Push queued offline mutations after the download phase. Mutations are
+    // retained in the outbox on failure and removed only after server success.
+    await _pushPendingMutations(userId, onProgress);
+
     await _saveSyncTime();
     await OfflineStore.instance.clearSyncCheckpoint();
     onProgress(
@@ -231,6 +281,41 @@ class OfflineSyncService {
       totalResources.toDouble(),
       'همگام‌سازی اطلاعات و فایل‌ها کامل شد',
     );
+  }
+
+  static Future<void> _pushPendingMutations(
+    String userId,
+    SyncProgress onProgress,
+  ) async {
+    final pending = await OfflineStore.instance.pendingMutations(userId);
+    if (pending.isEmpty) return;
+    for (var index = 0; index < pending.length; index++) {
+      final row = pending[index];
+      final id = row['id'] as int;
+      try {
+        final method = (row['method'] ?? 'POST').toString().toUpperCase();
+        final endpoint = (row['endpoint'] ?? '').toString();
+        final payload = jsonDecode((row['payload'] ?? '{}').toString());
+        if (endpoint.isEmpty || payload is! Map) {
+          throw StateError('درخواست آفلاین نامعتبر است.');
+        }
+        status.value = OfflineSyncStatus(
+          phase: OfflineSyncPhase.sending,
+          progress: pending.isEmpty ? 1 : index / pending.length,
+          message: 'ارسال تغییرات آفلاین ${index + 1} از ${pending.length}',
+        );
+        await ApiClient.dio.request(
+          endpoint,
+          data: Map<String, dynamic>.from(payload),
+          options: Options(method: method, receiveTimeout: const Duration(seconds: 90)),
+        );
+        await OfflineStore.instance.markMutationSynced(id);
+      } catch (error) {
+        await OfflineStore.instance.markMutationFailed(id, error);
+        // Keep processing independent mutations; failed rows remain queued.
+      }
+      onProgress(1, 1, 'ارسال تغییرات آفلاین ${index + 1} از ${pending.length}');
+    }
   }
 
   static _ParsedPage _parsePage(dynamic body) {
@@ -300,6 +385,25 @@ class OfflineSyncService {
     await directory.create(recursive: true);
 
     final candidates = <Map<String, dynamic>>[];
+    final recordIdForFiles = (record['id'] ?? record['uuid'])?.toString();
+    if (recordIdForFiles != null && const {'letters', 'minutes', 'tasks', 'contents'}.contains(type)) {
+      try {
+        final filesResponse = await _getWithRetry<dynamic>(
+          '/mobile/v1/files/$type/$recordIdForFiles',
+          options: Options(receiveTimeout: const Duration(seconds: 60)),
+        );
+        final body = filesResponse.data;
+        final rows = body is Map ? body['data'] : null;
+        if (rows is List) {
+          for (final file in rows.whereType<Map>()) {
+            candidates.add(Map<String, dynamic>.from(file));
+          }
+        }
+      } catch (_) {
+        // Keep embedded attachment metadata as a fallback; a failed metadata
+        // endpoint must not abort caching the record itself.
+      }
+    }
     for (final key in [
       'file_url',
       'download_url',
@@ -524,7 +628,6 @@ class OfflineSyncService {
 class _ParsedPage {
   final List<Map<String, dynamic>> records;
   final int? lastPage;
-
   const _ParsedPage(this.records, this.lastPage);
 }
 
@@ -533,4 +636,14 @@ extension _FirstOrNullExtension<T> on Iterable<T> {
     final iterator = this.iterator;
     return iterator.moveNext() ? iterator.current : null;
   }
+}
+
+
+enum OfflineSyncPhase { idle, running, paused, completed, sending }
+
+class OfflineSyncStatus {
+  final OfflineSyncPhase phase;
+  final double progress;
+  final String message;
+  const OfflineSyncStatus({required this.phase, required this.progress, required this.message});
 }

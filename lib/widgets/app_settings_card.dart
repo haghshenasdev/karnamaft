@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:karnamaft/utils/app_settings.dart';
 import 'package:karnamaft/offline/offline_sync_service.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 class AppSettingsCard extends StatefulWidget {
   const AppSettingsCard({super.key});
@@ -223,6 +224,13 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
     }
   }
 
+  String _jalaliDateTime(DateTime value) {
+    final j = Jalali.fromDateTime(value);
+    final date = '${j.year}/${j.month.toString().padLeft(2, '0')}/${j.day.toString().padLeft(2, '0')}';
+    final time = '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+    return '$date ساعت $time';
+  }
+
   Future<void> _changeReadWithoutGallerySave(bool value) async {
     setState(() {
       saving = true;
@@ -422,16 +430,26 @@ class _AppSettingsCardState extends State<AppSettingsCard> {
                     ),
                     const SizedBox(height: 10),
                     if (syncingOffline || syncMessage.isNotEmpty) ...[
-                      LinearProgressIndicator(
-                        value: syncingOffline ? (syncProgress > 0 ? syncProgress.clamp(0.0, 1.0) : null) : syncProgress,
-                      ),
+                      Row(children: [
+                        Expanded(child: LinearProgressIndicator(
+                          value: syncingOffline ? (syncProgress > 0 ? syncProgress.clamp(0.0, 1.0) : null) : syncProgress,
+                        )),
+                        if (syncingOffline) ...[
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'توقف موقت',
+                            onPressed: OfflineSyncService.requestPause,
+                            icon: const Icon(Icons.pause_circle_outline),
+                          ),
+                        ],
+                      ]),
                       const SizedBox(height: 6),
                       Text(syncMessage, style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
                     ],
                     Text(
                       offlineLastSync == null
                           ? 'هنوز همگام‌سازی موفقی انجام نشده است.'
-                          : 'آخرین همگام‌سازی: ${offlineLastSync!.toLocal()}',
+                          : 'آخرین همگام‌سازی: ${_jalaliDateTime(offlineLastSync!.toLocal())}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],

@@ -1,9 +1,9 @@
 import 'package:karnamaft/models/record_item.dart';
 
 class ContentGroupModel {
-  final int id; final String name; final int? parentId;
-  const ContentGroupModel({required this.id,required this.name,this.parentId});
-  factory ContentGroupModel.fromJson(Map<String,dynamic> j)=>ContentGroupModel(id:j['id']??0,name:j['name']?.toString()??'',parentId:j['parent_id']==null?null:int.tryParse('${j['parent_id']}'));
+  final int id; final String name; final int? parentId; final bool hasChildren;
+  const ContentGroupModel({required this.id,required this.name,this.parentId,this.hasChildren=false});
+  factory ContentGroupModel.fromJson(Map<String,dynamic> j)=>ContentGroupModel(id:j['id']??0,name:j['name']?.toString()??'',parentId:j['parent_id']==null?null:int.tryParse('${j['parent_id']}'),hasChildren:j['has_children']==true || j['children_count']!=null && (int.tryParse('${j['children_count']}')??0)>0);
 }
 class ContentPart {
   final String type; final String? text,file,name,url,mime,drawing,drawingUrl;

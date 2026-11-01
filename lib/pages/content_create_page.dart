@@ -1,10 +1,10 @@
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
-import 'package:karnamaft/models/select_dialog_config.dart';
-import 'package:karnamaft/services/content_group_service.dart';
+import 'package:karnamaft/models/content_model.dart';
+import 'package:karnamaft/widgets/content_group_filter.dart';
 import 'package:karnamaft/services/content_service.dart';
-import 'package:karnamaft/widgets/select_record_dialog.dart';
 
 class ContentCreatePage extends StatefulWidget {
   final Uint8List? initialFileBytes;
@@ -19,18 +19,31 @@ class _ContentCreatePageState extends State<ContentCreatePage> {
   final text = TextEditingController();
   List<RecordItem> groups = [];
   bool saving = false;
+  Uint8List? pickedFileBytes;
+  String? pickedFileName;
 
   @override void dispose() { title.dispose(); text.dispose(); super.dispose(); }
 
   Future<void> pickGroups() async {
-    final result = await showDialog(
-      context: context,
-      builder: (_) => SelectRecordDialog(
-        service: const ContentGroupService(),
-        config: const SelectDialogConfig(title: 'دسته‌بندی یادداشت', multiSelect: true, historyKey: 'content_groups'),
-      ),
-    );
-    if (result is List<RecordItem>) setState(() => groups = result);
+    final result = await ContentGroupPicker.show(context, title: 'دسته‌بندی یادداشت', multiSelect: true);
+    if (result != null) {
+      setState(() => groups = result.map((g) => RecordItem(id: g.id, title: g.name)).toList());
+    }
+  }
+
+  Future<void> pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(withData: true, allowMultiple: false);
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      if (file.bytes == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('خواندن فایل انتخاب‌شده ممکن نشد')));
+        return;
+      }
+      setState(() { pickedFileBytes = file.bytes; pickedFileName = file.name; });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('انتخاب فایل ناموفق بود: $e')));
+    }
   }
 
   Future<void> save() async {
@@ -46,8 +59,8 @@ class _ContentCreatePageState extends State<ContentCreatePage> {
         title: title.text.trim(),
         groupIds: groups.map((e) => e.id).toList(),
         body: body,
-        uploadBytes: widget.initialFileBytes,
-        uploadFileName: widget.initialFileName,
+        uploadBytes: pickedFileBytes ?? widget.initialFileBytes,
+        uploadFileName: pickedFileName ?? widget.initialFileName,
       );
       if (mounted) Navigator.pop(context, result);
     } catch (e) {
@@ -74,16 +87,29 @@ class _ContentCreatePageState extends State<ContentCreatePage> {
                 decoration: const InputDecoration(labelText: 'دسته‌بندی', border: OutlineInputBorder(), suffixIcon: Icon(Icons.arrow_drop_down)),
                 child: Wrap(
                   spacing: 6,
-                  children: groups.isEmpty ? [const Text('انتخاب دسته‌بندی')] : groups.map((e) => Chip(label: Text(e.title))).toList(),
+                  children: groups.isEmpty ? [const Text('انتخاب دسته‌بندی')] : groups.map((e) => Chip(label: Text('${e.id} - ${e.title}'))).toList(),
                 ),
               ),
             ),
             const SizedBox(height: 16),
             TextField(controller: text, minLines: 5, maxLines: 15, decoration: const InputDecoration(labelText: 'متن یادداشت', border: OutlineInputBorder())),
-            if (widget.initialFileName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Card(child: ListTile(leading: const Icon(Icons.attach_file), title: Text(widget.initialFileName!))),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: saving ? null : pickFile,
+              icon: const Icon(Icons.attach_file),
+              label: Text(pickedFileName == null && widget.initialFileName == null ? 'افزودن فایل پیوست' : 'تغییر فایل پیوست'),
+            ),
+            if (pickedFileName != null || widget.initialFileName != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: Text(pickedFileName ?? widget.initialFileName!, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  trailing: IconButton(
+                    tooltip: 'حذف فایل انتخاب‌شده',
+                    icon: const Icon(Icons.close),
+                    onPressed: saving ? null : () => setState(() { pickedFileBytes = null; pickedFileName = null; }),
+                  ),
+                ),
               ),
             const SizedBox(height: 24),
             FilledButton.icon(

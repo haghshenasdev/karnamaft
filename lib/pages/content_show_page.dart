@@ -3,9 +3,8 @@ import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/content_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
-import 'package:karnamaft/services/content_group_service.dart';
+import 'package:karnamaft/widgets/content_group_filter.dart';
 import 'package:karnamaft/services/content_service.dart';
-import 'package:karnamaft/widgets/select_record_dialog.dart';
 import 'package:karnamaft/widgets/file_viewer_page.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:provider/provider.dart';
@@ -47,14 +46,17 @@ class _ContentShowPageState extends State<ContentShowPage> {
   }
 
   Future<void> pickGroups() async {
-    final result = await showDialog(
-      context: context,
-      builder: (_) => SelectRecordDialog(
-        service: const ContentGroupService(),
-        config: const SelectDialogConfig(title: 'دسته‌بندی یادداشت', multiSelect: true, historyKey: 'content_groups'),
-      ),
+    final currentGroups = item?.groups ?? const <ContentGroupModel>[];
+    final result = await ContentGroupPicker.show(
+      context,
+      title: 'دسته‌بندی یادداشت',
+      multiSelect: true,
+      initialIds: groups.map((g) => g.id).toSet(),
+      initialGroups: currentGroups,
     );
-    if (result is List<RecordItem>) setState(() => groups = result);
+    if (result != null) {
+      setState(() => groups = result.map((g) => RecordItem(id: g.id, title: g.name)).toList());
+    }
   }
 
   Future<void> save() async {
@@ -120,8 +122,8 @@ class _ContentShowPageState extends State<ContentShowPage> {
               editing ? TextField(controller: title, decoration: const InputDecoration(labelText: 'عنوان', border: OutlineInputBorder())) : Text(x.title, style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 16),
               editing
-                  ? InkWell(onTap: pickGroups, child: InputDecorator(decoration: const InputDecoration(labelText: 'دسته‌بندی', border: OutlineInputBorder()), child: Wrap(spacing: 6, children: groups.isEmpty ? [const Text('بدون دسته‌بندی')] : groups.map((e) => Chip(label: Text(e.title))).toList())))
-                  : Wrap(spacing: 6, children: x.groups.map((e) => Chip(label: Text(e.name))).toList()),
+                  ? InkWell(onTap: pickGroups, child: InputDecorator(decoration: const InputDecoration(labelText: 'دسته‌بندی', border: OutlineInputBorder()), child: Wrap(spacing: 6, children: groups.isEmpty ? [const Text('بدون دسته‌بندی')] : groups.map((e) => Chip(label: Text('${e.id} - ${e.title}'))).toList())))
+                  : Wrap(spacing: 6, children: x.groups.map((e) => Chip(label: Text('${e.id} - ${e.name}'))).toList()),
               const SizedBox(height: 16),
               editing ? TextField(controller: text, minLines: 5, maxLines: 15, decoration: const InputDecoration(labelText: 'متن', border: OutlineInputBorder())) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: x.body.map(_part).toList()),
               if (editing) ...[const SizedBox(height: 24), FilledButton.icon(onPressed: saving ? null : save, icon: const Icon(Icons.save), label: const Text('ذخیره'))],

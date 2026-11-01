@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
+import 'package:karnamaft/services/content_service.dart';
+import 'package:karnamaft/models/content_model.dart';
+import 'package:karnamaft/services/file_service.dart';
+import 'package:karnamaft/widgets/file_viewer_page.dart';
 import 'package:karnamaft/widgets/record_card.dart';
 import '../offline/offline_store.dart';
 import '../utils/app_settings.dart';
@@ -106,7 +110,7 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       final cached = await OfflineStore.instance.readCachedRecords(
         resource: resource,
-        userId: 'current-user',
+        userId: await OfflineSyncService.currentUserScope(),
       );
       if (!mounted || cached.isEmpty) return;
 
@@ -160,7 +164,7 @@ class _RecordsPageState extends State<RecordsPage> {
       try {
         final cached = await OfflineStore.instance.readCachedRecords(
           resource: offlineResource,
-          userId: 'current-user',
+          userId: await OfflineSyncService.currentUserScope(),
         );
         final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
         if (localRecords.isNotEmpty && mounted) {
@@ -201,7 +205,7 @@ class _RecordsPageState extends State<RecordsPage> {
       if (offlineEnabled && offlineResource != null) {
         await OfflineStore.instance.cacheRecords(
           resource: offlineResource,
-          userId: 'current-user',
+          userId: await OfflineSyncService.currentUserScope(),
           records: result.data.map((r) => <String, dynamic>{
             'id': r.id,
             'title': r.title,
@@ -223,7 +227,7 @@ class _RecordsPageState extends State<RecordsPage> {
         if (enabled && resource != null) {
           final cached = await OfflineStore.instance.readCachedRecords(
             resource: resource,
-            userId: 'current-user',
+            userId: await OfflineSyncService.currentUserScope(),
           );
           if (cached.isNotEmpty) {
             final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
@@ -565,7 +569,30 @@ class _RecordsPageState extends State<RecordsPage> {
 
                           onOpen: () {},
 
-                          onFile: () {},
+                          onFile: record.hasAttachment && widget.service is ContentService
+                              ? () async {
+                                  try {
+                                    final content = await (widget.service as ContentService).show(record.id);
+                                    final part = content.body.cast<ContentPart?>().firstWhere(
+                                      (p) => p != null && ((p.url ?? '').isNotEmpty || (p.drawingUrl ?? '').isNotEmpty),
+                                      orElse: () => null,
+                                    );
+                                    if (part == null || !mounted) return;
+                                    final url = (part.url?.isNotEmpty == true) ? part.url! : part.drawingUrl!;
+                                    await Navigator.push(context, MaterialPageRoute(
+                                      builder: (_) => FileViewerPage(
+                                        title: part.name ?? 'پیوست یادداشت',
+                                        fileName: part.name ?? 'attachment',
+                                        future: FileService.download(url),
+                                      ),
+                                    ));
+                                  } catch (e) {
+                                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('باز کردن فایل ناموفق بود: $e')),
+                                    );
+                                  }
+                                }
+                              : () {},
 
                           onRefer: null,
 

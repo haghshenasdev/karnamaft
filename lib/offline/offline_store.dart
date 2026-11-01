@@ -237,6 +237,43 @@ class OfflineStore {
         .toList();
   }
 
+  /// Reconciles a full server snapshot and removes records deleted remotely.
+  /// Called only after every page of a resource has been fetched successfully.
+  Future<void> removeRecordsMissingFromServer({
+    required String resource,
+    required String userId,
+    required List<Map<String, dynamic>> serverRecords,
+  }) async {
+    final db = await database;
+    final serverIds = serverRecords
+        .map((record) => (record['id'] ?? record['uuid'])?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    final localRows = await db.query(
+      'cache_records',
+      columns: ['record_id'],
+      where: 'resource=? AND user_id=?',
+      whereArgs: [resource, userId],
+    );
+    final staleIds = localRows
+        .map((row) => row['record_id']?.toString())
+        .whereType<String>()
+        .where((id) => !serverIds.contains(id))
+        .toList();
+
+    for (var start = 0; start < staleIds.length; start += 400) {
+      final chunk = staleIds.skip(start).take(400).toList();
+      if (chunk.isEmpty) continue;
+      final placeholders = List.filled(chunk.length, '?').join(',');
+      await db.rawDelete(
+        'DELETE FROM cache_records WHERE resource=? AND user_id=? AND record_id IN ($placeholders)',
+        [resource, userId, ...chunk],
+      );
+    }
+  }
+
   Future<void> enqueueMutation({
     required String mutationId,
     required String method,
