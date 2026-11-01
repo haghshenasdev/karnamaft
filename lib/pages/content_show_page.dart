@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
+import 'package:karnamaft/offline/offline_store.dart';
+import 'package:karnamaft/offline/offline_sync_service.dart';
+import 'package:karnamaft/utils/app_settings.dart';
 import 'package:karnamaft/models/content_model.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
@@ -30,7 +33,11 @@ class _ContentShowPageState extends State<ContentShowPage> {
   Future<void> load() async {
     setState(() => loading = true);
     try {
-      final result = await service.show(widget.id);
+      ContentModel result;
+      if (await AppSettings.getOfflineEnabled()) {
+        final row = await OfflineStore.instance.readCachedRecord(resource: 'contents', userId: await OfflineSyncService.currentUserScope(), recordId: '${widget.id}');
+        if (row != null) { result = ContentModel.fromJson(row); } else { result = await service.show(widget.id); }
+      } else { result = await service.show(widget.id); }
       if (!mounted) return;
       setState(() {
         item = result;
@@ -84,12 +91,12 @@ class _ContentShowPageState extends State<ContentShowPage> {
 
   Widget _part(ContentPart part) {
     if (part.type == 'text') return Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(part.text ?? ''));
-    return Card(child: ListTile(leading: const Icon(Icons.attach_file), title: Text(part.name ?? 'پیوست'), subtitle: Text(part.mime ?? part.file ?? ''), onTap: part.url == null ? null : () => _openFile(part)));
+    return Card(child: ListTile(leading: const Icon(Icons.attach_file), title: Text(part.name ?? 'پیوست'), subtitle: Text(part.mime ?? part.file ?? ''), onTap: (part.url == null && part.localPath == null) ? null : () => _openFile(part)));
   }
 
   Future<void> _openFile(ContentPart part) async {
-    final url = part.url;
-    if (url == null || url.isEmpty) return;
+    final url = part.url ?? part.drawingUrl ?? '';
+    if (url.isEmpty && (part.localPath == null || part.localPath!.isEmpty)) return;
 
     await Navigator.push(
       context,
@@ -97,7 +104,7 @@ class _ContentShowPageState extends State<ContentShowPage> {
         builder: (_) => FileViewerPage(
           title: part.name ?? 'پیوست یادداشت',
           fileName: part.name ?? 'attachment',
-          future: FileService.download(url),
+          future: FileService.download(url, localPath: part.localPath),
         ),
       ),
     );
@@ -134,3 +141,5 @@ class _ContentShowPageState extends State<ContentShowPage> {
     );
   }
 }
+
+extension _ContentFirstOrNull<T> on Iterable<T> { T? get firstOrNull { final it = iterator; return it.moveNext() ? it.current : null; } }

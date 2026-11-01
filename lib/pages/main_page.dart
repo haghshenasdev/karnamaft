@@ -63,6 +63,7 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     _refreshUnreadNotifications();
     _loadOfflineEnabled();
+    AppSettings.offlineEnabledNotifier.addListener(_onOfflineEnabledChanged);
 
     IncomingShareService.initialize();
 
@@ -84,8 +85,13 @@ class _MainPageState extends State<MainPage> {
     }
   }
 
+  void _onOfflineEnabledChanged() {
+    if (mounted) setState(() => _offlineEnabled = AppSettings.offlineEnabledNotifier.value);
+  }
+
   @override
   void dispose() {
+    AppSettings.offlineEnabledNotifier.removeListener(_onOfflineEnabledChanged);
     _shareSubscription?.cancel();
     // IncomingShareService.dispose();
     super.dispose();

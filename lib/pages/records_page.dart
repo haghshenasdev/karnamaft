@@ -55,6 +55,7 @@ class _RecordsPageState extends State<RecordsPage> {
   List<RecordItem> records = [];
 
   bool loadingMore = false;
+  bool _usingOfflineCache = false;
 
   int currentPage = 1;
 
@@ -151,6 +152,7 @@ class _RecordsPageState extends State<RecordsPage> {
     if (mounted) {
       setState(() {
         loading = true;
+        _usingOfflineCache = false;
         loadError = null;
         records = [];
       });
@@ -162,17 +164,20 @@ class _RecordsPageState extends State<RecordsPage> {
     final offlineResource = _offlineResourceName();
     if (offlineEnabled && offlineResource != null) {
       try {
-        final cached = await OfflineStore.instance.readCachedRecords(
-          resource: offlineResource,
-          userId: await OfflineSyncService.currentUserScope(),
+        final userScope = await OfflineSyncService.currentUserScope();
+        const localPageSize = 50;
+        final cached = await OfflineStore.instance.readCachedRecordsPage(
+          resource: offlineResource, userId: userScope, limit: localPageSize, offset: 0,
         );
+        final localTotal = await OfflineStore.instance.countCachedRecords(resource: offlineResource, userId: userScope);
         final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
         if (localRecords.isNotEmpty && mounted) {
           setState(() {
             records = localRecords;
-            totalCount = localRecords.length;
+            _usingOfflineCache = true;
+            totalCount = localTotal;
             currentPage = 1;
-            hasMore = false;
+            hasMore = localTotal > localPageSize;
             loading = false;
             loadError = 'حالت آفلاین فعال است؛ برای دریافت تغییرات جدید، از تنظیمات همگام‌سازی را اجرا کنید.';
           });
@@ -225,18 +230,19 @@ class _RecordsPageState extends State<RecordsPage> {
         final enabled = await AppSettings.getOfflineEnabled();
         final resource = _offlineResourceName();
         if (enabled && resource != null) {
-          final cached = await OfflineStore.instance.readCachedRecords(
-            resource: resource,
-            userId: await OfflineSyncService.currentUserScope(),
-          );
+          final userScope = await OfflineSyncService.currentUserScope();
+          const localPageSize = 50;
+          final cached = await OfflineStore.instance.readCachedRecordsPage(resource: resource, userId: userScope, limit: localPageSize, offset: 0);
+          final localTotal = await OfflineStore.instance.countCachedRecords(resource: resource, userId: userScope);
           if (cached.isNotEmpty) {
             final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
             if (localRecords.isNotEmpty) {
               setState(() {
                 records = localRecords;
-                totalCount = localRecords.length;
+                _usingOfflineCache = true;
+                totalCount = localTotal;
                 currentPage = 1;
-                hasMore = false;
+                hasMore = localTotal > localPageSize;
                 loading = false;
                 loadError = 'نمایش نسخه محلی؛ اتصال به سرور برقرار نیست.';
               });
@@ -287,6 +293,18 @@ class _RecordsPageState extends State<RecordsPage> {
     setState(() => loadingMore = true);
 
     try {
+      final offlineResource = _offlineResourceName();
+      if (_usingOfflineCache && offlineResource != null) {
+        final userScope = await OfflineSyncService.currentUserScope();
+        const localPageSize = 50;
+        final cached = await OfflineStore.instance.readCachedRecordsPage(
+          resource: offlineResource, userId: userScope, limit: localPageSize, offset: currentPage * localPageSize,
+        );
+        final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
+        if (!mounted) return;
+        setState(() { records.addAll(localRecords); currentPage++; hasMore = records.length < totalCount; });
+        return;
+      }
       final result = await widget.service.list(
         page: currentPage + 1,
         sort: sort,
@@ -572,18 +590,24 @@ class _RecordsPageState extends State<RecordsPage> {
                           onFile: record.hasAttachment && widget.service is ContentService
                               ? () async {
                                   try {
-                                    final content = await (widget.service as ContentService).show(record.id);
+                                    ContentModel content;
+                                    if (await AppSettings.getOfflineEnabled()) {
+                                      final row = await OfflineStore.instance.readCachedRecord(resource: 'contents', userId: await OfflineSyncService.currentUserScope(), recordId: '${record.id}');
+                                      content = row == null ? await (widget.service as ContentService).show(record.id) : ContentModel.fromJson(row);
+                                    } else {
+                                      content = await (widget.service as ContentService).show(record.id);
+                                    }
                                     final part = content.body.cast<ContentPart?>().firstWhere(
-                                      (p) => p != null && ((p.url ?? '').isNotEmpty || (p.drawingUrl ?? '').isNotEmpty),
+                                      (p) => p != null && ((p.url ?? '').isNotEmpty || (p.drawingUrl ?? '').isNotEmpty || (p.localPath ?? '').isNotEmpty),
                                       orElse: () => null,
                                     );
                                     if (part == null || !mounted) return;
-                                    final url = (part.url?.isNotEmpty == true) ? part.url! : part.drawingUrl!;
+                                    final url = (part.url?.isNotEmpty == true) ? part.url! : (part.drawingUrl ?? '');
                                     await Navigator.push(context, MaterialPageRoute(
                                       builder: (_) => FileViewerPage(
                                         title: part.name ?? 'پیوست یادداشت',
                                         fileName: part.name ?? 'attachment',
-                                        future: FileService.download(url),
+                                        future: FileService.download(url, localPath: part.localPath),
                                       ),
                                     ));
                                   } catch (e) {
@@ -867,3 +891,5 @@ class _RecordsErrorView extends StatelessWidget {
     );
   }
 }
+
+extension _RecordsFirstOrNull<T> on Iterable<T> { T? get firstOrNull { final it = iterator; return it.moveNext() ? it.current : null; } }

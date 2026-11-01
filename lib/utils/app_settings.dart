@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class AppSettings {
   static const _lettersPathKey = 'letters_path';
@@ -10,15 +11,19 @@ class AppSettings {
   static const _offlineEnabledKey = 'offline_enabled';
   static const _offlineRootPathKey = 'offline_root_path';
   static const _offlineLastSyncKey = 'offline_last_sync';
+  static final ValueNotifier<bool> offlineEnabledNotifier = ValueNotifier<bool>(false);
 
   static Future<bool> getOfflineEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_offlineEnabledKey) ?? false;
+    final value = prefs.getBool(_offlineEnabledKey) ?? false;
+    offlineEnabledNotifier.value = value;
+    return value;
   }
 
   static Future<void> setOfflineEnabled(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_offlineEnabledKey, value);
+    offlineEnabledNotifier.value = value;
   }
 
   static Future<String> getOfflineRootPath() async {

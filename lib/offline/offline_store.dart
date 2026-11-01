@@ -237,6 +237,94 @@ class OfflineStore {
         .toList();
   }
 
+
+  Future<String?> findLocalFileByUrl({required String userId, required String url}) async {
+    final db = await database;
+    final rows = await db.query('cache_records', columns: ['payload'], where: 'user_id=?', whereArgs: [userId]);
+    for (final row in rows) {
+      try {
+        final payload = jsonDecode(row['payload'] as String);
+        String? find(dynamic value) {
+          if (value is Map) {
+            final candidateUrl = (value['url'] ?? value['download_url'] ?? value['drawing_url'] ?? '').toString();
+            final localPath = value['local_path']?.toString();
+            if (candidateUrl == url && localPath != null && localPath.isNotEmpty) return localPath;
+            for (final child in value.values) { final found = find(child); if (found != null) return found; }
+          } else if (value is List) {
+            for (final child in value) { final found = find(child); if (found != null) return found; }
+          }
+          return null;
+        }
+        final path = find(payload);
+        if (path != null && await File(path).exists()) return path;
+      } catch (_) { /* Skip a damaged cache row. */ }
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> readCachedRecord({required String resource, required String userId, required String recordId}) async {
+    final db = await database;
+    final rows = await db.query('cache_records', where: 'resource=? AND user_id=? AND record_id=?', whereArgs: [resource, userId, recordId], limit: 1);
+    if (rows.isEmpty) return null;
+    return Map<String, dynamic>.from(jsonDecode(rows.first['payload']! as String) as Map);
+  }
+
+  Future<int> countCachedRecords({required String resource, required String userId}) async {
+    final db = await database;
+    final rows = await db.rawQuery('SELECT COUNT(*) AS total FROM cache_records WHERE resource=? AND user_id=?', [resource, userId]);
+    return (rows.first['total'] as int?) ?? 0;
+  }
+
+  Future<List<Map<String, dynamic>>> readCachedRecordsPage({required String resource, required String userId, required int limit, required int offset}) async {
+    final db = await database;
+    final rows = await db.query('cache_records', where: 'resource=? AND user_id=?', whereArgs: [resource, userId], orderBy: 'CAST(record_id AS INTEGER) DESC, fetched_at DESC', limit: limit, offset: offset);
+    return rows.map((row) => Map<String, dynamic>.from(jsonDecode(row['payload']! as String) as Map)).toList();
+  }
+
+  Future<bool> isRecordOutdated({required String resource, required String userId, required Map<String,dynamic> serverRecord}) async {
+    final id = (serverRecord['id'] ?? serverRecord['uuid'])?.toString();
+    if (id == null || id.isEmpty) return true;
+    final db = await database;
+    final rows = await db.query('cache_records', columns: ['payload'], where: 'resource=? AND user_id=? AND record_id=?', whereArgs: [resource,userId,id], limit: 1);
+    if (rows.isEmpty) return true;
+    try {
+      final old = jsonDecode(rows.first['payload'] as String) as Map<String,dynamic>;
+      final newUpdated = DateTime.tryParse('${serverRecord['updated_at'] ?? serverRecord['updatedAt'] ?? ''}');
+      final oldUpdated = DateTime.tryParse('${old['updated_at'] ?? old['updatedAt'] ?? ''}');
+      bool hasRemoteFiles(dynamic value) {
+        if (value is Map) {
+          if ((value['url'] ?? value['download_url'] ?? value['drawing_url'])?.toString().isNotEmpty == true) return true;
+          for (final key in ['file', 'file_path', 'file_url', 'attachment', 'attachment_url', 'document_url']) {
+            if (value[key] is String && (value[key] as String).trim().isNotEmpty) return true;
+          }
+          return value.values.any(hasRemoteFiles);
+        }
+        if (value is List) return value.any(hasRemoteFiles);
+        return false;
+      }
+      void collectLocalPaths(dynamic value, List<String> paths) {
+        if (value is Map) {
+          final path = value['local_path']?.toString();
+          if (path != null && path.isNotEmpty) paths.add(path);
+          for (final child in value.values) { collectLocalPaths(child, paths); }
+        } else if (value is List) {
+          for (final child in value) { collectLocalPaths(child, paths); }
+        }
+      }
+      if (hasRemoteFiles(serverRecord) || serverRecord['has_attachment'] == true || serverRecord['has_file'] == true) {
+        final paths = <String>[];
+        collectLocalPaths(old, paths);
+        var hasExistingLocalFile = false;
+        for (final path in paths) {
+          if (await File(path).exists()) { hasExistingLocalFile = true; break; }
+        }
+        if (!hasExistingLocalFile) return true;
+      }
+      if (newUpdated == null) return true;
+      return oldUpdated == null || newUpdated.isAfter(oldUpdated);
+    } catch (_) { return true; }
+  }
+
   /// Reconciles a full server snapshot and removes records deleted remotely.
   /// Called only after every page of a resource has been fetched successfully.
   Future<void> removeRecordsMissingFromServer({

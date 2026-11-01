@@ -6,9 +6,9 @@ class ContentGroupModel {
   factory ContentGroupModel.fromJson(Map<String,dynamic> j)=>ContentGroupModel(id:j['id']??0,name:j['name']?.toString()??'',parentId:j['parent_id']==null?null:int.tryParse('${j['parent_id']}'),hasChildren:j['has_children']==true || j['children_count']!=null && (int.tryParse('${j['children_count']}')??0)>0);
 }
 class ContentPart {
-  final String type; final String? text,file,name,url,mime,drawing,drawingUrl;
-  const ContentPart({required this.type,this.text,this.file,this.name,this.url,this.mime,this.drawing,this.drawingUrl});
-  factory ContentPart.fromJson(Map<String,dynamic> j)=>ContentPart(type:j['type']?.toString()??'text',text:j['text']?.toString(),file:j['file']?.toString(),name:j['name']?.toString(),url:j['url']?.toString(),mime:j['mime']?.toString(),drawing:j['drawing']?.toString(),drawingUrl:j['drawing_url']?.toString());
+  final String type; final String? text,file,name,url,mime,drawing,drawingUrl,localPath;
+  const ContentPart({required this.type,this.text,this.file,this.name,this.url,this.mime,this.drawing,this.drawingUrl,this.localPath});
+  factory ContentPart.fromJson(Map<String,dynamic> j)=>ContentPart(type:j['type']?.toString()??'text',text:j['text']?.toString(),file:j['file']?.toString(),name:j['name']?.toString(),url:j['url']?.toString(),mime:j['mime']?.toString(),drawing:j['drawing']?.toString(),drawingUrl:j['drawing_url']?.toString(),localPath:j['local_path']?.toString());
   Map<String,dynamic> toJson()=>{'type':type,if(text!=null)'text':text,if(file!=null)'file':file,if(name!=null)'name':name,if(mime!=null)'mime':mime,if(drawing!=null)'drawing':drawing};
 }
 class ContentModel {

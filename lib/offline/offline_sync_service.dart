@@ -114,6 +114,7 @@ class OfflineSyncService {
       final resource = entry.key;
       final endpoint = entry.value;
       final records = <Map<String, dynamic>>[];
+      final recordsNeedingFileRefresh = <String>{};
       var page = 1;
 
       onProgress(
@@ -151,6 +152,11 @@ class OfflineSyncService {
           ),
         );
 
+        for (final record in pageRecords) {
+          if (await OfflineStore.instance.isRecordOutdated(resource: resource, userId: userId, serverRecord: record)) {
+            recordsNeedingFileRefresh.add((record['id'] ?? record['uuid']).toString());
+          }
+        }
         records.addAll(pageRecords);
 
         // Save metadata right away, before downloading any attachments.
@@ -204,15 +210,16 @@ class OfflineSyncService {
       );
 
       var completedRecords = 0;
-      final totalRecords = records.length;
+      final fileRecords = records.where((r) => recordsNeedingFileRefresh.contains((r['id'] ?? r['uuid']).toString())).toList();
+      final totalRecords = fileRecords.length;
 
       // Process small groups. Within each group, up to four records download
       // their attachments concurrently; updated metadata is then batch-saved.
-      for (var start = 0; start < records.length; start += _downloadGroupSize) {
-        final end = (start + _downloadGroupSize < records.length)
+      for (var start = 0; start < fileRecords.length; start += _downloadGroupSize) {
+        final end = (start + _downloadGroupSize < fileRecords.length)
             ? start + _downloadGroupSize
-            : records.length;
-        final chunk = records.sublist(start, end);
+            : fileRecords.length;
+        final chunk = fileRecords.sublist(start, end);
         var nextIndex = 0;
 
         Future<void> worker() async {
@@ -425,6 +432,17 @@ class OfflineSyncService {
       }
     }
 
+    final rawBody = record['body'];
+    if (rawBody is List) {
+      for (final part in rawBody) {
+        if (part is Map) {
+          final partMap = Map<String, dynamic>.from(part);
+          final partUrl = (partMap['url'] ?? partMap['drawing_url'] ?? '').toString().trim();
+          if (partUrl.isNotEmpty) candidates.add({...partMap, 'url': partUrl});
+        }
+      }
+    }
+
     final rawFiles = record['files'];
     if (rawFiles is List) {
       for (var i = 0; i < rawFiles.length; i++) {
@@ -527,6 +545,18 @@ class OfflineSyncService {
       record['files'] = enriched;
     }
 
+    // Attach local paths to body parts too; detail pages can then open the
+    // downloaded system file without making another HTTP request.
+    final body = record['body'];
+    if (body is List) {
+      record['body'] = body.map((entry) {
+        if (entry is! Map) return entry;
+        final part = Map<String, dynamic>.from(entry);
+        final partUrl = (part['url'] ?? part['drawing_url'] ?? '').toString().trim();
+        final local = savedFiles.where((f) => (f['url'] ?? f['download_url'] ?? '').toString().trim() == partUrl).firstOrNull;
+        return local == null ? part : {...part, 'local_path': local['local_path'], 'download_failed': local['download_failed']};
+      }).toList();
+    }
     if (savedFiles.isNotEmpty) {
       record['offline_files'] = savedFiles;
     }
