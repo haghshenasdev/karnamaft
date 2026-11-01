@@ -1,15 +1,11 @@
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:karnamaft/models/login_request.dart';
 import 'package:karnamaft/models/minute_relation.dart';
 import 'package:karnamaft/models/minutes_group_model.dart';
 import 'package:karnamaft/models/minutes_group_service.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/models/select_dialog_config.dart';
-import 'package:karnamaft/services/minute_ps_service.dart';
 import 'package:karnamaft/services/title_analysis_service.dart';
 import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/services/project_service.dart';
@@ -46,7 +42,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
   final MinuteService _service = const MinuteService();
 
   Uint8List? selectedFileBytes;
-  CancelToken? _processCancelToken;
 
   //--------------------------------------------------
   // Controllers
@@ -63,12 +58,9 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
   //--------------------------------------------------
 
   String? selectedFile;
-  final MinutePsService _psService = const MinutePsService();
-  bool processingFile = false;
   bool analyzingTitle = false;
   List<TitleSuggestion> suggestedTasks = const [];
 
-  String processingMessage = "";
 
   bool saving = false;
   bool waitingForScan = false;
@@ -105,14 +97,9 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     dateController.text = DateHelper.toDate(selectedDate);
 
     if (widget.initialFileBytes != null) {
+      // فایل اولیه فقط به فرم متصل می‌شود؛ OCR و استخراج خودکار اجرا نمی‌شود.
       selectedFileBytes = widget.initialFileBytes;
       selectedFile = widget.initialFileName;
-
-      Future.microtask(() {
-        if (mounted) {
-          processSelectedFile();
-        }
-      });
     }
   }
 
@@ -163,7 +150,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
         context,
       ).showSnackBar(const SnackBar(content: Text("فایل اسکن شده اضافه شد")));
 
-      await processSelectedFile();
     } catch (e) {
       if (!mounted) return;
 
@@ -344,67 +330,16 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
                   selectedFileBytes = null;
                 });
 
-                if (value != null) {
-                  Future.microtask(() {
-                    processSelectedFile();
-                  });
-                }
               },
 
               onBytesChanged: (bytes) {
                 selectedFileBytes = bytes;
 
-                if (bytes != null) {
-                  Future.microtask(() {
-                    processSelectedFile();
-                  });
-                }
               },
 
               onScan: startScan,
             ),
 
-            const SizedBox(height: 12),
-
-            OutlinedButton.icon(
-              onPressed: processingFile || (selectedFile == null && selectedFileBytes == null)
-                  ? null
-                  : processSelectedFile,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text("استخراج و تحلیل خودکار متن"),
-            ),
-
-            const SizedBox(height: 12),
-
-            if (processingFile)
-              Container(
-                padding: const EdgeInsets.all(16),
-
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(child: Text(processingMessage)),
-
-                    IconButton(
-                      tooltip: "لغو پردازش",
-                      icon: const Icon(Icons.cancel, color: Colors.red),
-                      onPressed: cancelProcessing,
-                    ),
-                  ],
-                ),
-              ),
             const SizedBox(height: 20),
 
             //--------------------------------------------------
@@ -690,88 +625,6 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     );
   }
 
-  Future<void> processSelectedFile() async {
-    _processCancelToken = CancelToken();
-
-    setState(() {
-      processingFile = true;
-      processingMessage = "در حال خواندن متن فایل...";
-      error = null;
-    });
-
-    try {
-      final result = await _psService.processFile(
-        filePath: selectedFile,
-        bytes: selectedFileBytes,
-        fileName: widget.initialFileName ?? "note.png",
-        cancelToken: _processCancelToken,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        titleController.text = result.title;
-        textController.text = result.text;
-
-        if (result.date != null) {
-          selectedDate = result.date!;
-          dateController.text = DateHelper.toDate(selectedDate);
-        }
-
-        if (result.taskId != null) {
-          selectedTask = TaskCreator(
-            id: result.taskId!,
-            name: result.taskName ?? "جلسه تشخیص داده شده (#${result.taskId})",
-          );
-        }
-
-        processingMessage = "پردازش فایل با موفقیت انجام شد";
-      });
-
-      final suggestions = <String>[
-        if (result.cityName != null) "شهر: ${result.cityName}",
-        if (result.categoryNames.isNotEmpty) "دسته‌بندی‌ها: ${result.categoryNames.join('، ')}",
-      ];
-      if (suggestions.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("تشخیص خودکار: ${suggestions.join(' | ')}")),
-        );
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) {
-        setState(() {
-          processingMessage = "پردازش لغو شد";
-        });
-
-        return;
-      }
-
-      setState(() {
-        processingMessage = "خطا در پردازش فایل";
-
-        error = e.toString();
-      });
-    } catch (e) {
-      setState(() {
-        processingMessage = "خطا در پردازش فایل";
-
-        error = e.toString();
-      });
-    } finally {
-      _processCancelToken = null;
-
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
-
-        setState(() {
-          processingFile = false;
-
-          processingMessage = "";
-        });
-      });
-    }
-  }
-
   Future<void> selectTask() async {
     final result = await showDialog(
       context: context,
@@ -875,13 +728,5 @@ class _MinuteCreatePageState extends State<MinuteCreatePage>
     });
   }
 
-  void cancelProcessing() {
-    _processCancelToken?.cancel("User cancelled");
 
-    setState(() {
-      processingFile = false;
-
-      processingMessage = "پردازش لغو شد";
-    });
-  }
 }
