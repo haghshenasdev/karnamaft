@@ -22,6 +22,9 @@ class FileService {
       final file = File(resolvedLocalPath);
       if (await file.exists()) return await file.readAsBytes();
     }
+    if (await AppSettings.getOfflineEnabled()) {
+      throw StateError('نسخه آفلاین این فایل موجود نیست. برای دریافت آن، همگام‌سازی را در حالت اتصال اجرا کنید.');
+    }
     final response = await ApiClient.dio.get<List<int>>(
       url,
       options: Options(responseType: ResponseType.bytes),

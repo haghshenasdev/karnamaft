@@ -5,6 +5,9 @@ import 'package:karnamaft/models/page_result.dart';
 import 'package:karnamaft/models/record_filter.dart';
 import 'package:karnamaft/models/record_item.dart';
 import 'package:karnamaft/services/RecordService.dart';
+import '../offline/offline_store.dart';
+import '../offline/offline_sync_service.dart';
+import '../utils/app_settings.dart';
 
 class ContentGroupService implements RecordService<ContentGroupModel> {
   const ContentGroupService();
@@ -14,6 +17,13 @@ class ContentGroupService implements RecordService<ContentGroupModel> {
 
   Future<List<ContentGroupModel>> allGroups() async {
     try {
+      if (await AppSettings.getOfflineEnabled()) {
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: 'content-groups',
+          userId: await OfflineSyncService.currentUserScope(),
+        );
+        return cached.map(ContentGroupModel.fromJson).toList();
+      }
       final all = <ContentGroupModel>[];
       var page = 1;
       var last = 1;
@@ -35,6 +45,20 @@ class ContentGroupService implements RecordService<ContentGroupModel> {
   /// دریافت یک سطح از درخت؛ parentId=null یعنی فقط دسته‌های اصلی.
   Future<List<ContentGroupModel>> children({int? parentId, String? search}) async {
     try {
+      if (await AppSettings.getOfflineEnabled()) {
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: 'content-groups',
+          userId: await OfflineSyncService.currentUserScope(),
+        );
+        final query = search?.trim().toLowerCase() ?? '';
+        return cached
+            .where((row) => parentId == null
+                ? row['parent_id'] == null
+                : '${row['parent_id'] ?? ''}' == '$parentId')
+            .where((row) => query.isEmpty || '${row['id']} ${row['name']}'.toLowerCase().contains(query))
+            .map(ContentGroupModel.fromJson)
+            .toList();
+      }
       final params = <String, dynamic>{'per_page': 100};
       // ریشه‌ها را با پارامتر صریح می‌گیریم تا خالی بودن parent_id توسط Dio حذف/تفسیر نشود.
       if (parentId == null) {
@@ -53,6 +77,17 @@ class ContentGroupService implements RecordService<ContentGroupModel> {
 
   Future<List<ContentGroupModel>> searchGroups(String search) async {
     try {
+      if (await AppSettings.getOfflineEnabled()) {
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: 'content-groups',
+          userId: await OfflineSyncService.currentUserScope(),
+        );
+        final query = search.trim().toLowerCase();
+        return cached
+            .where((row) => '${row['id']} ${row['name']}'.toLowerCase().contains(query))
+            .map(ContentGroupModel.fromJson)
+            .toList();
+      }
       final response = await ApiClient.dio.get(rootPath, queryParameters: {'search': search, 'per_page': 100});
       final rows = (response.data['data'] as List? ?? const []);
       return rows.map((e) => ContentGroupModel.fromJson(Map<String, dynamic>.from(e))).toList();

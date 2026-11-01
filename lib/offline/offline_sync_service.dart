@@ -277,6 +277,10 @@ class OfflineSyncService {
       );
     }
 
+    // Reference values used by list filters and pickers are cached separately
+    // from the main records, so filter dialogs remain usable without network.
+    await _syncReferenceCaches(userId);
+
     // Push queued offline mutations after the download phase. Mutations are
     // retained in the outbox on failure and removed only after server success.
     await _pushPendingMutations(userId, onProgress);
@@ -288,6 +292,58 @@ class OfflineSyncService {
       totalResources.toDouble(),
       'همگام‌سازی اطلاعات و فایل‌ها کامل شد',
     );
+  }
+
+  static Future<void> _syncReferenceCaches(String userId) async {
+    const resources = <String>[
+      'projects', 'tasks', 'organs', 'types', 'cities', 'users', 'content-groups',
+    ];
+    for (final resource in resources) {
+      try {
+        var page = 1;
+        var lastPage = 1;
+        final all = <Map<String, dynamic>>[];
+        do {
+          final endpoint = resource == 'content-groups'
+              ? '/mobile/v1/content-groups'
+              : '/mobile/v1/$resource/reference';
+          final response = await _getWithRetry<dynamic>(
+            endpoint,
+            queryParameters: {'page': page, 'per_page': 100},
+            options: Options(receiveTimeout: const Duration(seconds: 60)),
+          );
+          final parsed = _parsePage(response.data);
+          if (parsed.records.isEmpty) break;
+          all.addAll(parsed.records);
+          if (response.data is Map) {
+            final body = Map<String, dynamic>.from(response.data as Map);
+            final meta = body['meta'] is Map
+                ? Map<String, dynamic>.from(body['meta'] as Map)
+                : <String, dynamic>{};
+            lastPage = int.tryParse('${meta['last_page'] ?? body['last_page'] ?? page}') ?? page;
+          }
+          page++;
+        } while (page <= lastPage && page <= 300);
+
+        if (all.isNotEmpty) {
+          final cacheResource = resource == 'content-groups'
+              ? 'content-groups'
+              : 'references:$resource';
+          await OfflineStore.instance.cacheRecords(
+            resource: cacheResource,
+            userId: userId,
+            records: all,
+          );
+          await OfflineStore.instance.removeRecordsMissingFromServer(
+            resource: cacheResource,
+            userId: userId,
+            serverRecords: all,
+          );
+        }
+      } catch (_) {
+        // A missing optional reference endpoint must not fail the main sync.
+      }
+    }
   }
 
   static Future<void> _pushPendingMutations(
@@ -543,6 +599,10 @@ class OfflineSyncService {
         enriched.add(saved == null ? originalMap : {...originalMap, ...saved});
       }
       record['files'] = enriched;
+    } else if (savedFiles.isNotEmpty) {
+      // Some list endpoints omit the `files` relation; retain the metadata
+      // fetched from the dedicated files endpoint for offline detail pages.
+      record['files'] = savedFiles;
     }
 
     // Attach local paths to body parts too; detail pages can then open the

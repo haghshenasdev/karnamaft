@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../offline/offline_store.dart';
+import '../offline/offline_sync_service.dart';
+import '../utils/app_settings.dart';
 
 class ReferenceRecordFilter extends StatefulWidget {
   final String resource;
@@ -209,6 +213,38 @@ class _ReferencePickerDialogState extends State<_ReferencePickerDialog> {
 
     try {
       final int nextPage = reset ? 1 : page + 1;
+      final offlineEnabled = await AppSettings.getOfflineEnabled();
+      if (offlineEnabled) {
+        final userScope = await OfflineSyncService.currentUserScope();
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: 'references:${widget.resource}', userId: userScope,
+        );
+        final q = search.trim().toLowerCase();
+        final filtered = cached.where((row) {
+          if (q.isEmpty) return true;
+          return jsonEncode(row).toLowerCase().contains(q);
+        }).toList();
+        filtered.sort((a, b) => (a['name'] ?? a['title'] ?? a['id'] ?? '')
+            .toString().toLowerCase().compareTo(
+              (b['name'] ?? b['title'] ?? b['id'] ?? '').toString().toLowerCase(),
+            ));
+        const pageSize = 30;
+        final start = (nextPage - 1) * pageSize;
+        final rows = filtered.skip(start).take(pageSize).toList();
+        if (!mounted) return;
+        setState(() {
+          if (reset) {
+            items..clear()..addAll(rows);
+          } else {
+            items.addAll(rows);
+          }
+          page = nextPage;
+          lastPage = (filtered.length / pageSize).ceil().clamp(1, 1 << 30).toInt();
+          loading = false;
+          loadingMore = false;
+        });
+        return;
+      }
 
       final response = await ApiClient.dio.get(
         '/mobile/v1/${widget.resource}/reference',
@@ -231,6 +267,16 @@ class _ReferencePickerDialogState extends State<_ReferencePickerDialog> {
       final Map<String, dynamic> meta = data['meta'] is Map
           ? Map<String, dynamic>.from(data['meta'] as Map)
           : <String, dynamic>{};
+
+      try {
+        if (await AppSettings.getOfflineEnabled() && rows.isNotEmpty) {
+          await OfflineStore.instance.cacheRecords(
+            resource: 'references:${widget.resource}',
+            userId: await OfflineSyncService.currentUserScope(),
+            records: rows,
+          );
+        }
+      } catch (_) {}
 
       if (!mounted) {
         return;

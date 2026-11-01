@@ -1,5 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import '../offline/offline_store.dart';
+import '../offline/offline_sync_service.dart';
+import '../utils/app_settings.dart';
 
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/api/api_error_handler.dart';
@@ -80,6 +83,16 @@ class ProjectService implements RecordService<ProjectModel> {
 
   Future<ProjectModel> show(int id) async {
     try {
+      if (await AppSettings.getOfflineEnabled()) {
+        final cached = await OfflineStore.instance.readCachedRecord(
+          resource: 'projects',
+          userId: await OfflineSyncService.currentUserScope(),
+          recordId: id.toString(),
+        );
+        if (cached != null) return ProjectModel.fromJson(cached);
+        throw StateError('جزئیات این رکورد در حافظه آفلاین موجود نیست. ابتدا همگام‌سازی را انجام دهید.');
+      }
+
       final response = await ApiClient.dio.get("$rootPath/$id");
 
       return ProjectModel.fromJson(response.data["data"]);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/record_item.dart';
@@ -56,6 +57,7 @@ class _RecordsPageState extends State<RecordsPage> {
 
   bool loadingMore = false;
   bool _usingOfflineCache = false;
+  List<Map<String, dynamic>> _offlineMatchedRows = [];
 
   int currentPage = 1;
 
@@ -115,17 +117,14 @@ class _RecordsPageState extends State<RecordsPage> {
       );
       if (!mounted || cached.isEmpty) return;
 
-      final localRecords = cached
-          .map(_recordItemFromCache)
-          .whereType<RecordItem>()
-          .toList();
-
-      if (localRecords.isEmpty) return;
-
       // Preserve search/filter behavior: only live-refresh the unfiltered list.
       if (search.trim().isNotEmpty || filters.values.any((v) => v.isNotEmpty)) {
         return;
       }
+      final matched = _filterAndSortOfflineRows(cached);
+      final localRecords = matched.take(50)
+          .map(_recordItemFromCache).whereType<RecordItem>().toList();
+      if (localRecords.isEmpty) return;
 
       final existingIds = records.map((r) => r.id).toSet();
       final newIds = localRecords.map((r) => r.id).toSet();
@@ -137,9 +136,10 @@ class _RecordsPageState extends State<RecordsPage> {
       if (!mounted) return;
       setState(() {
         records = localRecords;
-        totalCount = localRecords.length;
+        _offlineMatchedRows = matched;
+        totalCount = matched.length;
         currentPage = 1;
-        hasMore = false;
+        hasMore = matched.length > 50;
         loading = false;
         loadError = 'همگام‌سازی در حال انجام است؛ اطلاعات ذخیره‌شده تا این لحظه نمایش داده می‌شود.';
       });
@@ -158,33 +158,42 @@ class _RecordsPageState extends State<RecordsPage> {
       });
     }
 
-    // اگر حالت آفلاین فعال باشد، ابتدا نسخه محلی را فوراً نشان بده؛
-    // سپس در صورت دسترسی، داده‌های سرور جایگزین نسخه محلی می‌شوند.
+    // در حالت آفلاین هیچ درخواست فهرست/جست‌وجو/فیلتر به سرور ارسال نمی‌شود.
+    // فیلتر و مرتب‌سازی روی کش محلی انجام و خروجی به‌صورت ۵۰تایی نمایش داده می‌شود.
     final offlineEnabled = await AppSettings.getOfflineEnabled();
     final offlineResource = _offlineResourceName();
     if (offlineEnabled && offlineResource != null) {
       try {
         final userScope = await OfflineSyncService.currentUserScope();
-        const localPageSize = 50;
-        final cached = await OfflineStore.instance.readCachedRecordsPage(
-          resource: offlineResource, userId: userScope, limit: localPageSize, offset: 0,
+        final cached = await OfflineStore.instance.readCachedRecords(
+          resource: offlineResource, userId: userScope,
         );
-        final localTotal = await OfflineStore.instance.countCachedRecords(resource: offlineResource, userId: userScope);
-        final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
-        if (localRecords.isNotEmpty && mounted) {
-          setState(() {
-            records = localRecords;
-            _usingOfflineCache = true;
-            totalCount = localTotal;
-            currentPage = 1;
-            hasMore = localTotal > localPageSize;
-            loading = false;
-            loadError = 'حالت آفلاین فعال است؛ برای دریافت تغییرات جدید، از تنظیمات همگام‌سازی را اجرا کنید.';
-          });
-          return;
-        }
-      } catch (_) {
-        // اگر کش خراب یا خالی باشد، بارگذاری عادی سرور ادامه پیدا می‌کند.
+        final matched = _filterAndSortOfflineRows(cached);
+        const localPageSize = 50;
+        final firstPage = matched.take(localPageSize)
+            .map(_recordItemFromCache).whereType<RecordItem>().toList();
+        if (!mounted) return;
+        setState(() {
+          _offlineMatchedRows = matched;
+          records = firstPage;
+          _usingOfflineCache = true;
+          totalCount = matched.length;
+          currentPage = 1;
+          hasMore = matched.length > localPageSize;
+          loading = false;
+          loadError = matched.isEmpty
+              ? 'در اطلاعات ذخیره‌شده موردی پیدا نشد. پس از اتصال، همگام‌سازی را اجرا کنید.'
+              : 'نمایش اطلاعات محلی؛ جست‌وجو، فیلتر و مرتب‌سازی به‌صورت آفلاین انجام می‌شود.';
+        });
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          loading = false;
+          _usingOfflineCache = true;
+          loadError = 'خواندن اطلاعات محلی ناموفق بود: $e';
+        });
+        return;
       }
     }
 
@@ -270,20 +279,133 @@ class _RecordsPageState extends State<RecordsPage> {
     return null;
   }
 
+  List<Map<String, dynamic>> _filterAndSortOfflineRows(
+    List<Map<String, dynamic>> source,
+  ) {
+    final query = search.trim().toLowerCase();
+    final activeFilters = _apiFilters();
+    final filtered = source.where((row) {
+      if (query.isNotEmpty && !jsonEncode(row).toLowerCase().contains(query)) {
+        return false;
+      }
+      for (final entry in activeFilters.entries) {
+        final field = entry.key;
+        final value = entry.value.trim();
+        if (value.isEmpty) continue;
+        if (field == 'created_at' || field == 'updated_at' || field == 'date' ||
+            field == 'started_at' || field == 'ended_at' || field == 'completed_at') {
+          final raw = _findOfflineField(row, field)?.toString() ?? '';
+          if (!raw.startsWith(value)) return false;
+        } else if (!_offlineFieldMatches(row, field, value)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    int compareText(dynamic a, dynamic b) =>
+        (a?.toString() ?? '').toLowerCase().compareTo((b?.toString() ?? '').toLowerCase());
+    int compareId(dynamic a, dynamic b) =>
+        (int.tryParse('${a ?? ''}') ?? 0).compareTo(int.tryParse('${b ?? ''}') ?? 0);
+
+    filtered.sort((a, b) {
+      switch (sort) {
+        case 'id': return compareId(a['id'], b['id']);
+        case 'title': return compareText(a['title'] ?? a['subject'] ?? a['name'], b['title'] ?? b['subject'] ?? b['name']);
+        case '-title': return compareText(b['title'] ?? b['subject'] ?? b['name'], a['title'] ?? a['subject'] ?? a['name']);
+        default: return compareId(b['id'], a['id']);
+      }
+    });
+    return filtered;
+  }
+
+  dynamic _findOfflineField(dynamic value, String field) {
+    if (value is Map) {
+      if (value.containsKey(field)) return value[field];
+      for (final child in value.values) {
+        final found = _findOfflineField(child, field);
+        if (found != null) return found;
+      }
+    } else if (value is List) {
+      for (final child in value) {
+        final found = _findOfflineField(child, field);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  bool _offlineFieldMatches(dynamic node, String field, String expected) {
+    if (node is Map) {
+      if (node.containsKey(field)) {
+        final actual = node[field];
+        if (actual is List) {
+          if (actual.any((v) => '$v' == expected)) return true;
+        } else if ('$actual' == expected) {
+          return true;
+        }
+      }
+      // Relationship filters (project_id, organ_id, task_id, ...): list APIs
+      // commonly return the related model instead of a flat foreign-key field.
+      final relationNames = <String, List<String>>{
+        'project_id': ['project', 'projects'],
+        'task_id': ['task', 'tasks'],
+        'organ_id': ['organ', 'organs', 'organs_owner'],
+        'type_id': ['type'],
+        'city_id': ['city'],
+        'Responsible_id': ['responsible', 'user', 'users'],
+        'group_id': ['groups', 'group'],
+        'status': ['status'],
+        'completed': ['completed'],
+        'kind': ['kind'],
+      };
+      for (final relation in relationNames[field] ?? const <String>[]) {
+        final related = node[relation];
+        if (_relatedIdMatches(related, expected)) return true;
+      }
+      for (final child in node.values) {
+        if (_offlineFieldMatches(child, field, expected)) return true;
+      }
+    } else if (node is List) {
+      for (final child in node) {
+        if (_offlineFieldMatches(child, field, expected)) return true;
+      }
+    }
+    return false;
+  }
+
+  bool _relatedIdMatches(dynamic value, String expected) {
+    if (value is Map) return '${value['id'] ?? ''}' == expected;
+    if (value is List) return value.any((item) => _relatedIdMatches(item, expected));
+    return '$value' == expected;
+  }
+
   RecordItem? _recordItemFromCache(Map<String, dynamic> json) {
     final id = int.tryParse('${json['id'] ?? json['uuid'] ?? ''}');
     if (id == null) return null;
     final date = DateTime.tryParse('${json['date'] ?? json['created_at'] ?? ''}');
+    final organ = json['organ'] is Map ? Map<String, dynamic>.from(json['organ']) : null;
+    final customers = json['customers'] is List ? (json['customers'] as List) : const [];
+    final firstCustomer = customers.isNotEmpty && customers.first is Map
+        ? Map<String, dynamic>.from(customers.first as Map)
+        : null;
+    final kind = json['kind'];
+    final kindLabel = kind == 0 || kind == '0' ? 'وارده'
+        : kind == 1 || kind == '1' ? 'صادره' : null;
     return RecordItem(
       id: id,
       title: '${json['title'] ?? json['subject'] ?? json['name'] ?? 'بدون عنوان'}',
-      description: json['description']?.toString() ?? json['text']?.toString(),
-      from: json['from']?.toString(),
-      to: json['to']?.toString(),
-      number: json['number']?.toString(),
+      description: json['description']?.toString() ?? json['summary']?.toString() ?? json['text']?.toString(),
+      from: json['from']?.toString() ?? organ?['name']?.toString(),
+      to: json['to']?.toString() ?? firstCustomer?['name']?.toString(),
+      number: json['number']?.toString() ?? json['letter_number']?.toString() ?? id.toString(),
       date: date,
-      tag: json['tag']?.toString(),
-      hasAttachment: json['has_attachment'] == true || json['file_url'] != null,
+      tag: json['tag']?.toString() ?? kindLabel,
+      status: RecordStatusExtension.fromValue(int.tryParse('${json['status'] ?? ''}')),
+      hasAttachment: json['has_attachment'] == true || json['file_url'] != null ||
+          (json['file']?.toString().isNotEmpty ?? false) ||
+          (json['files'] is List && (json['files'] as List).isNotEmpty) ||
+          (json['body'] is List && (json['body'] as List).any((e) => e is Map && (e['file'] != null || e['drawing'] != null))),
     );
   }
 
@@ -295,14 +417,16 @@ class _RecordsPageState extends State<RecordsPage> {
     try {
       final offlineResource = _offlineResourceName();
       if (_usingOfflineCache && offlineResource != null) {
-        final userScope = await OfflineSyncService.currentUserScope();
         const localPageSize = 50;
-        final cached = await OfflineStore.instance.readCachedRecordsPage(
-          resource: offlineResource, userId: userScope, limit: localPageSize, offset: currentPage * localPageSize,
-        );
-        final localRecords = cached.map(_recordItemFromCache).whereType<RecordItem>().toList();
+        final start = currentPage * localPageSize;
+        final pageRows = _offlineMatchedRows.skip(start).take(localPageSize);
+        final localRecords = pageRows.map(_recordItemFromCache).whereType<RecordItem>().toList();
         if (!mounted) return;
-        setState(() { records.addAll(localRecords); currentPage++; hasMore = records.length < totalCount; });
+        setState(() {
+          records.addAll(localRecords);
+          currentPage++;
+          hasMore = records.length < totalCount;
+        });
         return;
       }
       final result = await widget.service.list(
@@ -593,7 +717,8 @@ class _RecordsPageState extends State<RecordsPage> {
                                     ContentModel content;
                                     if (await AppSettings.getOfflineEnabled()) {
                                       final row = await OfflineStore.instance.readCachedRecord(resource: 'contents', userId: await OfflineSyncService.currentUserScope(), recordId: '${record.id}');
-                                      content = row == null ? await (widget.service as ContentService).show(record.id) : ContentModel.fromJson(row);
+                                      if (row == null) throw StateError('اطلاعات یادداشت در حافظه آفلاین موجود نیست.');
+                                      content = ContentModel.fromJson(row);
                                     } else {
                                       content = await (widget.service as ContentService).show(record.id);
                                     }
@@ -627,6 +752,13 @@ class _RecordsPageState extends State<RecordsPage> {
 
                             final messenger = ScaffoldMessenger.of(context);
 
+                            if (_usingOfflineCache) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('حذف رکورد در حالت آفلاین انجام نمی‌شود؛ پس از اتصال دوباره تلاش کنید.')),
+                              );
+                              return;
+                            }
+
                             // بستن پیام‌های قبلی
                             messenger.clearMaterialBanners();
 
@@ -645,9 +777,7 @@ class _RecordsPageState extends State<RecordsPage> {
                               ),
                             );
 
-                            final success = await widget.service.delete(
-                              record.id,
-                            );
+                            final success = await widget.service.delete(record.id);
 
                             // بستن بنر
                             messenger.clearMaterialBanners();
@@ -690,6 +820,13 @@ class _RecordsPageState extends State<RecordsPage> {
           ? null
           : FloatingActionButton.extended(
               onPressed: () async {
+                if (await AppSettings.getOfflineEnabled()) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('ایجاد رکورد در حالت آفلاین در دسترس نیست؛ برای ثبت اطلاعات به اینترنت متصل شوید.')),
+                  );
+                  return;
+                }
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(

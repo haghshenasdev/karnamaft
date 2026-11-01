@@ -36,7 +36,7 @@ class _ContentShowPageState extends State<ContentShowPage> {
       ContentModel result;
       if (await AppSettings.getOfflineEnabled()) {
         final row = await OfflineStore.instance.readCachedRecord(resource: 'contents', userId: await OfflineSyncService.currentUserScope(), recordId: '${widget.id}');
-        if (row != null) { result = ContentModel.fromJson(row); } else { result = await service.show(widget.id); }
+        if (row != null) { result = ContentModel.fromJson(row); } else { throw StateError('جزئیات این یادداشت در حافظه آفلاین موجود نیست. ابتدا همگام‌سازی را انجام دهید.'); }
       } else { result = await service.show(widget.id); }
       if (!mounted) return;
       setState(() {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:karnamaft/models/content_model.dart';
 import 'package:karnamaft/services/content_group_service.dart';
+import '../utils/app_settings.dart';
 
 /// انتخاب‌گر مشترک دسته‌بندی‌ها؛ شاخه‌ها فقط هنگام باز شدن از API دریافت می‌شوند.
 class ContentGroupPicker {
@@ -148,6 +149,12 @@ class _ContentGroupDialogState extends State<_ContentGroupDialog> {
   }
 
   Future<void> _createGroup() async {
+    if (await AppSettings.getOfflineEnabled()) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ایجاد دسته‌بندی در حالت آفلاین امکان‌پذیر نیست.')),
+      );
+      return;
+    }
     List<ContentGroupModel> availableParents;
     try { availableParents = await _service.allGroups(); }
     catch (e) { availableParents = _roots; }
