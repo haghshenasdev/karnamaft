@@ -85,7 +85,9 @@ class TaskService implements RecordService<TaskModel> {
           recordId: id.toString(),
         );
         if (cached != null) return TaskModel.fromJson(cached);
-        throw StateError('جزئیات این رکورد در حافظه آفلاین موجود نیست. ابتدا همگام‌سازی را انجام دهید.');
+        throw StateError(
+          'جزئیات این رکورد در حافظه آفلاین موجود نیست. ابتدا همگام‌سازی را انجام دهید.',
+        );
       }
 
       final response = await ApiClient.dio.get("$rootPath/$id");
@@ -159,9 +161,7 @@ class TaskService implements RecordService<TaskModel> {
       ]);
 
       for (final project in model.projects) {
-        formData.fields.add(
-          MapEntry("project_ids[]", project.id.toString()),
-        );
+        formData.fields.add(MapEntry("project_ids[]", project.id.toString()));
       }
 
       final files = <String>[];
@@ -210,11 +210,7 @@ class TaskService implements RecordService<TaskModel> {
     }
   }
 
-
-  Future<TaskModel> create(
-    TaskModel model, {
-    List<String>? uploadFiles,
-  }) async {
+  Future<TaskModel> create(TaskModel model, {List<String>? uploadFiles}) async {
     try {
       final formData = FormData.fromMap({
         "name": model.name,
@@ -276,10 +272,7 @@ class TaskService implements RecordService<TaskModel> {
     String due = 'all',
   }) async {
     try {
-      final query = <String, dynamic>{
-        'page': page,
-        'mine': '1',
-      };
+      final query = <String, dynamic>{'page': page, 'mine': '1'};
 
       if (search != null && search.trim().isNotEmpty) {
         query['search'] = search.trim();
@@ -288,6 +281,7 @@ class TaskService implements RecordService<TaskModel> {
       if (due != 'all') {
         query['due'] = due;
       }
+      query['filter[completed]'] = due == 'completed' ? '1' : '0';
 
       final response = await ApiClient.dio.get(
         rootPath,
@@ -317,52 +311,91 @@ class TaskService implements RecordService<TaskModel> {
   @override
   List<RecordFilter> get filters => [
     RecordFilter(
-      key: "date", field: "created_at", title: "تاریخ ثبت", icon: Icons.calendar_today,
-      builder: (context, values, refresh, field) => DateRecordFilter(values: values, field: field, onChanged: refresh),
+      key: "date",
+      field: "created_at",
+      title: "تاریخ ثبت",
+      icon: Icons.calendar_today,
+      builder: (context, values, refresh, field) =>
+          DateRecordFilter(values: values, field: field, onChanged: refresh),
     ),
     RecordFilter(
-      key: "status", field: "status", title: "وضعیت", icon: Icons.flag_outlined,
-      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
-        value: values[field],
-        decoration: const InputDecoration(labelText: "وضعیت"),
-        items: const [
-          DropdownMenuItem(value: "0", child: Text("جدید")),
-          DropdownMenuItem(value: "1", child: Text("اتمام")),
-          DropdownMenuItem(value: "2", child: Text("در حال پیگیری")),
-          DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
-        ],
-        onChanged: (v) { values[field] = v ?? ""; refresh(); },
-      ),
+      key: "status",
+      field: "status",
+      title: "وضعیت",
+      icon: Icons.flag_outlined,
+      builder: (context, values, refresh, field) =>
+          DropdownButtonFormField<String>(
+            value: values[field],
+            decoration: const InputDecoration(labelText: "وضعیت"),
+            items: const [
+              DropdownMenuItem(value: "0", child: Text("جدید")),
+              DropdownMenuItem(value: "1", child: Text("اتمام")),
+              DropdownMenuItem(value: "2", child: Text("در حال پیگیری")),
+              DropdownMenuItem(value: "3", child: Text("غیرقابل پیگیری")),
+            ],
+            onChanged: (v) {
+              values[field] = v ?? "";
+              refresh();
+            },
+          ),
     ),
     RecordFilter(
-      key: "project_id", field: "project_id", title: "دستورکار", icon: Icons.work_outline,
+      key: "project_id",
+      field: "project_id",
+      title: "دستورکار",
+      icon: Icons.work_outline,
       builder: (context, values, refresh, field) => ReferenceRecordFilter(
-        resource: "projects", values: values, field: field, refresh: refresh, label: "دستورکار",
+        resource: "projects",
+        values: values,
+        field: field,
+        refresh: refresh,
+        label: "دستورکار",
       ),
     ),
     RecordFilter(
-      key: "city_id", field: "city_id", title: "شهر", icon: Icons.location_city_outlined,
+      key: "city_id",
+      field: "city_id",
+      title: "شهر",
+      icon: Icons.location_city_outlined,
       builder: (context, values, refresh, field) => ReferenceRecordFilter(
-        resource: "cities", values: values, field: field, refresh: refresh, label: "شهر",
+        resource: "cities",
+        values: values,
+        field: field,
+        refresh: refresh,
+        label: "شهر",
       ),
     ),
     RecordFilter(
-      key: "Responsible_id", field: "Responsible_id", title: "مسئول", icon: Icons.person_outline,
+      key: "Responsible_id",
+      field: "Responsible_id",
+      title: "مسئول",
+      icon: Icons.person_outline,
       builder: (context, values, refresh, field) => ReferenceRecordFilter(
-        resource: "users", values: values, field: field, refresh: refresh, label: "مسئول",
+        resource: "users",
+        values: values,
+        field: field,
+        refresh: refresh,
+        label: "مسئول",
       ),
     ),
     RecordFilter(
-      key: "completed", field: "completed", title: "انجام", icon: Icons.task_alt,
-      builder: (context, values, refresh, field) => DropdownButtonFormField<String>(
-        value: values[field],
-        decoration: const InputDecoration(labelText: "وضعیت انجام"),
-        items: const [
-          DropdownMenuItem(value: "1", child: Text("انجام شده")),
-          DropdownMenuItem(value: "0", child: Text("انجام نشده")),
-        ],
-        onChanged: (v) { values[field] = v ?? ""; refresh(); },
-      ),
+      key: "completed",
+      field: "completed",
+      title: "انجام",
+      icon: Icons.task_alt,
+      builder: (context, values, refresh, field) =>
+          DropdownButtonFormField<String>(
+            value: values[field],
+            decoration: const InputDecoration(labelText: "وضعیت انجام"),
+            items: const [
+              DropdownMenuItem(value: "1", child: Text("انجام شده")),
+              DropdownMenuItem(value: "0", child: Text("انجام نشده")),
+            ],
+            onChanged: (v) {
+              values[field] = v ?? "";
+              refresh();
+            },
+          ),
     ),
   ];
 }

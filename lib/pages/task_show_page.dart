@@ -57,11 +57,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
 
   final TextEditingController nameController = TextEditingController();
 
-  final TextEditingController descriptionController =
-      TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
 
-  final TextEditingController progressController =
-      TextEditingController();
+  final TextEditingController progressController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController startedController = TextEditingController();
   final TextEditingController endedController = TextEditingController();
@@ -118,11 +116,21 @@ class _TaskShowPageState extends State<TaskShowPage> {
       selectedOrgan = result.organ;
       selectedProjects = List<TaskProject>.from(result.projects);
       selectedCreatedAt = result.createdAt;
-      selectedStartedAt = result.startedAt == null ? null : DateTime.tryParse(result.startedAt!);
-      selectedEndedAt = result.endedAt == null ? null : DateTime.tryParse(result.endedAt!);
-      dateController.text = result.createdAt == null ? '' : DateHelper.toDate(result.createdAt);
-      startedController.text = selectedStartedAt == null ? '' : DateHelper.toDateTime(selectedStartedAt);
-      endedController.text = selectedEndedAt == null ? '' : DateHelper.toDateTime(selectedEndedAt);
+      selectedStartedAt = result.startedAt == null
+          ? null
+          : DateTime.tryParse(result.startedAt!);
+      selectedEndedAt = result.endedAt == null
+          ? null
+          : DateTime.tryParse(result.endedAt!);
+      dateController.text = result.createdAt == null
+          ? ''
+          : DateHelper.toDate(result.createdAt);
+      startedController.text = selectedStartedAt == null
+          ? ''
+          : DateHelper.toDateTime(selectedStartedAt);
+      endedController.text = selectedEndedAt == null
+          ? ''
+          : DateHelper.toDateTime(selectedEndedAt);
 
       if (!mounted) return;
 
@@ -171,9 +179,7 @@ class _TaskShowPageState extends State<TaskShowPage> {
       if (file.size > 20 * 1024 * 1024) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'فایل «${file.name}» بیشتر از ۲۰ مگابایت است.',
-            ),
+            content: Text('فایل «${file.name}» بیشتر از ۲۰ مگابایت است.'),
           ),
         );
         continue;
@@ -222,7 +228,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
       ),
     );
     if (result != null && mounted) {
-      setState(() => selectedResponsible = TaskUser(id: result.id, name: result.title));
+      setState(
+        () => selectedResponsible = TaskUser(id: result.id, name: result.title),
+      );
     }
   }
 
@@ -239,7 +247,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
       ),
     );
     if (result != null && mounted) {
-      setState(() => selectedCity = TaskCity(id: result.id, name: result.title));
+      setState(
+        () => selectedCity = TaskCity(id: result.id, name: result.title),
+      );
     }
   }
 
@@ -256,7 +266,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
       ),
     );
     if (result != null && mounted) {
-      setState(() => selectedOrgan = TaskOrgan(id: result.id, name: result.title));
+      setState(
+        () => selectedOrgan = TaskOrgan(id: result.id, name: result.title),
+      );
     }
   }
 
@@ -274,7 +286,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
     );
     if (result != null && mounted) {
       setState(() {
-        selectedProjects = result.map((e) => TaskProject(id: e.id, name: e.title)).toList();
+        selectedProjects = result
+            .map((e) => TaskProject(id: e.id, name: e.title))
+            .toList();
       });
     }
   }
@@ -341,7 +355,9 @@ class _TaskShowPageState extends State<TaskShowPage> {
         ),
         child: Row(
           children: [
-            Expanded(child: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(value, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
             IconButton(onPressed: onTap, icon: const Icon(Icons.search)),
             if (onClear != null)
               IconButton(onPressed: onClear, icon: const Icon(Icons.close)),
@@ -361,17 +377,27 @@ class _TaskShowPageState extends State<TaskShowPage> {
         ShareField(label: 'شناسه', value: '${item.id}'),
         ShareField(label: 'عنوان', value: item.name),
         ShareField(label: 'توضیحات', value: item.description ?? ''),
-        ShareField(label: 'وضعیت', value: item.completed == 1 ? 'تکمیل شده' : 'در حال انجام'),
+        ShareField(
+          label: 'وضعیت',
+          value: item.completed == 1 ? 'تکمیل شده' : 'در حال انجام',
+        ),
         ShareField(label: 'پیشرفت', value: '${item.progress ?? 0}٪'),
         ShareField(label: 'سازمان', value: item.organ?.name ?? ''),
         ShareField(label: 'شهر', value: item.city?.name ?? ''),
         ShareField(label: 'مسئول', value: item.responsible?.name ?? ''),
-        ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.createdAt)),
+        ShareField(
+          label: 'تاریخ ثبت',
+          value: DateHelper.toDateTime(item.createdAt),
+        ),
       ],
-      files: item.files.map((f) => ShareFile(
-        name: f.fileName,
-        load: () => FileService.download(f.url),
-      )).toList(),
+      files: item.files
+          .map(
+            (f) => ShareFile(
+              name: f.fileName,
+              load: () => FileService.download(f.url),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -509,9 +535,7 @@ class _TaskShowPageState extends State<TaskShowPage> {
                             const Expanded(
                               child: Text(
                                 'افزودن پیوست',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
                             OutlinedButton.icon(
@@ -561,13 +585,17 @@ class _TaskShowPageState extends State<TaskShowPage> {
                   if (item.startedAt != null)
                     RecordField(
                       title: "شروع",
-                      value: DateHelper.toDateTime(DateTime.tryParse(item.startedAt!)),
+                      value: DateHelper.toDateTime(
+                        DateTime.tryParse(item.startedAt!),
+                      ),
                     ),
 
                   if (item.endedAt != null)
                     RecordField(
                       title: "پایان",
-                      value: DateHelper.toDateTime(DateTime.tryParse(item.endedAt!)),
+                      value: DateHelper.toDateTime(
+                        DateTime.tryParse(item.endedAt!),
+                      ),
                     ),
 
                   if (item.organ != null)
@@ -615,7 +643,8 @@ class _TaskShowPageState extends State<TaskShowPage> {
                         if (selectedMinute != null)
                           IconButton(
                             tooltip: 'حذف ارتباط',
-                            onPressed: () => setState(() => selectedMinute = null),
+                            onPressed: () =>
+                                setState(() => selectedMinute = null),
                             icon: const Icon(Icons.close),
                           ),
                       ],
@@ -629,15 +658,18 @@ class _TaskShowPageState extends State<TaskShowPage> {
                   title: const Text('صورتجلسه مرتبط'),
                   subtitle: Text(item.minutes!.title),
                   trailing: const Icon(Icons.chevron_left),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MinuteShowPage(
-                        id: item.minutes!.id,
-                        title: item.minutes!.title,
-                      ),
-                    ),
-                  ).then((_) { if (mounted) loadData(); }),
+                  onTap: () =>
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MinuteShowPage(
+                            id: item.minutes!.id,
+                            title: item.minutes!.title,
+                          ),
+                        ),
+                      ).then((_) {
+                        if (mounted) loadData();
+                      }),
                 ),
 
               if (editing) ...[
@@ -649,44 +681,58 @@ class _TaskShowPageState extends State<TaskShowPage> {
                 ),
                 _selectionEditor(
                   label: 'شروع',
-                  value: startedController.text.isEmpty ? 'بدون زمان شروع' : startedController.text,
+                  value: startedController.text.isEmpty
+                      ? 'بدون زمان شروع'
+                      : startedController.text,
                   icon: Icons.play_arrow_outlined,
                   onTap: selectStarted,
-                  onClear: selectedStartedAt == null ? null : () => setState(() {
-                    selectedStartedAt = null;
-                    startedController.clear();
-                  }),
+                  onClear: selectedStartedAt == null
+                      ? null
+                      : () => setState(() {
+                          selectedStartedAt = null;
+                          startedController.clear();
+                        }),
                 ),
                 _selectionEditor(
                   label: 'پایان',
-                  value: endedController.text.isEmpty ? 'بدون زمان پایان' : endedController.text,
+                  value: endedController.text.isEmpty
+                      ? 'بدون زمان پایان'
+                      : endedController.text,
                   icon: Icons.event_outlined,
                   onTap: selectEnded,
-                  onClear: selectedEndedAt == null ? null : () => setState(() {
-                    selectedEndedAt = null;
-                    endedController.clear();
-                  }),
+                  onClear: selectedEndedAt == null
+                      ? null
+                      : () => setState(() {
+                          selectedEndedAt = null;
+                          endedController.clear();
+                        }),
                 ),
                 _selectionEditor(
                   label: 'محدوده (شهر)',
                   value: selectedCity?.name ?? 'انتخاب نشده',
                   icon: Icons.location_city_outlined,
                   onTap: selectCity,
-                  onClear: selectedCity == null ? null : () => setState(() => selectedCity = null),
+                  onClear: selectedCity == null
+                      ? null
+                      : () => setState(() => selectedCity = null),
                 ),
                 _selectionEditor(
                   label: 'مسئول',
                   value: selectedResponsible?.name ?? 'انتخاب نشده',
                   icon: Icons.person_outline,
                   onTap: selectResponsible,
-                  onClear: selectedResponsible == null ? null : () => setState(() => selectedResponsible = null),
+                  onClear: selectedResponsible == null
+                      ? null
+                      : () => setState(() => selectedResponsible = null),
                 ),
                 _selectionEditor(
                   label: 'دستگاه مربوطه',
                   value: selectedOrgan?.name ?? 'انتخاب نشده',
                   icon: Icons.business_outlined,
                   onTap: selectOrgan,
-                  onClear: selectedOrgan == null ? null : () => setState(() => selectedOrgan = null),
+                  onClear: selectedOrgan == null
+                      ? null
+                      : () => setState(() => selectedOrgan = null),
                 ),
               ],
 
@@ -705,13 +751,22 @@ class _TaskShowPageState extends State<TaskShowPage> {
                             runSpacing: 6,
                             children: selectedProjects.isEmpty
                                 ? [const Text('دستورکاری انتخاب نشده است.')]
-                                : selectedProjects.map((e) => Chip(
-                                    label: Text(e.name),
-                                    deleteIcon: const Icon(Icons.close, size: 18),
-                                    onDeleted: () => setState(() {
-                                      selectedProjects.removeWhere((x) => x.id == e.id);
-                                    }),
-                                  )).toList(),
+                                : selectedProjects
+                                      .map(
+                                        (e) => Chip(
+                                          label: Text(e.name),
+                                          deleteIcon: const Icon(
+                                            Icons.close,
+                                            size: 18,
+                                          ),
+                                          onDeleted: () => setState(() {
+                                            selectedProjects.removeWhere(
+                                              (x) => x.id == e.id,
+                                            );
+                                          }),
+                                        ),
+                                      )
+                                      .toList(),
                           ),
                         ),
                         IconButton(
@@ -752,40 +807,55 @@ class _TaskShowPageState extends State<TaskShowPage> {
               // صورتجلسه
               //--------------------------------------------------
               if (item.minutes != null)
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-
-                  padding: const EdgeInsets.all(14),
-
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-
-                    borderRadius: BorderRadius.circular(16),
-
-                    border: Border.all(color: const Color(0xffe5e9f2)),
-                  ),
-
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-
-                    children: [
-                      const Text(
-                        "صورتجلسه مرتبط",
-
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(item.minutes!.title),
-
-                      if (item.minutes!.date != null)
-                        Text(
-                          DateHelper.toDate(item.minutes!.date),
-
-                          style: const TextStyle(color: Colors.grey),
+                InkWell(
+                  onTap: () =>
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MinuteShowPage(
+                            id: item.minutesId ?? item.minutes!.id,
+                            title: item.minutes!.title,
+                          ),
                         ),
-                    ],
+                      ).then((_) {
+                        if (mounted) loadData();
+                      }),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+
+                    padding: const EdgeInsets.all(14),
+
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+
+                      borderRadius: BorderRadius.circular(16),
+
+                      border: Border.all(color: const Color(0xffe5e9f2)),
+                    ),
+
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        const Text(
+                          "صورتجلسه مرتبط",
+
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Text(item.minutes!.title),
+
+                        if (item.minutes!.date != null)
+                          Text(
+                            DateHelper.toDate(item.minutes!.date),
+
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
 

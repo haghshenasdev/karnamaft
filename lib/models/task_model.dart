@@ -157,12 +157,19 @@ class TaskModel {
           ? TaskUser.fromJson(json["responsible"])
           : null,
 
-      minutes: json["minutes"] != null
-          ? TaskMinutes.fromJson(json["minutes"])
+      minutes: json["minutes"] is Map
+          ? TaskMinutes.fromJson(
+              Map<String, dynamic>.from(json["minutes"] as Map),
+            )
           : null,
       minutesId: json["minutes_id"] is int
           ? json["minutes_id"]
-          : int.tryParse('${json["minutes_id"]}'),
+          : int.tryParse('${json["minutes_id"]}') ??
+                (json["minutes"] is Map
+                    ? int.tryParse(
+                        '${(json["minutes"] as Map)["id"] ?? (json["minutes"] as Map)["minutes_id"] ?? (json["minutes"] as Map)["minute_id"]}',
+                      )
+                    : null),
 
       projects: json["projects"] != null
           ? (json["projects"] as List)
@@ -317,9 +324,13 @@ class TaskMinutes {
 
   factory TaskMinutes.fromJson(Map<String, dynamic> json) {
     return TaskMinutes(
-      id: json["id"] ?? 0,
+      id:
+          int.tryParse(
+            '${json["id"] ?? json["minutes_id"] ?? json["minute_id"] ?? 0}',
+          ) ??
+          0,
 
-      title: json["title"] ?? "",
+      title: json["title"]?.toString() ?? json["name"]?.toString() ?? "",
 
       date: json["date"] != null
           ? DateTime.tryParse(json["date"].toString())

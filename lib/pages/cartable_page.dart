@@ -29,7 +29,7 @@ class _CartablePageState extends State<CartablePage> {
   bool loading = true;
   bool loadingMore = false;
 
-  bool? showOnlyUnread;
+  bool? showOnlyUnread = true;
 
   String dueFilter = 'all';
 
@@ -39,6 +39,8 @@ class _CartablePageState extends State<CartablePage> {
   int taskLastPage = 1;
 
   String? error;
+  final Map<int, int> _progressDrafts = {};
+  final Set<int> _savingTaskIds = {};
 
   @override
   void initState() {
@@ -49,8 +51,7 @@ class _CartablePageState extends State<CartablePage> {
     scroll.addListener(() {
       if (!scroll.hasClients) return;
 
-      if (scroll.position.pixels >
-          scroll.position.maxScrollExtent - 500) {
+      if (scroll.position.pixels > scroll.position.maxScrollExtent - 500) {
         loadMore();
       }
     });
@@ -93,10 +94,7 @@ class _CartablePageState extends State<CartablePage> {
         }
       }
 
-      final results = await Future.wait([
-        letterFuture,
-        taskFuture(),
-      ]);
+      final results = await Future.wait([letterFuture, taskFuture()]);
 
       if (!mounted) return;
 
@@ -212,6 +210,44 @@ class _CartablePageState extends State<CartablePage> {
     }
   }
 
+  Future<void> _updateTask(
+    TaskModel task, {
+    int? progress,
+    bool? completed,
+  }) async {
+    if (_savingTaskIds.contains(task.id)) return;
+    setState(() => _savingTaskIds.add(task.id));
+    try {
+      final current = await taskService.show(task.id);
+      final isCompleted = completed ??
+          (progress == null
+              ? current.completed == 1
+              : progress >= 100);
+      final next = current.copyWith(
+        progress: progress ?? current.progress,
+        completed: isCompleted ? 1 : 0,
+        completedAt: isCompleted
+            ? (current.completedAt ?? DateTime.now().toIso8601String())
+            : '',
+      );
+      final updated = await taskService.update(task.id, next);
+      if (!mounted) return;
+      setState(() {
+        final index = tasks.indexWhere((item) => item.id == updated.id);
+        if (index >= 0) tasks[index] = updated;
+        _progressDrafts.remove(task.id);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ذخیره وضعیت فعالیت انجام نشد: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingTaskIds.remove(task.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -320,55 +356,49 @@ class _CartablePageState extends State<CartablePage> {
             child: loading
                 ? const Center(child: CircularProgressIndicator())
                 : error != null
-                    ? _ErrorView(error: error!, onRetry: load)
-                    : RefreshIndicator(
-                        onRefresh: load,
-                        child: ListView(
-                          controller: scroll,
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
-                          children: [
-                            _SectionHeader(
-                              title: 'نامه‌های ارجاع‌شده',
-                              count: letters.length,
-                              icon: Icons.forward_to_inbox_outlined,
-                            ),
-                            if (letters.isEmpty)
-                              const _EmptySection(
-                                text: 'نامه ارجاع‌شده‌ای در این فیلتر وجود ندارد.',
-                              )
-                            else
-                              ...letters.asMap().entries.map(
-                                (entry) => _letterCard(
-                                  entry.value,
-                                  entry.key,
-                                  cs,
-                                ),
-                              ),
-
-                            const SizedBox(height: 12),
-
-                            _SectionHeader(
-                              title: 'فعالیت‌های مسئولیت من',
-                              count: tasks.length,
-                              icon: Icons.assignment_turned_in_outlined,
-                            ),
-                            if (tasks.isEmpty)
-                              const _EmptySection(
-                                text: 'فعالیتی با این فیلتر برای شما پیدا نشد.',
-                              )
-                            else
-                              ...tasks.map(_taskCard),
-
-                            if (loadingMore)
-                              const Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
-                          ],
+                ? _ErrorView(error: error!, onRetry: load)
+                : RefreshIndicator(
+                    onRefresh: load,
+                    child: ListView(
+                      controller: scroll,
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 100),
+                      children: [
+                        _SectionHeader(
+                          title: 'نامه‌های ارجاع‌شده',
+                          count: letters.length,
+                          icon: Icons.forward_to_inbox_outlined,
                         ),
-                      ),
+                        if (letters.isEmpty)
+                          const _EmptySection(
+                            text: 'نامه ارجاع‌شده‌ای در این فیلتر وجود ندارد.',
+                          )
+                        else
+                          ...letters.asMap().entries.map(
+                            (entry) => _letterCard(entry.value, entry.key, cs),
+                          ),
+
+                        const SizedBox(height: 12),
+
+                        _SectionHeader(
+                          title: 'فعالیت‌های مسئولیت من',
+                          count: tasks.length,
+                          icon: Icons.assignment_turned_in_outlined,
+                        ),
+                        if (tasks.isEmpty)
+                          const _EmptySection(
+                            text: 'فعالیتی با این فیلتر برای شما پیدا نشد.',
+                          )
+                        else
+                          ...tasks.map(_taskCard),
+
+                        if (loadingMore)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                      ],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -391,11 +421,7 @@ class _CartablePageState extends State<CartablePage> {
     );
   }
 
-  Widget _letterCard(
-    CartableModel item,
-    int index,
-    ColorScheme cs,
-  ) {
+  Widget _letterCard(CartableModel item, int index, ColorScheme cs) {
     final letter = item.letter;
 
     return Card(
@@ -439,10 +465,9 @@ class _CartablePageState extends State<CartablePage> {
                   Expanded(
                     child: Text(
                       letter?.subject ?? 'نامه شماره ${item.letterId}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -482,10 +507,7 @@ class _CartablePageState extends State<CartablePage> {
                   ),
                   if (letter?.organ != null)
                     InputChip(
-                      avatar: const Icon(
-                        Icons.business_outlined,
-                        size: 16,
-                      ),
+                      avatar: const Icon(Icons.business_outlined, size: 16),
                       label: Text(letter!.organ!),
                       onPressed: null,
                     ),
@@ -500,10 +522,7 @@ class _CartablePageState extends State<CartablePage> {
                     ),
                   if (letter != null)
                     ...letter.projects.map(
-                      (e) => InputChip(
-                        label: Text(e),
-                        onPressed: null,
-                      ),
+                      (e) => InputChip(label: Text(e), onPressed: null),
                     ),
                 ],
               ),
@@ -522,10 +541,10 @@ class _CartablePageState extends State<CartablePage> {
     final color = task.isCompleted
         ? Colors.green
         : task.isOverdue
-            ? Colors.red
-            : task.isDueToday
-                ? Colors.orange
-                : Theme.of(context).colorScheme.primary;
+        ? Colors.red
+        : task.isDueToday
+        ? Colors.orange
+        : Theme.of(context).colorScheme.primary;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -535,10 +554,7 @@ class _CartablePageState extends State<CartablePage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => TaskShowPage(
-                id: task.id,
-                title: task.name,
-              ),
+              builder: (_) => TaskShowPage(id: task.id, title: task.name),
             ),
           );
         },
@@ -570,16 +586,21 @@ class _CartablePageState extends State<CartablePage> {
                       ),
                     ),
                   ),
-                  Text(
-                    '${task.progress ?? 0}%',
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Checkbox.adaptive(
+                    value: task.isCompleted,
+                    onChanged: _savingTaskIds.contains(task.id)
+                        ? null
+                        : (value) => _updateTask(
+                            task,
+                            completed: value ?? false,
+                            progress: value == true ? 100 : 0,
+                          ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
+              _taskProgressEditor(task),
+              const SizedBox(height: 8),
               if ((task.description ?? '').isNotEmpty)
                 Text(
                   task.description!,
@@ -596,8 +617,8 @@ class _CartablePageState extends State<CartablePage> {
                       task.isOverdue
                           ? Icons.warning_amber_rounded
                           : task.isDueToday
-                              ? Icons.today_rounded
-                              : Icons.schedule_rounded,
+                          ? Icons.today_rounded
+                          : Icons.schedule_rounded,
                       size: 17,
                     ),
                     label: Text(task.deadlineText),
@@ -618,6 +639,45 @@ class _CartablePageState extends State<CartablePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _taskProgressEditor(TaskModel task) {
+    final value = _progressDrafts[task.id] ?? task.progress ?? 0;
+    final saving = _savingTaskIds.contains(task.id);
+    return Row(
+      children: [
+        const Text('پیشرفت'),
+        Expanded(
+          child: Slider(
+            value: value.clamp(0, 100).toDouble(),
+            min: 0,
+            max: 100,
+            divisions: 100,
+            label: '$value٪',
+            onChanged: saving
+                ? null
+                : (next) =>
+                      setState(() => _progressDrafts[task.id] = next.round()),
+          ),
+        ),
+        SizedBox(
+          width: 46,
+          child: Text('$value٪', textAlign: TextAlign.center),
+        ),
+        IconButton(
+          tooltip: 'ذخیره پیشرفت',
+          onPressed: saving || !_progressDrafts.containsKey(task.id)
+              ? null
+              : () => _updateTask(task, progress: value),
+          icon: saving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+        ),
+      ],
     );
   }
 }
@@ -648,10 +708,7 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(width: 8),
           CircleAvatar(
             radius: 12,
-            child: Text(
-              '$count',
-              style: const TextStyle(fontSize: 11),
-            ),
+            child: Text('$count', style: const TextStyle(fontSize: 11)),
           ),
         ],
       ),
@@ -670,10 +727,7 @@ class _EmptySection extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(18),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-        ),
+        child: Text(text, textAlign: TextAlign.center),
       ),
     );
   }
@@ -683,10 +737,7 @@ class _ErrorView extends StatelessWidget {
   final String error;
   final VoidCallback onRetry;
 
-  const _ErrorView({
-    required this.error,
-    required this.onRetry,
-  });
+  const _ErrorView({required this.error, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
