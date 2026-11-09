@@ -42,11 +42,7 @@ class MainPage extends StatefulWidget {
   final String? initialSharedFile;
   final List<String>? initialSharedFiles;
 
-  const MainPage({
-    super.key,
-    this.initialSharedFile,
-    this.initialSharedFiles,
-  });
+  const MainPage({super.key, this.initialSharedFile, this.initialSharedFiles});
 
   @override
   State<MainPage> createState() => _MainPageState();
@@ -86,7 +82,10 @@ class _MainPageState extends State<MainPage> {
   }
 
   void _onOfflineEnabledChanged() {
-    if (mounted) setState(() => _offlineEnabled = AppSettings.offlineEnabledNotifier.value);
+    if (mounted)
+      setState(
+        () => _offlineEnabled = AppSettings.offlineEnabledNotifier.value,
+      );
   }
 
   @override
@@ -126,11 +125,16 @@ class _MainPageState extends State<MainPage> {
     if (OfflineSyncService.isSyncing) return;
     setDialogState(() => _offlineDialogSyncing = true);
     try {
-      await OfflineSyncService.sync(onProgress: (_, __, ___) {
-        if (mounted) setDialogState(() {});
-      });
+      await OfflineSyncService.sync(
+        onProgress: (_, __, ___) {
+          if (mounted) setDialogState(() {});
+        },
+      );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطا در همگام‌سازی: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('خطا در همگام‌سازی: $e')));
     } finally {
       if (mounted) setDialogState(() => _offlineDialogSyncing = false);
     }
@@ -145,50 +149,104 @@ class _MainPageState extends State<MainPage> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => ValueListenableBuilder<OfflineSyncStatus>(
-          valueListenable: OfflineSyncService.status,
-          builder: (context, status, _) => AlertDialog(
-            title: const Row(children: [Icon(Icons.cloud_sync_outlined), SizedBox(width: 8), Text('وضعیت آفلاین')]),
-            content: SizedBox(width: 420, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(status.message),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(value: status.phase == OfflineSyncPhase.running ? (status.progress > 0 ? status.progress : null) : status.progress),
-              const SizedBox(height: 6),
-              Text('${(status.progress * 100).round()}٪', style: const TextStyle(fontSize: 12)),
-              const SizedBox(height: 12),
-              FutureBuilder<String>(
-                future: AppSettings.getOfflineRootPath(),
-                builder: (context, snapshot) => Text('مسیر ذخیره: ${snapshot.data ?? '...' }', style: const TextStyle(fontSize: 12)),
-              ),
-              Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(
-                onPressed: _offlineDialogSyncing ? null : () async {
-                  final path = await FilePicker.platform.getDirectoryPath();
-                  if (path == null || path.isEmpty) return;
-                  await AppSettings.setOfflineRootPath(path);
-                  if (dialogContext.mounted) setDialogState(() {});
-                },
-                icon: const Icon(Icons.folder_open, size: 18),
-                label: const Text('تغییر مسیر ذخیره اطلاعات'),
-              )),
-              const SizedBox(height: 6),
-              FutureBuilder<DateTime?>(
-                future: AppSettings.getOfflineLastSync(),
-                builder: (context, snapshot) => Text(
-                  _jalaliSyncTime(snapshot.data ?? lastSync),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+        builder: (context, setDialogState) =>
+            ValueListenableBuilder<OfflineSyncStatus>(
+              valueListenable: OfflineSyncService.status,
+              builder: (context, status, _) => AlertDialog(
+                title: const Row(
+                  children: [
+                    Icon(Icons.cloud_sync_outlined),
+                    SizedBox(width: 8),
+                    Text('وضعیت آفلاین'),
+                  ],
                 ),
+                content: SizedBox(
+                  width: 420,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(status.message),
+                      const SizedBox(height: 12),
+                      LinearProgressIndicator(
+                        value: status.phase == OfflineSyncPhase.running
+                            ? (status.progress > 0 ? status.progress : null)
+                            : status.progress,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${(status.progress * 100).round()}٪',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 12),
+                      FutureBuilder<String>(
+                        future: AppSettings.getOfflineRootPath(),
+                        builder: (context, snapshot) => Text(
+                          'مسیر ذخیره: ${snapshot.data ?? '...'}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          onPressed: _offlineDialogSyncing
+                              ? null
+                              : () async {
+                                  final path = await FilePicker.platform
+                                      .getDirectoryPath();
+                                  if (path == null || path.isEmpty) return;
+                                  await AppSettings.setOfflineRootPath(path);
+                                  if (dialogContext.mounted)
+                                    setDialogState(() {});
+                                },
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          label: const Text('تغییر مسیر ذخیره اطلاعات'),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      FutureBuilder<DateTime?>(
+                        future: AppSettings.getOfflineLastSync(),
+                        builder: (context, snapshot) => Text(
+                          _jalaliSyncTime(snapshot.data ?? lastSync),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  if (status.phase == OfflineSyncPhase.running)
+                    TextButton.icon(
+                      onPressed: OfflineSyncService.requestPause,
+                      icon: const Icon(Icons.pause),
+                      label: const Text('توقف موقت'),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: _offlineDialogSyncing
+                          ? null
+                          : () => _runOfflineSync(setDialogState),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('ادامه / شروع'),
+                    ),
+                  TextButton(
+                    onPressed: () async {
+                      await AppSettings.setOfflineEnabled(false);
+                      if (mounted) setState(() => _offlineEnabled = false);
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                    },
+                    child: const Text('غیرفعال‌سازی'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('بستن'),
+                  ),
+                ],
               ),
-            ])),
-            actions: [
-              if (status.phase == OfflineSyncPhase.running)
-                TextButton.icon(onPressed: OfflineSyncService.requestPause, icon: const Icon(Icons.pause), label: const Text('توقف موقت'))
-              else
-                FilledButton.icon(onPressed: _offlineDialogSyncing ? null : () => _runOfflineSync(setDialogState), icon: const Icon(Icons.play_arrow), label: const Text('ادامه / شروع')),
-              TextButton(onPressed: () async { await AppSettings.setOfflineEnabled(false); if (mounted) setState(() => _offlineEnabled = false); if (dialogContext.mounted) Navigator.pop(dialogContext); }, child: const Text('غیرفعال‌سازی')),
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('بستن')),
-            ],
-          ),
-        ),
+            ),
       ),
     );
   }
@@ -201,16 +259,20 @@ class _MainPageState extends State<MainPage> {
       );
       final data = Map<String, dynamic>.from(response.data as Map);
       final meta = Map<String, dynamic>.from(data['meta'] ?? const {});
-      if (mounted) setState(() => _unreadNotifications = int.tryParse('${meta['unread_count'] ?? 0}') ?? 0);
+      if (mounted)
+        setState(
+          () => _unreadNotifications =
+              int.tryParse('${meta['unread_count'] ?? 0}') ?? 0,
+        );
     } catch (_) {
       // نشان اعلان در صورت قطع شبکه بدون شمارنده باقی می‌ماند.
     }
   }
 
   Future<void> _openAnnouncements() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AnnouncementsPage()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AnnouncementsPage()));
     await _refreshUnreadNotifications();
   }
 
@@ -350,7 +412,7 @@ class _MainPageState extends State<MainPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('کارنامه'),
+        title: const Text('کارنما'),
         centerTitle: false,
         actions: [
           IconButton(
@@ -372,13 +434,28 @@ class _MainPageState extends State<MainPage> {
                     top: -5,
                     right: -7,
                     child: Container(
-                      constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20)),
+                      constraints: const BoxConstraints(
+                        minWidth: 17,
+                        minHeight: 17,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       alignment: Alignment.center,
                       child: Text(
-                        _unreadNotifications > 99 ? '99+' : '$_unreadNotifications',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        _unreadNotifications > 99
+                            ? '99+'
+                            : '$_unreadNotifications',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -397,13 +474,30 @@ class _MainPageState extends State<MainPage> {
                   OfflineSyncPhase.idle => Colors.teal,
                 };
                 return IconButton(
-                  tooltip: switch (status.phase) { OfflineSyncPhase.running => 'در حال دریافت اطلاعات', OfflineSyncPhase.paused => 'همگام‌سازی متوقف شده', OfflineSyncPhase.completed => 'همگام‌سازی کامل شده', OfflineSyncPhase.sending => 'در حال ارسال تغییرات', OfflineSyncPhase.idle => 'تنظیمات و همگام‌سازی آفلاین' },
+                  tooltip: switch (status.phase) {
+                    OfflineSyncPhase.running => 'در حال دریافت اطلاعات',
+                    OfflineSyncPhase.paused => 'همگام‌سازی متوقف شده',
+                    OfflineSyncPhase.completed => 'همگام‌سازی کامل شده',
+                    OfflineSyncPhase.sending => 'در حال ارسال تغییرات',
+                    OfflineSyncPhase.idle => 'تنظیمات و همگام‌سازی آفلاین',
+                  },
                   onPressed: _showOfflineDialog,
-                  icon: Stack(alignment: Alignment.center, children: [
-                    Icon(Icons.cloud_sync_outlined, color: color),
-                    if (status.phase == OfflineSyncPhase.running)
-                      const Positioned(right: 0, bottom: 0, child: SizedBox(width: 8, height: 8, child: CircularProgressIndicator(strokeWidth: 1.5))),
-                  ]),
+                  icon: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(Icons.cloud_sync_outlined, color: color),
+                      if (status.phase == OfflineSyncPhase.running)
+                        const Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: SizedBox(
+                            width: 8,
+                            height: 8,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -530,8 +624,7 @@ class _Avatar extends StatelessWidget {
           ? const Icon(Icons.person_outline_rounded)
           : ClipOval(
               child: CachedNetworkImage(
-                imageUrl:
-                    '${ApiClient.dio.options.baseUrl}/profile/avatar',
+                imageUrl: '${ApiClient.dio.options.baseUrl}/profile/avatar',
                 httpHeaders: {'Authorization': 'Bearer ${user.token}'},
                 width: 36,
                 height: 36,
