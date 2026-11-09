@@ -2,11 +2,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
+import 'content_create_page.dart';
 import 'letter_create_page.dart';
 import 'home_page.dart';
 import 'minute_create_page.dart';
@@ -291,6 +294,8 @@ class _IncomingSharePageState extends State<IncomingSharePage> {
   }
 
   Widget _buildContent(String? currentPath) {
+    final canCreateContent = context.watch<UserController>().can('create_content');
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -375,6 +380,25 @@ class _IncomingSharePageState extends State<IncomingSharePage> {
                   );
                 },
         ),
+
+        if (canCreateContent)
+          _Action(
+            icon: Icons.edit_note,
+            title: 'ایجاد یادداشت',
+            subtitle: 'فایل آماده‌شده به یادداشت آنلاین پیوست می‌شود.',
+            onTap: bytes == null
+                ? null
+                : () {
+                    _openCreate(
+                      ContentCreatePage(
+                        initialFileBytes: bytes,
+                        initialFileName: currentPath == null
+                            ? 'shared_file'
+                            : _name(currentPath),
+                      ),
+                    );
+                  },
+          ),
       ],
     );
   }
