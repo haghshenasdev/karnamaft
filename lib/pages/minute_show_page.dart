@@ -15,6 +15,7 @@ import 'package:karnamaft/services/minute_service.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/services/task_service.dart';
+import 'package:karnamaft/services/reference_service.dart';
 import 'package:karnamaft/pages/task_create_page.dart';
 import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/utils/date_helper.dart';
@@ -46,6 +47,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
   UserController get user => context.read<UserController>();
   List<OrganModel> selectedOrgans = [];
   TaskCreator? selectedTask;
+  MinuteUser? selectedTyper;
   List<MinutesGroupModel> selectedGroups = [];
   List<MinuteProject> selectedProjects = [];
   //--------------------------------------------------
@@ -111,10 +113,9 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         titleController = TextEditingController(text: result.title);
         textController = TextEditingController(text: result.text);
         selectedTask = result.taskCreator;
+        selectedTyper = result.typer;
         dateController = TextEditingController(
-          text: result.date != null
-              ? DateHelper.toDate(result.date)
-              : "",
+          text: result.date != null ? DateHelper.toDate(result.date) : "",
         );
         selectedOrgans = List.from(result.organs!);
         selectedGroups = List.from(result.group!);
@@ -160,13 +161,23 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
         ShareField(label: 'متن', value: item.text ?? ''),
         ShareField(label: 'تاریخ', value: DateHelper.toDateTime(item.date)),
         ShareField(label: 'جلسه', value: item.taskCreator?.name ?? ''),
-        ShareField(label: 'امضاکنندگان', value: item.organs?.map((e) => e.name).join('، ') ?? ''),
-        ShareField(label: 'دسته‌بندی', value: item.group?.map((e) => e.name).join('، ') ?? ''),
+        ShareField(
+          label: 'امضاکنندگان',
+          value: item.organs?.map((e) => e.name).join('، ') ?? '',
+        ),
+        ShareField(
+          label: 'دسته‌بندی',
+          value: item.group?.map((e) => e.name).join('، ') ?? '',
+        ),
       ],
-      files: item.files.map((f) => ShareFile(
-        name: f.fileName,
-        load: () => FileService.download(f.url),
-      )).toList(),
+      files: item.files
+          .map(
+            (f) => ShareFile(
+              name: f.fileName,
+              load: () => FileService.download(f.url),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -239,6 +250,7 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
             onPressed: () {
               setState(() {
                 editing = !editing;
+                selectedTyper = minute?.typer;
               });
             },
           ),
@@ -463,14 +475,23 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: selectedProjects.map((e) => Chip(
-                            avatar: const Icon(Icons.folder_outlined, size: 18),
-                            label: Text(e.name),
-                            deleteIcon: const Icon(Icons.close, size: 18),
-                            onDeleted: () => setState(() {
-                              selectedProjects.removeWhere((x) => x.id == e.id);
-                            }),
-                          )).toList(),
+                          children: selectedProjects
+                              .map(
+                                (e) => Chip(
+                                  avatar: const Icon(
+                                    Icons.folder_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(e.name),
+                                  deleteIcon: const Icon(Icons.close, size: 18),
+                                  onDeleted: () => setState(() {
+                                    selectedProjects.removeWhere(
+                                      (x) => x.id == e.id,
+                                    );
+                                  }),
+                                ),
+                              )
+                              .toList(),
                         ),
                       ],
                     )
@@ -552,7 +573,10 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                             const Expanded(
                               child: Text(
                                 "فعالیت‌های صورتجلسه",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             if (editing)
@@ -563,10 +587,13 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                                   final created = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => TaskCreatePage(initialMinutesId: item.id),
+                                      builder: (_) => TaskCreatePage(
+                                        initialMinutesId: item.id,
+                                      ),
                                     ),
                                   );
-                                  if (created != null && mounted) await loadData();
+                                  if (created != null && mounted)
+                                    await loadData();
                                 },
                               ),
                           ],
@@ -574,25 +601,54 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
                         if (item.tasks.isEmpty)
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 10),
-                            child: Text("هنوز فعالیتی برای این صورتجلسه ثبت نشده است."),
+                            child: Text(
+                              "هنوز فعالیتی برای این صورتجلسه ثبت نشده است.",
+                            ),
                           )
                         else
-                          ...item.tasks.map((task) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(radius: 18, child: Text(task.id.toString())),
-                            title: Text(task.name),
-                            subtitle: Text(task.completed == 1 ? "انجام شده" : "پیشرفت: ${task.progress ?? 0}٪"),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => TaskShowPage(id: task.id, title: task.name)),
-                            ).then((_) { if (mounted) loadData(); }),
-                          )),
+                          ...item.tasks.map(
+                            (task) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: CircleAvatar(
+                                radius: 18,
+                                child: Text(task.id.toString()),
+                              ),
+                              title: Text(task.name),
+                              subtitle: Text(
+                                task.completed == 1
+                                    ? "انجام شده"
+                                    : "پیشرفت: ${task.progress ?? 0}٪",
+                              ),
+                              onTap: () =>
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TaskShowPage(
+                                        id: task.id,
+                                        title: task.name,
+                                      ),
+                                    ),
+                                  ).then((_) {
+                                    if (mounted) loadData();
+                                  }),
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ),
 
-              if (item.typer != null)
+              if (editing && user.can('restore_any_minutes'))
+                InkWell(
+                  onTap: selectTyper,
+                  child: RecordField(
+                    title: 'نویسنده',
+                    value: selectedTyper?.name ?? 'انتخاب نویسنده',
+                  ),
+                ),
+
+              if (item.typer != null &&
+                  (!editing || !user.can('restore_any_minutes')))
                 Container(
                   margin: const EdgeInsets.only(top: 12),
 
@@ -739,6 +795,9 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
       group: selectedGroups,
       projects: selectedProjects,
       task_id: selectedTask?.id,
+      typer_id: user.can('restore_any_minutes')
+          ? selectedTyper?.id
+          : minute!.typer_id,
     );
 
     // print(model.toUpdateJson());
@@ -824,6 +883,24 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     });
   }
 
+  Future<void> selectTyper() async {
+    if (!user.can('restore_any_minutes')) return;
+    final result = await showDialog<RecordItem>(
+      context: context,
+      builder: (_) => SelectRecordDialog(
+        service: const ReferenceService('users'),
+        config: const SelectDialogConfig(
+          title: 'انتخاب نویسنده',
+          historyKey: 'minute_writers',
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      selectedTyper = MinuteUser(id: result.id, name: result.title);
+    });
+  }
+
   Future<void> selectTask() async {
     final result = await showDialog(
       context: context,
@@ -867,7 +944,9 @@ class _MinuteShowPageState extends State<MinuteShowPage> {
     if (result == null) return;
     final items = result as List<RecordItem>;
     setState(() {
-      selectedProjects = items.map((e) => MinuteProject(id: e.id, name: e.title)).toList();
+      selectedProjects = items
+          .map((e) => MinuteProject(id: e.id, name: e.title))
+          .toList();
     });
   }
 

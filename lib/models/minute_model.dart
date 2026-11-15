@@ -64,12 +64,16 @@ class MinuteModel {
           ? TaskCreator.fromJson(json["task_creator"])
           : null,
 
-      organs: json['organs'] != null
-          ? (json['organs'] as List).map((e) => OrganModel.fromJson(e)).toList()
+      organs: (json['organs'] ?? json['organ']) != null
+          ? ((json['organs'] ?? json['organ']) as List)
+                .map((e) => OrganModel.fromJson(Map<String, dynamic>.from(e)))
+                .toList()
           : [],
 
       group: json['group'] != null
-          ? (json['group'] as List).map((e) => MinutesGroupModel.fromJson(e)).toList()
+          ? (json['group'] as List)
+                .map((e) => MinutesGroupModel.fromJson(e))
+                .toList()
           : [],
       files: (json['files'] as List? ?? [])
           .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
@@ -178,7 +182,6 @@ class MinuteModel {
     };
   }
 }
-
 
 DateTime? _parseDate(dynamic value) {
   if (value == null) return null;

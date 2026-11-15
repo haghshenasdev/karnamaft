@@ -281,8 +281,6 @@ class TaskService implements RecordService<TaskModel> {
       if (due != 'all') {
         query['due'] = due;
       }
-      query['filter[completed]'] = due == 'completed' ? '1' : '0';
-
       final response = await ApiClient.dio.get(
         rootPath,
         queryParameters: query,
