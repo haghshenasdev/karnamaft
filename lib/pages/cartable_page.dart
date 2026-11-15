@@ -31,7 +31,7 @@ class _CartablePageState extends State<CartablePage> {
 
   bool? showOnlyUnread = true;
 
-  String dueFilter = 'all';
+  String dueFilter = 'open';
 
   int letterPage = 1;
   int letterLastPage = 1;
@@ -219,10 +219,9 @@ class _CartablePageState extends State<CartablePage> {
     setState(() => _savingTaskIds.add(task.id));
     try {
       final current = await taskService.show(task.id);
-      final isCompleted = completed ??
-          (progress == null
-              ? current.completed == 1
-              : progress >= 100);
+      final isCompleted =
+          completed ??
+          (progress == null ? current.completed == 1 : progress >= 100);
       final next = current.copyWith(
         progress: progress ?? current.progress,
         completed: isCompleted ? 1 : 0,
@@ -337,6 +336,7 @@ class _CartablePageState extends State<CartablePage> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
+                  _dueChip('open', 'انجام‌نشده', Icons.pending_actions_rounded),
                   _dueChip('all', 'همه', Icons.list_alt_rounded),
                   _dueChip('overdue', 'گذشته', Icons.warning_amber_rounded),
                   _dueChip('today', 'امروز', Icons.today_rounded),

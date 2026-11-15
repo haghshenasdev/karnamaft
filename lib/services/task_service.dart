@@ -265,7 +265,7 @@ class TaskService implements RecordService<TaskModel> {
 
   /// فعالیت‌هایی که مسئول انجام آن‌ها کاربر فعلی است.
   ///
-  /// `due` یکی از all/overdue/today/upcoming/completed/without_deadline است.
+  /// `due` یکی از all/open/overdue/today/upcoming/completed/without_deadline است.
   Future<PageResult<TaskModel>> myTasks({
     int page = 1,
     String? search,
