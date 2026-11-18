@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:karnamaft/widgets/record_files_card.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:karnamaft/widgets/record_share_dialog.dart';
-import 'package:intl/intl.dart';
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/letter_model.dart';
 import 'package:karnamaft/models/record_item.dart';
@@ -11,6 +10,7 @@ import 'package:karnamaft/services/letter_service.dart';
 import 'package:karnamaft/services/reference_service.dart';
 import 'package:karnamaft/api/api_client.dart';
 import 'package:karnamaft/pages/letter_timeline_page.dart';
+import 'package:karnamaft/pages/task_show_page.dart';
 import 'package:karnamaft/services/organ_service.dart';
 import 'package:karnamaft/services/project_service.dart';
 import 'package:karnamaft/utils/date_helper.dart';
@@ -157,13 +157,23 @@ class _LetterShowPageState extends State<LetterShowPage> {
         ShareField(label: 'وضعیت', value: item.status?.toString() ?? ''),
         ShareField(label: 'گیرنده', value: item.organ?.name ?? ''),
         ShareField(label: 'دفتر', value: item.daftar?.name ?? ''),
-        ShareField(label: 'پیرو نامه', value: item.peiroowLetter?.subject ?? ''),
-        ShareField(label: 'تاریخ ثبت', value: DateHelper.toDateTime(item.created_at)),
+        ShareField(
+          label: 'پیرو نامه',
+          value: item.peiroowLetter?.subject ?? '',
+        ),
+        ShareField(
+          label: 'تاریخ ثبت',
+          value: DateHelper.toDateTime(item.created_at),
+        ),
       ],
-      files: item.files.map((f) => ShareFile(
-        name: f.fileName,
-        load: () => FileService.download(f.url),
-      )).toList(),
+      files: item.files
+          .map(
+            (f) => ShareFile(
+              name: f.fileName,
+              load: () => FileService.download(f.url),
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -209,7 +219,8 @@ class _LetterShowPageState extends State<LetterShowPage> {
             child: const Text('انصراف'),
           ),
           FilledButton.icon(
-            onPressed: () => Navigator.pop(dialogContext, ruleController.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, ruleController.text.trim()),
             icon: const Icon(Icons.send),
             label: const Text('ثبت ارجاع'),
           ),
@@ -236,13 +247,15 @@ class _LetterShowPageState extends State<LetterShowPage> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('نامه با موفقیت به ${selected.title} ارجاع شد.')),
+        SnackBar(
+          content: Text('نامه با موفقیت به ${selected.title} ارجاع شد.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ثبت ارجاع ناموفق بود: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ثبت ارجاع ناموفق بود: $e')));
     }
   }
 
@@ -365,6 +378,46 @@ class _LetterShowPageState extends State<LetterShowPage> {
               const SizedBox(height: 20),
 
               RecordFilesCard(files: item.files),
+
+              if (item.tasks.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Card(
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'فعالیت‌های مرتبط با نامه',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ...item.tasks.map(
+                          (task) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              radius: 18,
+                              child: Text(task.id.toString()),
+                            ),
+                            title: Text(task.name),
+                            subtitle: Text(
+                              '${task.completed ? 'انجام شده' : 'در حال انجام'}${task.responsibleName == null ? '' : ' • ${task.responsibleName}'}',
+                            ),
+                            trailing: const Icon(Icons.chevron_left),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    TaskShowPage(id: task.id, title: task.name),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
 
               if (editing)
                 Column(
@@ -550,7 +603,7 @@ class _LetterShowPageState extends State<LetterShowPage> {
                     RecordField(title: "گیرنده", value: item.organ!.name),
 
                   const SizedBox(height: 12),
-                  
+
                   if (editing)
                     InkWell(
                       onTap: selectdaftar,
@@ -693,11 +746,16 @@ class _LetterShowPageState extends State<LetterShowPage> {
                             runSpacing: 8,
                             children: selectedProjects.map((project) {
                               return Chip(
-                                avatar: const Icon(Icons.folder_outlined, size: 18),
+                                avatar: const Icon(
+                                  Icons.folder_outlined,
+                                  size: 18,
+                                ),
                                 label: Text(project.name),
                                 deleteIcon: const Icon(Icons.close, size: 18),
                                 onDeleted: () => setState(() {
-                                  selectedProjects.removeWhere((x) => x.id == project.id);
+                                  selectedProjects.removeWhere(
+                                    (x) => x.id == project.id,
+                                  );
                                 }),
                               );
                             }).toList(),
@@ -875,7 +933,10 @@ class _LetterShowPageState extends State<LetterShowPage> {
       clearPeiroowLetter: selectedPeiroowLetterId == null,
       peiroowLetter: selectedPeiroowLetterId == null
           ? null
-          : LetterReference(id: selectedPeiroowLetterId!, subject: selectedPeiroowLetterTitle ?? ''),
+          : LetterReference(
+              id: selectedPeiroowLetterId!,
+              subject: selectedPeiroowLetterTitle ?? '',
+            ),
       daftar: selecteddaftar,
       organ: selectedCustomer,
       projects: selectedProjects,

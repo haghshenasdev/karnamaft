@@ -30,6 +30,7 @@ class TaskModel {
 
   final TaskMinutes? minutes;
   final int? minutesId;
+  final TaskLetter? letter;
 
   final List<TaskProject> projects;
   final List<TaskGroup> taskGroups;
@@ -57,6 +58,7 @@ class TaskModel {
     this.responsible,
     this.minutes,
     this.minutesId,
+    this.letter,
     required this.projects,
     required this.taskGroups,
     required this.appendixOthers,
@@ -170,6 +172,11 @@ class TaskModel {
                         '${(json["minutes"] as Map)["id"] ?? (json["minutes"] as Map)["minutes_id"] ?? (json["minutes"] as Map)["minute_id"]}',
                       )
                     : null),
+      letter: json['letter'] is Map
+          ? TaskLetter.fromJson(
+              Map<String, dynamic>.from(json['letter'] as Map),
+            )
+          : null,
 
       projects: json["projects"] != null
           ? (json["projects"] as List)
@@ -238,6 +245,7 @@ class TaskModel {
     TaskUser? responsible,
     TaskMinutes? minutes,
     int? minutesId,
+    TaskLetter? letter,
     List<TaskProject>? projects,
     List<TaskGroup>? taskGroups,
     List<dynamic>? appendixOthers,
@@ -269,6 +277,7 @@ class TaskModel {
       responsible: clearResponsible ? null : (responsible ?? this.responsible),
       minutes: minutes,
       minutesId: clearMinutes ? null : (minutesId ?? this.minutesId),
+      letter: letter ?? this.letter,
       projects: projects ?? this.projects,
       taskGroups: taskGroups ?? this.taskGroups,
       appendixOthers: appendixOthers ?? this.appendixOthers,
@@ -335,6 +344,20 @@ class TaskMinutes {
       date: json["date"] != null
           ? DateTime.tryParse(json["date"].toString())
           : null,
+    );
+  }
+}
+
+class TaskLetter {
+  final int id;
+  final String subject;
+
+  const TaskLetter({required this.id, required this.subject});
+
+  factory TaskLetter.fromJson(Map<String, dynamic> json) {
+    return TaskLetter(
+      id: int.tryParse('${json['id'] ?? 0}') ?? 0,
+      subject: json['subject']?.toString() ?? '',
     );
   }
 }

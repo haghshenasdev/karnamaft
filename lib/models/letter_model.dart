@@ -33,6 +33,7 @@ class LetterModel {
 
   final List<LetterProject> projects;
   final List<RecordFile> files;
+  final List<LetterRelatedTask> tasks;
 
   final DateTime? created_at;
   final DateTime? updated_at;
@@ -58,6 +59,7 @@ class LetterModel {
     this.updated_at,
     required this.cartables,
     this.files = const [],
+    this.tasks = const [],
   });
 
   RecordStatus get recordStatus {
@@ -88,10 +90,14 @@ class LetterModel {
           ? json["peiroow_letter_id"]
           : int.tryParse('${json["peiroow_letter_id"] ?? ''}'),
       peiroowLetter: json["peiroow_letter"] != null
-          ? LetterReference.fromJson(Map<String, dynamic>.from(json["peiroow_letter"]))
+          ? LetterReference.fromJson(
+              Map<String, dynamic>.from(json["peiroow_letter"]),
+            )
           : (json["letter"] != null
-              ? LetterReference.fromJson(Map<String, dynamic>.from(json["letter"]))
-              : null),
+                ? LetterReference.fromJson(
+                    Map<String, dynamic>.from(json["letter"]),
+                  )
+                : null),
 
       created_at: json["created_at"] == null
           ? null
@@ -135,6 +141,9 @@ class LetterModel {
           : [],
       files: (json["files"] as List? ?? [])
           .map((e) => RecordFile.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      tasks: (json["related_tasks"] as List? ?? json["tasks"] as List? ?? [])
+          .map((e) => LetterRelatedTask.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
@@ -186,6 +195,7 @@ class LetterModel {
     List<LetterCustomer>? customers,
     List<LetterOrganOwner>? organsOwner,
     List<LetterUser>? cartables,
+    List<LetterRelatedTask>? tasks,
     bool clearPeiroowLetter = false,
   }) {
     return LetterModel(
@@ -196,8 +206,12 @@ class LetterModel {
       file: file ?? this.file,
       status: status ?? this.status,
       kind: kind ?? this.kind,
-      peiroowLetterId: clearPeiroowLetter ? null : (peiroowLetterId ?? this.peiroowLetterId),
-      peiroowLetter: clearPeiroowLetter ? null : (peiroowLetter ?? this.peiroowLetter),
+      peiroowLetterId: clearPeiroowLetter
+          ? null
+          : (peiroowLetterId ?? this.peiroowLetterId),
+      peiroowLetter: clearPeiroowLetter
+          ? null
+          : (peiroowLetter ?? this.peiroowLetter),
       user: user,
       type: type,
       organ: organ ?? this.organ,
@@ -207,6 +221,7 @@ class LetterModel {
       cartables: cartables ?? this.cartables,
       projects: projects ?? this.projects,
       files: files,
+      tasks: tasks ?? this.tasks,
       created_at: created_at ?? this.created_at,
 
       updated_at: updated_at ?? this.updated_at,
@@ -224,6 +239,35 @@ class LetterModel {
       "kind": kind,
       "peiroow_letter_id": peiroowLetterId,
     };
+  }
+}
+
+class LetterRelatedTask {
+  final int id;
+  final String name;
+  final bool completed;
+  final int? progress;
+  final String? responsibleName;
+
+  const LetterRelatedTask({
+    required this.id,
+    required this.name,
+    required this.completed,
+    this.progress,
+    this.responsibleName,
+  });
+
+  factory LetterRelatedTask.fromJson(Map<String, dynamic> json) {
+    final responsible = json['responsible'];
+    return LetterRelatedTask(
+      id: int.tryParse('${json['id'] ?? 0}') ?? 0,
+      name: json['name']?.toString() ?? '',
+      completed: json['completed'] == true || json['completed'] == 1,
+      progress: int.tryParse('${json['progress'] ?? ''}'),
+      responsibleName: responsible is Map
+          ? responsible['name']?.toString()
+          : null,
+    );
   }
 }
 

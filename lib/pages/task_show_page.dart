@@ -5,7 +5,6 @@ import 'package:karnamaft/widgets/file_preview_tile.dart';
 import 'package:karnamaft/widgets/record_files_card.dart';
 import 'package:karnamaft/services/file_service.dart';
 import 'package:karnamaft/widgets/record_share_dialog.dart';
-import 'package:intl/intl.dart';
 
 import 'package:karnamaft/controllers/user_controller.dart';
 import 'package:karnamaft/models/task_model.dart';
@@ -18,6 +17,7 @@ import 'package:karnamaft/utils/date_helper.dart';
 import 'package:provider/provider.dart';
 import '../models/minute_model.dart';
 import 'minute_show_page.dart';
+import 'letter_show_page.dart';
 import '../models/record_item.dart';
 import '../models/select_dialog_config.dart';
 import '../widgets/select_record_dialog.dart';
@@ -25,7 +25,6 @@ import '../widgets/select_record_dialog.dart';
 import '../widgets/record_chip_list.dart';
 import '../widgets/show/record_field.dart';
 import '../widgets/show/record_info_card.dart';
-import '../widgets/show/record_preview.dart';
 import '../widgets/show/record_text.dart';
 import '../widgets/show/record_title.dart';
 
@@ -670,6 +669,47 @@ class _TaskShowPageState extends State<TaskShowPage> {
                       ).then((_) {
                         if (mounted) loadData();
                       }),
+                ),
+
+              if (item.letter != null)
+                InkWell(
+                  onTap: () =>
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LetterShowPage(
+                            id: item.letter!.id,
+                            title: item.letter!.subject,
+                          ),
+                        ),
+                      ).then((_) {
+                        if (mounted) loadData();
+                      }),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xffe5e9f2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'نامه مرتبط',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(item.letter!.subject),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Icon(Icons.chevron_left),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
 
               if (editing) ...[
